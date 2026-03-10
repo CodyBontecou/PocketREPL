@@ -1,37 +1,16 @@
 import Foundation
+import llama
 
 /// Backend implementation for llama.cpp inference.
-/// 
-/// ## Setup Requirements
-/// 
-/// To enable llama.cpp inference, you need to:
-/// 
-/// 1. Add llama.cpp as a dependency:
-///    - Clone llama.cpp into the project: `git submodule add https://github.com/ggerganov/llama.cpp`
-///    - Or use a Swift package wrapper like `swift-llama`
-/// 
-/// 2. Create a bridging header (PocketREPL-Bridging-Header.h):
-///    ```c
-///    #include "llama.h"
-///    ```
-/// 
-/// 3. Configure the Xcode project:
-///    - Add llama.cpp source files to build
-///    - Set C++ Language Dialect to C++17
-///    - Add Header Search Paths for llama.cpp
-/// 
-/// 4. Download a model:
-///    - Qwen2.5-Coder-1.5B-Instruct-Q4_K_M.gguf (recommended for iOS)
-///    - Place in app bundle or download to Documents
-/// 
+///
 /// ## Model Recommendations for iOS
-/// 
+///
 /// - **Qwen2.5-Coder-1.5B** - Best balance of quality and size
 /// - **CodeGemma-2B** - Alternative coding model
 /// - **Phi-3-mini** - Small general model with coding ability
-/// 
+///
 /// Use Q4_K_M or Q4_K_S quantization for mobile.
-/// 
+///
 actor LlamaBackend: ModelBackend {
     
     // MARK: - State
@@ -43,12 +22,24 @@ actor LlamaBackend: ModelBackend {
     private var configuration: ModelConfiguration?
     private var isCancelled = false
     
+    // MARK: - Static Initialization
+    
+    private static var isBackendInitialized = false
+    
+    private static func initializeBackendIfNeeded() {
+        guard !isBackendInitialized else { return }
+        llama_backend_init()
+        isBackendInitialized = true
+    }
+    
     // MARK: - Lifecycle
     
     func load(configuration: ModelConfiguration) async throws {
         guard state == .unloaded || state == .error(.cancelled) else {
             throw ModelError.invalidConfiguration(reason: "Model already loaded or loading")
         }
+        
+        Self.initializeBackendIfNeeded()
         
         self.configuration = configuration
         state = .loading(progress: 0)
@@ -68,7 +59,7 @@ actor LlamaBackend: ModelBackend {
         let requiredMemory = Int64(Double(estimatedModelSize) * 1.8)
         if requiredMemory > Int64(availableMemory) * 3 / 4 {
             // Warning: might be tight on memory
-            // Don't fail, but log warning
+            print("[LlamaBackend] Warning: Model may be too large for available memory")
         }
         
         state = .loading(progress: 0.1)
@@ -81,8 +72,11 @@ actor LlamaBackend: ModelBackend {
                 gpuLayers: configuration.gpuLayers,
                 threadCount: configuration.threadCount,
                 batchSize: configuration.batchSize,
-                onProgress: { progress in
-                    // Progress callback - state update happens after create returns
+                onProgress: { [weak self] progress in
+                    Task { @MainActor in
+                        // Update progress on main actor if needed
+                        _ = progress
+                    }
                 }
             )
             
@@ -154,8 +148,8 @@ actor LlamaBackend: ModelBackend {
                 maxTokens: request.maxTokens,
                 temperature: request.temperature,
                 stopSequences: request.stopSequences,
+                checkCancelled: { self.isCancelled },
                 onToken: { token in
-                    // Token callback - cancellation checked in context
                     generatedText += token
                     completionTokens += 1
                 }
@@ -211,6 +205,7 @@ actor LlamaBackend: ModelBackend {
                         maxTokens: request.maxTokens,
                         temperature: request.temperature,
                         stopSequences: request.stopSequences,
+                        checkCancelled: { self.isCancelled },
                         onToken: { token, isLast in
                             if self.isCancelled {
                                 continuation.finish(throwing: ModelError.cancelled)
@@ -246,7 +241,6 @@ actor LlamaBackend: ModelBackend {
     nonisolated func estimateTokens(for text: String) -> Int {
         // Without access to the actual tokenizer, estimate based on character count
         // Most LLMs average ~4 characters per token for code
-        // This is a rough estimate; real tokenization is more accurate
         return max(1, text.count / 4)
     }
     
@@ -291,8 +285,7 @@ actor LlamaBackend: ModelBackend {
 
 // MARK: - Llama Context Wrapper
 
-/// Wrapper around llama.cpp context.
-/// This is a placeholder that will be implemented when llama.cpp is integrated.
+/// Wrapper around llama.cpp context with actual C bindings.
 nonisolated final class LlamaContext: @unchecked Sendable {
     
     // Model info
@@ -302,24 +295,34 @@ nonisolated final class LlamaContext: @unchecked Sendable {
     let memoryUsage: Int64
     let quantization: String?
     
-    // Internal state - these would be actual llama.cpp pointers
-    // private var model: OpaquePointer?
-    // private var ctx: OpaquePointer?
+    // llama.cpp pointers
+    private var model: OpaquePointer?
+    private var ctx: OpaquePointer?
     
+    // Thread safety
+    private let lock = NSLock()
     private var shouldStop = false
     
     private init(
+        model: OpaquePointer,
+        ctx: OpaquePointer,
         modelName: String,
         parameterCount: String,
         contextSize: Int,
         memoryUsage: Int64,
         quantization: String?
     ) {
+        self.model = model
+        self.ctx = ctx
         self.modelName = modelName
         self.parameterCount = parameterCount
         self.contextSize = contextSize
         self.memoryUsage = memoryUsage
         self.quantization = quantization
+    }
+    
+    deinit {
+        free()
     }
     
     /// Create a new llama context from a model file.
@@ -331,28 +334,52 @@ nonisolated final class LlamaContext: @unchecked Sendable {
         batchSize: Int,
         onProgress: @escaping (Double) -> Void
     ) async throws -> LlamaContext {
-        // TODO: Implement actual llama.cpp initialization
-        // This is a placeholder that simulates model loading
+        // Configure model parameters
+        var modelParams = llama_model_default_params()
+        modelParams.n_gpu_layers = Int32(gpuLayers)
+        modelParams.use_mmap = true
         
-        // In real implementation:
-        // 1. Call llama_model_load_from_file()
-        // 2. Create context with llama_new_context_with_model()
-        // 3. Configure sampling parameters
-        
-        // Simulate loading progress
-        for i in 1...10 {
-            try await Task.sleep(nanoseconds: 50_000_000) // 0.05s
-            onProgress(Double(i) / 10.0)
+        // Set up progress callback
+        modelParams.progress_callback = { progress, _ in
+            // Note: Can't capture Swift closure directly, but progress is reported
+            return true // Continue loading
         }
+        
+        onProgress(0.1)
+        
+        // Load model
+        guard let model = llama_model_load_from_file(modelPath, modelParams) else {
+            throw ModelError.loadFailed(reason: "Failed to load model from \(modelPath)")
+        }
+        
+        onProgress(0.5)
+        
+        // Configure context parameters
+        var ctxParams = llama_context_default_params()
+        ctxParams.n_ctx = UInt32(contextSize)
+        ctxParams.n_batch = UInt32(batchSize)
+        ctxParams.n_ubatch = UInt32(min(batchSize, 512))
+        ctxParams.n_threads = Int32(threadCount)
+        ctxParams.n_threads_batch = Int32(threadCount)
+        ctxParams.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_AUTO
+        
+        // Create context
+        guard let ctx = llama_init_from_model(model, ctxParams) else {
+            llama_model_free(model)
+            throw ModelError.loadFailed(reason: "Failed to create context")
+        }
+        
+        onProgress(0.9)
         
         // Extract model info from filename
         let filename = URL(fileURLWithPath: modelPath).lastPathComponent
         let name = filename
             .replacingOccurrences(of: ".gguf", with: "")
             .replacingOccurrences(of: "-", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
         
         // Parse quantization from filename (e.g., Q4_K_M)
-        let quantPattern = #"(Q[0-9]+_[A-Z_]+)"#
+        let quantPattern = #"(Q[0-9]+_[A-Z_]+|IQ[0-9]+_[A-Z_]+)"#
         let quantization: String?
         if let range = filename.range(of: quantPattern, options: .regularExpression) {
             quantization = String(filename[range])
@@ -360,21 +387,91 @@ nonisolated final class LlamaContext: @unchecked Sendable {
             quantization = nil
         }
         
+        // Estimate parameter count from file size
+        let fileSize = (try? FileManager.default.attributesOfItem(atPath: modelPath)[.size] as? Int64) ?? 0
+        let parameterCount = formatParameterCount(estimateParameters(fileSize: fileSize, quantization: quantization))
+        
+        onProgress(1.0)
+        
         return LlamaContext(
+            model: model,
+            ctx: ctx,
             modelName: name,
-            parameterCount: "1.5B", // Would be extracted from model metadata
+            parameterCount: parameterCount,
             contextSize: contextSize,
-            memoryUsage: 1_500_000_000, // Would be actual memory usage
+            memoryUsage: fileSize,
             quantization: quantization
         )
     }
     
     /// Tokenize text into token IDs.
-    func tokenize(_ text: String) -> [Int] {
-        // TODO: Implement actual tokenization with llama_tokenize()
-        // Placeholder: estimate ~4 chars per token
-        let estimatedTokens = max(1, text.count / 4)
-        return Array(0..<estimatedTokens)
+    func tokenize(_ text: String) -> [llama_token] {
+        guard let model = model else { return [] }
+        
+        let vocab = llama_model_get_vocab(model)
+        let utf8Text = text.utf8CString
+        let maxTokens = text.count + 16 // Generous buffer
+        
+        var tokens = [llama_token](repeating: 0, count: maxTokens)
+        
+        let nTokens = utf8Text.withUnsafeBufferPointer { buffer in
+            llama_tokenize(
+                vocab,
+                buffer.baseAddress,
+                Int32(text.utf8.count),
+                &tokens,
+                Int32(maxTokens),
+                true,  // add_special (BOS)
+                true   // parse_special
+            )
+        }
+        
+        if nTokens < 0 {
+            // Buffer too small - reallocate
+            let neededSize = -Int(nTokens)
+            tokens = [llama_token](repeating: 0, count: neededSize)
+            let actualTokens = utf8Text.withUnsafeBufferPointer { buffer in
+                llama_tokenize(
+                    vocab,
+                    buffer.baseAddress,
+                    Int32(text.utf8.count),
+                    &tokens,
+                    Int32(neededSize),
+                    true,
+                    true
+                )
+            }
+            return Array(tokens.prefix(Int(actualTokens)))
+        }
+        
+        return Array(tokens.prefix(Int(nTokens)))
+    }
+    
+    /// Convert a token to text.
+    private func tokenToPiece(_ token: llama_token) -> String {
+        guard let model = model else { return "" }
+        
+        let vocab = llama_model_get_vocab(model)
+        var buffer = [CChar](repeating: 0, count: 256)
+        
+        let length = llama_token_to_piece(
+            vocab,
+            token,
+            &buffer,
+            Int32(buffer.count),
+            0,     // lstrip
+            true   // special
+        )
+        
+        if length < 0 {
+            // Buffer too small
+            let neededSize = -Int(length)
+            buffer = [CChar](repeating: 0, count: neededSize)
+            let actualLength = llama_token_to_piece(vocab, token, &buffer, Int32(neededSize), 0, true)
+            return String(cString: buffer.prefix(Int(actualLength)).map { $0 } + [0])
+        }
+        
+        return String(cString: buffer.prefix(Int(length)).map { $0 } + [0])
     }
     
     /// Generate completion tokens.
@@ -383,28 +480,111 @@ nonisolated final class LlamaContext: @unchecked Sendable {
         maxTokens: Int,
         temperature: Float,
         stopSequences: [String],
+        checkCancelled: () -> Bool,
         onToken: @escaping (String) throws -> Void
     ) async throws -> [String] {
-        // TODO: Implement actual generation with llama_decode() loop
-        // This is a placeholder that returns mock output
+        guard let model = model, let ctx = ctx else {
+            throw ModelError.invalidConfiguration(reason: "Context not initialized")
+        }
         
+        lock.lock()
         shouldStop = false
+        lock.unlock()
+        
         var tokens: [String] = []
+        let vocab = llama_model_get_vocab(model)
         
-        // Simulate token-by-token generation
-        let mockOutput = "// Generated code placeholder\nfunction example() {\n  console.log('Hello');\n}\n"
-        let words = mockOutput.components(separatedBy: .whitespaces)
+        // Tokenize prompt
+        let promptTokens = tokenize(prompt)
+        guard !promptTokens.isEmpty else {
+            throw ModelError.invalidConfiguration(reason: "Failed to tokenize prompt")
+        }
         
-        for (i, word) in words.enumerated() {
-            if shouldStop { break }
-            if tokens.count >= maxTokens { break }
+        // Clear memory (KV cache)
+        let memory = llama_get_memory(ctx)
+        llama_memory_clear(memory, true)
+        
+        // Process prompt in batches
+        var mutableTokens = promptTokens
+        let batch = llama_batch_get_one(&mutableTokens, Int32(promptTokens.count))
+        
+        let decodeResult = llama_decode(ctx, batch)
+        if decodeResult != 0 {
+            throw ModelError.inferenceError(reason: "Failed to decode prompt (error: \(decodeResult))")
+        }
+        
+        // Create sampler chain
+        let samplerParams = llama_sampler_chain_default_params()
+        guard let sampler = llama_sampler_chain_init(samplerParams) else {
+            throw ModelError.inferenceError(reason: "Failed to create sampler chain")
+        }
+        defer { llama_sampler_free(sampler) }
+        
+        // Add sampling stages
+        if temperature > 0 {
+            llama_sampler_chain_add(sampler, llama_sampler_init_top_k(40))
+            llama_sampler_chain_add(sampler, llama_sampler_init_top_p(0.95, 1))
+            llama_sampler_chain_add(sampler, llama_sampler_init_temp(temperature))
+            llama_sampler_chain_add(sampler, llama_sampler_init_dist(UInt32.random(in: 0..<UInt32.max)))
+        } else {
+            llama_sampler_chain_add(sampler, llama_sampler_init_greedy())
+        }
+        
+        // Generation loop
+        var generatedCount = 0
+        var generatedText = ""
+        var currentToken: llama_token = 0
+        let eosToken = llama_vocab_eos(vocab)
+        let eotToken = llama_vocab_eot(vocab)
+        
+        while generatedCount < maxTokens {
+            // Check for cancellation
+            lock.lock()
+            let stopped = shouldStop
+            lock.unlock()
+            if stopped || checkCancelled() {
+                break
+            }
             
-            let token = i == 0 ? word : " " + word
-            try onToken(token)
-            tokens.append(token)
+            // Sample next token
+            currentToken = llama_sampler_sample(sampler, ctx, -1)
             
-            // Simulate generation delay
-            try await Task.sleep(nanoseconds: 20_000_000) // 0.02s per token
+            // Check for end of generation
+            if currentToken == eosToken || currentToken == eotToken {
+                break
+            }
+            if llama_vocab_is_eog(vocab, currentToken) {
+                break
+            }
+            
+            // Convert token to text
+            let piece = tokenToPiece(currentToken)
+            tokens.append(piece)
+            generatedText += piece
+            generatedCount += 1
+            
+            // Notify callback
+            try onToken(piece)
+            
+            // Check stop sequences
+            if stopSequences.contains(where: { generatedText.hasSuffix($0) }) {
+                break
+            }
+            
+            // Accept the token
+            llama_sampler_accept(sampler, currentToken)
+            
+            // Decode next token
+            var tokenBatch = llama_batch_get_one(&currentToken, 1)
+            let result = llama_decode(ctx, tokenBatch)
+            if result != 0 {
+                throw ModelError.inferenceError(reason: "Failed to decode token (error: \(result))")
+            }
+            
+            // Yield to other tasks occasionally
+            if generatedCount % 10 == 0 {
+                await Task.yield()
+            }
         }
         
         return tokens
@@ -416,36 +596,172 @@ nonisolated final class LlamaContext: @unchecked Sendable {
         maxTokens: Int,
         temperature: Float,
         stopSequences: [String],
+        checkCancelled: () -> Bool,
         onToken: @escaping (String, Bool) -> Bool
     ) async throws {
-        // TODO: Implement streaming generation
+        guard let model = model, let ctx = ctx else {
+            throw ModelError.invalidConfiguration(reason: "Context not initialized")
+        }
+        
+        lock.lock()
         shouldStop = false
+        lock.unlock()
         
-        let mockOutput = "// Generated code placeholder\nfunction example() {\n  console.log('Hello');\n}\n"
-        let words = mockOutput.components(separatedBy: .whitespaces)
+        let vocab = llama_model_get_vocab(model)
         
-        for (i, word) in words.enumerated() {
-            if shouldStop { break }
+        // Tokenize prompt
+        let promptTokens = tokenize(prompt)
+        guard !promptTokens.isEmpty else {
+            throw ModelError.invalidConfiguration(reason: "Failed to tokenize prompt")
+        }
+        
+        // Clear memory (KV cache)
+        let memory = llama_get_memory(ctx)
+        llama_memory_clear(memory, true)
+        
+        // Process prompt
+        var mutableTokens = promptTokens
+        let batch = llama_batch_get_one(&mutableTokens, Int32(promptTokens.count))
+        let decodeResult = llama_decode(ctx, batch)
+        if decodeResult != 0 {
+            throw ModelError.inferenceError(reason: "Failed to decode prompt")
+        }
+        
+        // Create sampler chain
+        let samplerParams = llama_sampler_chain_default_params()
+        guard let sampler = llama_sampler_chain_init(samplerParams) else {
+            throw ModelError.inferenceError(reason: "Failed to create sampler chain")
+        }
+        defer { llama_sampler_free(sampler) }
+        
+        // Add sampling stages
+        if temperature > 0 {
+            llama_sampler_chain_add(sampler, llama_sampler_init_top_k(40))
+            llama_sampler_chain_add(sampler, llama_sampler_init_top_p(0.95, 1))
+            llama_sampler_chain_add(sampler, llama_sampler_init_temp(temperature))
+            llama_sampler_chain_add(sampler, llama_sampler_init_dist(UInt32.random(in: 0..<UInt32.max)))
+        } else {
+            llama_sampler_chain_add(sampler, llama_sampler_init_greedy())
+        }
+        
+        // Generation loop
+        var generatedCount = 0
+        var generatedText = ""
+        var currentToken: llama_token = 0
+        let eosToken = llama_vocab_eos(vocab)
+        let eotToken = llama_vocab_eot(vocab)
+        
+        while generatedCount < maxTokens {
+            // Check for cancellation
+            lock.lock()
+            let stopped = shouldStop
+            lock.unlock()
+            if stopped || checkCancelled() {
+                break
+            }
             
-            let token = i == 0 ? word : " " + word
-            let isLast = i == words.count - 1
+            // Sample next token
+            currentToken = llama_sampler_sample(sampler, ctx, -1)
             
-            let shouldContinue = onToken(token, isLast)
-            if !shouldContinue { break }
+            // Check for end of generation
+            let isLast = currentToken == eosToken || 
+                         currentToken == eotToken || 
+                         llama_vocab_is_eog(vocab, currentToken) ||
+                         generatedCount + 1 >= maxTokens
             
-            try await Task.sleep(nanoseconds: 20_000_000)
+            if currentToken == eosToken || currentToken == eotToken || llama_vocab_is_eog(vocab, currentToken) {
+                _ = onToken("", true)
+                break
+            }
+            
+            // Convert token to text
+            let piece = tokenToPiece(currentToken)
+            generatedText += piece
+            generatedCount += 1
+            
+            // Check stop sequences
+            let hitStopSequence = stopSequences.contains(where: { generatedText.hasSuffix($0) })
+            let finalIsLast = isLast || hitStopSequence
+            
+            // Notify callback
+            let shouldContinue = onToken(piece, finalIsLast)
+            if !shouldContinue || finalIsLast {
+                break
+            }
+            
+            // Accept and decode next
+            llama_sampler_accept(sampler, currentToken)
+            var tokenBatch = llama_batch_get_one(&currentToken, 1)
+            let result = llama_decode(ctx, tokenBatch)
+            if result != 0 {
+                throw ModelError.inferenceError(reason: "Failed to decode token")
+            }
+            
+            // Yield occasionally
+            if generatedCount % 10 == 0 {
+                await Task.yield()
+            }
         }
     }
     
     /// Signal to stop generation.
     func stopGeneration() {
+        lock.lock()
         shouldStop = true
+        lock.unlock()
     }
     
     /// Free resources.
     func free() {
-        // TODO: Call llama_free() and llama_free_model()
-        shouldStop = true
+        lock.lock()
+        defer { lock.unlock() }
+        
+        if let ctx = ctx {
+            llama_free(ctx)
+            self.ctx = nil
+        }
+        if let model = model {
+            llama_model_free(model)
+            self.model = nil
+        }
+    }
+    
+    // MARK: - Helpers
+    
+    private static func estimateParameters(fileSize: Int64, quantization: String?) -> Int64 {
+        // Rough estimates based on quantization
+        let bitsPerParam: Double
+        switch quantization?.uppercased() {
+        case "Q4_K_M", "Q4_K_S", "Q4_0", "Q4_1":
+            bitsPerParam = 4.5
+        case "Q5_K_M", "Q5_K_S", "Q5_0", "Q5_1":
+            bitsPerParam = 5.5
+        case "Q6_K":
+            bitsPerParam = 6.5
+        case "Q8_0":
+            bitsPerParam = 8.5
+        case "IQ2_XXS", "IQ2_XS", "IQ2_S", "IQ2_M":
+            bitsPerParam = 2.5
+        case "IQ3_XXS", "IQ3_XS", "IQ3_S", "IQ3_M":
+            bitsPerParam = 3.5
+        case "IQ4_NL", "IQ4_XS":
+            bitsPerParam = 4.0
+        default:
+            bitsPerParam = 4.5 // Assume Q4
+        }
+        
+        // Parameters = (file_size_bits) / bits_per_param
+        return Int64(Double(fileSize * 8) / bitsPerParam)
+    }
+    
+    private static func formatParameterCount(_ count: Int64) -> String {
+        if count >= 1_000_000_000 {
+            return String(format: "%.1fB", Double(count) / 1_000_000_000)
+        } else if count >= 1_000_000 {
+            return String(format: "%.0fM", Double(count) / 1_000_000)
+        } else {
+            return String(format: "%.0fK", Double(count) / 1_000)
+        }
     }
 }
 
@@ -509,17 +825,21 @@ nonisolated enum ModelDiscovery: Sendable {
             contextSize = 4096
         }
         
-        // GPU layers - on iOS, typically use 0 (CPU) or limited GPU
-        let gpuLayers = 0 // Metal support varies
+        // GPU layers - on iOS, use Metal
+        #if targetEnvironment(simulator)
+        let gpuLayers = 0 // CPU only on simulator
+        #else
+        let gpuLayers = 99 // Offload all layers to GPU on device
+        #endif
         
         // Thread count - use performance cores
-        let threadCount = ProcessInfo.processInfo.activeProcessorCount / 2
+        let threadCount = max(2, ProcessInfo.processInfo.activeProcessorCount / 2)
         
         return ModelConfiguration(
             modelPath: modelURL.path,
             contextSize: contextSize,
             gpuLayers: gpuLayers,
-            threadCount: max(2, threadCount),
+            threadCount: threadCount,
             useMemoryMapping: true,
             batchSize: 512
         )

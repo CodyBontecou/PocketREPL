@@ -6,8 +6,28 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		62038D702F60A00000639743 /* llama.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 62038D6F2F60A00000639743 /* llama.xcframework */; };
+		62038D712F60A00000639743 /* llama.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 62038D6F2F60A00000639743 /* llama.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		62038D722F60A00000639743 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				62038D712F60A00000639743 /* llama.xcframework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		62038D5C2F60870100639743 /* PocketREPL.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PocketREPL.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		62038D6F2F60A00000639743 /* llama.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = llama.xcframework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -23,6 +43,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				62038D702F60A00000639743 /* llama.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -32,6 +53,7 @@
 		62038D532F60870100639743 = {
 			isa = PBXGroup;
 			children = (
+				62038D6F2F60A00000639743 /* llama.xcframework */,
 				62038D5E2F60870100639743 /* PocketREPL */,
 				62038D5D2F60870100639743 /* Products */,
 			);
@@ -55,6 +77,7 @@
 				62038D582F60870100639743 /* Sources */,
 				62038D592F60870100639743 /* Frameworks */,
 				62038D5A2F60870100639743 /* Resources */,
+				62038D722F60A00000639743 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
