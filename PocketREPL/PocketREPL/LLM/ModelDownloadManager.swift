@@ -30,6 +30,24 @@ struct ModelRegistryEntry: Codable, Identifiable, Sendable {
         ByteCountFormatter.string(fromByteCount: sizeBytes, countStyle: .file)
     }
     
+    /// Returns the Hugging Face model page URL (not the direct download URL).
+    /// Converts: https://huggingface.co/{org}/{repo}/resolve/main/{file}.gguf
+    /// To: https://huggingface.co/{org}/{repo}
+    var huggingFacePageURL: URL? {
+        guard downloadURL.host?.contains("huggingface.co") == true else {
+            return nil
+        }
+        
+        let pathComponents = downloadURL.pathComponents.filter { $0 != "/" }
+        guard pathComponents.count >= 2 else {
+            return nil
+        }
+        
+        let org = pathComponents[0]
+        let repo = pathComponents[1]
+        return URL(string: "https://huggingface.co/\(org)/\(repo)")
+    }
+    
     /// Create a custom model entry from a Hugging Face URL.
     /// Supports URLs like:
     /// - https://huggingface.co/{org}/{repo}/resolve/main/{filename}.gguf

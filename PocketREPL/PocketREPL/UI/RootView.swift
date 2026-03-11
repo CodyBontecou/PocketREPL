@@ -81,6 +81,7 @@ struct RootView: View {
     enum Tab {
         case files
         case chat
+        case model
         case docs
         case settings
     }
@@ -149,7 +150,7 @@ struct RootView: View {
                 AgentView(
                     session: container.agentSession,
                     modelManager: container.modelManager,
-                    onModelButtonTapped: { showingModelManagement = true }
+                    projectStore: container.projectStore
                 )
             }
             .tabItem {
@@ -161,32 +162,20 @@ struct RootView: View {
             .tag(Tab.chat)
             .accessibilityIdentifier("tab_chat")
             .accessibilityHint(String(localized: "Chat with the AI assistant"))
-
-            // Files Tab
+            
+            // Model Tab
             NavigationStack {
-                FileBrowserView(projectStore: container.projectStore)
-                    .navigationTitle(container.workspaceInfo.displayName)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button {
-                                showingModelManagement = true
-                            } label: {
-                                ModelStatusView(modelManager: container.modelManager)
-                            }
-                            .accessibilityLabel(String(localized: "Manage models"))
-                            .accessibilityHint(String(localized: "Open model management to download, load, or unload AI models"))
-                        }
-                    }
+                ModelManagementView(modelManager: container.modelManager)
             }
             .tabItem {
                 VStack {
-                    Image(systemName: selectedTab == .files ? "folder.fill" : "folder")
-                    Text("Files", comment: "Tab label for files view")
+                    Image(systemName: selectedTab == .model ? "cpu.fill" : "cpu")
+                    Text("Model", comment: "Tab label for model management view")
                 }
             }
-            .tag(Tab.files)
-            .accessibilityIdentifier("tab_files")
-            .accessibilityHint(String(localized: "Browse project files and folders"))
+            .tag(Tab.model)
+            .accessibilityIdentifier("tab_model")
+            .accessibilityHint(String(localized: "Download and manage AI models"))
             
             // Docs Tab
             NavigationStack {
@@ -260,6 +249,7 @@ struct RootView: View {
             AgentView(
                 session: container.agentSession,
                 modelManager: container.modelManager,
+                projectStore: container.projectStore,
                 onModelButtonTapped: { showingModelManagement = true }
             )
         }

@@ -59,22 +59,9 @@ struct ModelManagementView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                HStack(spacing: 8) {
-                    // Brain/model icon with geometric frame
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(foregroundColor.opacity(0.08))
-                            .frame(width: 24, height: 24)
-                        
-                        Image(systemName: "cpu")
-                            .font(.escherCaption.weight(.semibold))
-                            .foregroundStyle(foregroundColor.opacity(0.7))
-                    }
-                    
-                    Text("Models", comment: "Navigation title for model management")
-                        .font(.escherHeadline)
-                        .foregroundStyle(foregroundColor)
-                }
+                Text("Models", comment: "Navigation title for model management")
+                    .font(.escherHeadline)
+                    .foregroundStyle(foregroundColor)
             }
         }
         .refreshable {
@@ -962,14 +949,6 @@ struct InstalledModelRow: View {
             showingDetail = true
         } label: {
             HStack(spacing: 14) {
-                // Model Provider Icon
-                ModelProviderIcon(
-                    family: model.registryEntry?.family ?? .other,
-                    size: 44,
-                    isActive: isActive,
-                    colorScheme: colorScheme
-                )
-                
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
                         Text(model.name)
@@ -1122,9 +1101,6 @@ struct DownloadableModelRow: View {
             showingDetail = true
         } label: {
             HStack(spacing: 14) {
-                // Model Provider Icon
-                ModelProviderIcon(family: model.family, size: 44, colorScheme: colorScheme)
-                
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
                         Text(model.name)
@@ -1542,9 +1518,9 @@ struct ModelDetailView: View {
                     GreyscaleSpecRow(label: String(localized: "Model Family"), value: entry.family.rawValue, colorScheme: colorScheme)
                     SpecDivider()
                     GreyscaleSpecRow(label: String(localized: "Context Window"), value: "\(formatNumber(entry.recommendedContextSize)) \(String(localized: "tokens"))", colorScheme: colorScheme)
-                    if !entry.isCustom {
+                    if !entry.isCustom, let pageURL = entry.huggingFacePageURL {
                         SpecDivider()
-                        GreyscaleSpecRow(label: String(localized: "Source"), value: String(localized: "Hugging Face"), colorScheme: colorScheme)
+                        GreyscaleLinkSpecRow(label: String(localized: "Source"), value: String(localized: "Hugging Face"), url: pageURL, colorScheme: colorScheme)
                     }
                 } else {
                     GreyscaleSpecRow(label: String(localized: "Format"), value: "GGUF", colorScheme: colorScheme)
@@ -1783,8 +1759,10 @@ struct RegistryModelDetailView: View {
                 GreyscaleSpecRow(label: String(localized: "Recommended Context"), value: "\(formatNumber(model.recommendedContextSize)) \(String(localized: "tokens"))", colorScheme: colorScheme)
                 SpecDivider()
                 GreyscaleSpecRow(label: String(localized: "Download Size"), value: model.formattedSize, colorScheme: colorScheme)
-                SpecDivider()
-                GreyscaleSpecRow(label: String(localized: "Source"), value: String(localized: "Hugging Face"), icon: "link", colorScheme: colorScheme)
+                if let pageURL = model.huggingFacePageURL {
+                    SpecDivider()
+                    GreyscaleLinkSpecRow(label: String(localized: "Source"), value: String(localized: "Hugging Face"), url: pageURL, colorScheme: colorScheme)
+                }
             }
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -1959,6 +1937,53 @@ struct SpecDivider: View {
     var body: some View {
         Divider()
             .padding(.leading, 14)
+    }
+}
+
+/// A spec row that opens a URL when tapped.
+struct GreyscaleLinkSpecRow: View {
+    let label: String
+    let value: String
+    let url: URL?
+    let colorScheme: ColorScheme
+    
+    @Environment(\.openURL) private var openURL
+    
+    private var foreground: Color {
+        colorScheme == .dark ? .escherPaper : .escherInk
+    }
+    
+    var body: some View {
+        Button {
+            if let url = url {
+                openURL(url)
+            }
+        } label: {
+            HStack {
+                Text(label)
+                    .font(.escherFootnote)
+                    .foregroundStyle(Color.escherSecondaryText)
+                
+                Spacer()
+                
+                HStack(spacing: 4) {
+                    Text(value)
+                        .font(.escherFootnote.weight(.semibold))
+                        .foregroundStyle(foreground)
+                    
+                    Image(systemName: "arrow.up.right")
+                        .font(.escherCaption2)
+                        .foregroundStyle(foreground.opacity(0.5))
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(url == nil)
+        .accessibilityLabel("\(label): \(value)")
+        .accessibilityHint(url != nil ? String(localized: "Opens in browser") : "")
     }
 }
 

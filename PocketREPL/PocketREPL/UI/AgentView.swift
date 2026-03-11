@@ -4,9 +4,11 @@ struct AgentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var session: AgentSession
     @ObservedObject var modelManager: ModelBackendManager
-    let onModelButtonTapped: () -> Void
+    var projectStore: ProjectStore? = nil
+    var onModelButtonTapped: (() -> Void)? = nil
 
     @State private var showingToolTrace = false
+    @State private var showingFiles = false
 
     var body: some View {
         ChatView(session: session)
@@ -21,7 +23,12 @@ struct AgentView: View {
                 
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 12) {
-                        modelButton
+                        if let onModelButtonTapped = onModelButtonTapped {
+                            modelButton(action: onModelButtonTapped)
+                        }
+                        if projectStore != nil {
+                            filesButton
+                        }
                         toolTraceButton
                         resetConversationButton
                     }
@@ -30,16 +37,40 @@ struct AgentView: View {
             .sheet(isPresented: $showingToolTrace) {
                 ToolTraceSheet(session: session)
             }
+            .sheet(isPresented: $showingFiles) {
+                if let projectStore = projectStore {
+                    FileBrowserSheet(projectStore: projectStore)
+                }
+            }
             .escherNavigationStyle()
     }
 
-    private var modelButton: some View {
+    private func modelButton(action: @escaping () -> Void) -> some View {
         Button {
-            onModelButtonTapped()
+            action()
         } label: {
             ModelStatusCompactView(modelManager: modelManager)
         }
         .accessibilityLabel("Model Selection")
+    }
+    
+    private var filesButton: some View {
+        Button {
+            showingFiles = true
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(colorScheme == .dark ? Color(white: 0.18) : Color.escherPaper)
+                    .frame(width: 32, height: 32)
+                    .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 4, x: 0, y: 2)
+                
+                Image(systemName: "folder")
+                    .font(.escherFootnote)
+                    .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
+            }
+        }
+        .accessibilityLabel(String(localized: "Files"))
+        .accessibilityHint(String(localized: "Browse project files and folders"))
     }
     
     private var toolTraceButton: some View {
@@ -170,6 +201,49 @@ struct ToolTraceSheet: View {
     }
 }
 
+// MARK: - File Browser Sheet
+
+struct FileBrowserSheet: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let projectStore: ProjectStore
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            FileBrowserView(projectStore: projectStore)
+                .navigationTitle("")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "folder.fill")
+                                .font(.escherFootnote.weight(.semibold))
+                                .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
+                            
+                            Text("Files", comment: "Navigation title for files view")
+                                .font(.escherHeadline)
+                                .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
+                        }
+                    }
+                    
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Text("Done", comment: "Button to dismiss sheet")
+                                .font(.escherSubheadline)
+                                .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
+                        }
+                    }
+                }
+                .escherNavigationStyle()
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .grayscale(1.0)
+    }
+}
+
 // MARK: - Tool Trace Row
 
 struct ToolTraceRow: View {
@@ -270,8 +344,7 @@ struct ToolTraceRow: View {
     NavigationStack {
         AgentView(
             session: AppContainer.preview.agentSession,
-            modelManager: AppContainer.preview.modelManager,
-            onModelButtonTapped: {}
+            modelManager: AppContainer.preview.modelManager
         )
     }
 }

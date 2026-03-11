@@ -1,4 +1,5 @@
 import SwiftUI
+import WebKit
 
 // MARK: - File Browser View
 
@@ -55,12 +56,12 @@ struct FileBrowserView: View {
                         Text("Root", comment: "Button to navigate to root directory")
                             .font(.escherFootnote)
                     }
-                    .foregroundStyle(Color.escherPrism)
+                    .foregroundStyle(Color.escherInk)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(Color.escherPrism.opacity(0.1))
+                            .fill(Color.escherMidtone.opacity(0.15))
                     )
                 }
                 .accessibilityLabel(String(localized: "Root folder"))
@@ -203,17 +204,17 @@ struct FileBrowserView: View {
             HStack(spacing: 14) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color.escherPrism.opacity(0.1))
+                        .fill(Color.escherMidtone.opacity(0.15))
                         .frame(width: 40, height: 40)
                     
                     Image(systemName: "arrow.left")
                         .font(.escherCallout.weight(.semibold))
-                        .foregroundStyle(Color.escherPrism)
+                        .foregroundStyle(Color.escherInk)
                 }
                 
                 Text("Back", comment: "Button to navigate to parent directory")
                     .font(.escherCallout)
-                    .foregroundStyle(Color.escherPrism)
+                    .foregroundStyle(Color.escherInk)
                 
                 Spacer()
             }
@@ -420,6 +421,8 @@ struct FileRow: View {
             return "doc.text"
         case "swift":
             return "swift"
+        case "html", "htm":
+            return "globe"
         default:
             return "doc"
         }
@@ -427,22 +430,9 @@ struct FileRow: View {
     
     private var iconColor: Color {
         if entry.kind == .directory {
-            return .escherPrism
-        }
-
-        let ext = URL(fileURLWithPath: entry.name).pathExtension.lowercased()
-        switch ext {
-        case "js", "mjs", "cjs", "jsx":
-            return Color(red: 0.95, green: 0.78, blue: 0.28)
-        case "json":
-            return .escherWarning
-        case "md", "txt":
-            return .escherMidtone
-        case "swift":
-            return Color(red: 0.95, green: 0.45, blue: 0.25)
-        default:
             return .escherMidtone
         }
+        return .escherMidtone
     }
     
     private var iconBackgroundColor: Color {
@@ -466,6 +456,12 @@ struct FilePreviewSheet: View {
     @State private var content: String = ""
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var showingWebPreview = true
+    
+    private var isHTMLFile: Bool {
+        let ext = URL(fileURLWithPath: file.name).pathExtension.lowercased()
+        return ext == "html" || ext == "htm"
+    }
 
     var body: some View {
         NavigationStack {
@@ -498,6 +494,8 @@ struct FilePreviewSheet: View {
                                 .multilineTextAlignment(.center)
                         }
                         .padding(32)
+                    } else if isHTMLFile && showingWebPreview {
+                        htmlPreviewView
                     } else {
                         codeView
                     }
@@ -506,13 +504,30 @@ struct FilePreviewSheet: View {
             .navigationTitle(file.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                if isHTMLFile && !isLoading && errorMessage == nil {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            showingWebPreview.toggle()
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: showingWebPreview ? "chevron.left.forwardslash.chevron.right" : "globe")
+                                    .font(.escherCaption)
+                                Text(showingWebPreview ? "Code" : "Preview", comment: "Toggle between code and web preview")
+                                    .font(.escherCaption)
+                            }
+                            .foregroundStyle(Color.escherInk)
+                        }
+                        .accessibilityLabel(showingWebPreview ? String(localized: "View source code") : String(localized: "View web preview"))
+                    }
+                }
+                
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         dismiss()
                     } label: {
                         Text("Done", comment: "Button to dismiss sheet")
                             .font(.escherSubheadline)
-                            .foregroundStyle(Color.escherPrism)
+                            .foregroundStyle(Color.escherInk)
                     }
                 }
             }
@@ -521,6 +536,12 @@ struct FilePreviewSheet: View {
         .task {
             await loadContent()
         }
+    }
+    
+    private var htmlPreviewView: some View {
+        HTMLWebView(htmlContent: content, baseURL: projectStore.workspaceInfo.rootURL)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .padding(16)
     }
     
     private var codeView: some View {
@@ -570,6 +591,31 @@ struct FilePreviewSheet: View {
         }
 
         isLoading = false
+    }
+}
+
+// MARK: - HTML Web View
+
+struct HTMLWebView: UIViewRepresentable {
+    let htmlContent: String
+    let baseURL: URL?
+    
+    func makeUIView(context: Context) -> WKWebView {
+        let configuration = WKWebViewConfiguration()
+        configuration.allowsInlineMediaPlayback = true
+        
+        let webView = WKWebView(frame: .zero, configuration: configuration)
+        webView.isOpaque = false
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
+        webView.scrollView.showsHorizontalScrollIndicator = true
+        webView.scrollView.showsVerticalScrollIndicator = true
+        
+        return webView
+    }
+    
+    func updateUIView(_ webView: WKWebView, context: Context) {
+        webView.loadHTMLString(htmlContent, baseURL: baseURL)
     }
 }
 
