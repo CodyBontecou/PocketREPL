@@ -140,6 +140,17 @@ struct MessageBubble: View {
     let message: AgentMessage
 
     var body: some View {
+        switch message.role {
+        case .toolCall:
+            ToolCallBubble(message: message)
+        case .toolResult:
+            ToolResultBubble(message: message)
+        default:
+            standardBubble
+        }
+    }
+    
+    private var standardBubble: some View {
         HStack {
             if message.role == .user {
                 Spacer(minLength: 60)
@@ -204,6 +215,189 @@ struct MessageBubble: View {
 
     private var textColor: Color {
         message.role == .user ? .white : .primary
+    }
+}
+
+// MARK: - Tool Call Bubble
+
+struct ToolCallBubble: View {
+    let message: AgentMessage
+    @State private var isExpanded = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            Button(action: { withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() } }) {
+                HStack(spacing: 8) {
+                    Image(systemName: toolIcon)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.orange)
+                        .frame(width: 20)
+                    
+                    Text(message.toolName ?? "Tool")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                    
+                    Spacer()
+                    
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+            }
+            .buttonStyle(.plain)
+            
+            // Expandable parameters
+            if isExpanded, let params = message.toolParameters, !params.isEmpty {
+                Divider()
+                    .padding(.horizontal, 12)
+                
+                Text(params)
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .background(Color(.tertiarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+        )
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private var toolIcon: String {
+        switch message.toolName {
+        case "list_files": return "folder"
+        case "read_file": return "doc.text"
+        case "write_file": return "square.and.pencil"
+        case "search_code": return "magnifyingglass"
+        case "run_snippet": return "play.fill"
+        case "run_file": return "play.rectangle.fill"
+        default: return "wrench.fill"
+        }
+    }
+}
+
+// MARK: - Tool Result Bubble
+
+struct ToolResultBubble: View {
+    let message: AgentMessage
+    @State private var isExpanded = false
+    
+    private var isLongOutput: Bool {
+        message.text.count > 150 || message.text.components(separatedBy: "\n").count > 5
+    }
+    
+    private var truncatedText: String {
+        if isLongOutput && !isExpanded {
+            let lines = message.text.components(separatedBy: "\n")
+            if lines.count > 3 {
+                return lines.prefix(3).joined(separator: "\n") + "\n..."
+            }
+            return String(message.text.prefix(150)) + "..."
+        }
+        return message.text
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header with status
+            HStack(spacing: 8) {
+                Image(systemName: statusIcon)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(statusColor)
+                    .frame(width: 16)
+                
+                Text(statusLabel)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(statusColor)
+                
+                Spacer()
+                
+                if isLongOutput {
+                    Button(action: { withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() } }) {
+                        Text(isExpanded ? "Show less" : "Show more")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 6)
+            
+            // Output
+            if !message.text.isEmpty {
+                Divider()
+                    .padding(.horizontal, 12)
+                
+                Text(truncatedText)
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.primary)
+                    .textSelection(.enabled)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .background(resultBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(statusColor.opacity(0.3), lineWidth: 1)
+        )
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private var statusIcon: String {
+        switch message.toolStatus {
+        case .succeeded: return "checkmark.circle.fill"
+        case .failed: return "xmark.circle.fill"
+        case .pending: return "clock.fill"
+        case .skipped: return "forward.fill"
+        case .none: return "circle.fill"
+        }
+    }
+    
+    private var statusColor: Color {
+        switch message.toolStatus {
+        case .succeeded: return .green
+        case .failed: return .red
+        case .pending: return .orange
+        case .skipped: return .gray
+        case .none: return .secondary
+        }
+    }
+    
+    private var statusLabel: String {
+        switch message.toolStatus {
+        case .succeeded: return "Success"
+        case .failed: return "Failed"
+        case .pending: return "Running..."
+        case .skipped: return "Skipped"
+        case .none: return "Result"
+        }
+    }
+    
+    private var resultBackground: Color {
+        switch message.toolStatus {
+        case .succeeded:
+            return Color(.systemGreen).opacity(0.08)
+        case .failed:
+            return Color(.systemRed).opacity(0.08)
+        default:
+            return Color(.tertiarySystemGroupedBackground)
+        }
     }
 }
 

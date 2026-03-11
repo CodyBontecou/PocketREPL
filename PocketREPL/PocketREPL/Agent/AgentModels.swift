@@ -13,12 +13,38 @@ nonisolated struct AgentMessage: Identifiable, Codable, Hashable, Sendable {
     let role: AgentMessageRole
     let text: String
     let createdAt: Date
+    
+    // Tool-specific metadata
+    let toolName: String?
+    let toolParameters: String?
+    let toolStatus: ToolTraceStatus?
 
     init(id: UUID = UUID(), role: AgentMessageRole, text: String, createdAt: Date = .now) {
         self.id = id
         self.role = role
         self.text = text
         self.createdAt = createdAt
+        self.toolName = nil
+        self.toolParameters = nil
+        self.toolStatus = nil
+    }
+    
+    init(
+        id: UUID = UUID(),
+        role: AgentMessageRole,
+        text: String,
+        toolName: String,
+        toolParameters: String? = nil,
+        toolStatus: ToolTraceStatus = .pending,
+        createdAt: Date = .now
+    ) {
+        self.id = id
+        self.role = role
+        self.text = text
+        self.createdAt = createdAt
+        self.toolName = toolName
+        self.toolParameters = toolParameters
+        self.toolStatus = toolStatus
     }
 }
 

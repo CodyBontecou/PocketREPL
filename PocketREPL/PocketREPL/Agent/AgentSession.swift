@@ -111,36 +111,52 @@ final class AgentSession: ObservableObject {
                 prompt: trimmed,
                 projectContext: projectContext.isEmpty ? nil : projectContext,
                 onAssistantMessage: { [weak self] message in
-                    await MainActor.run {
-                        self?.messages.append(AgentMessage(role: .assistant, text: message))
-                    }
+                    self?.messages.append(AgentMessage(role: .assistant, text: message))
                 },
                 onToolCall: { [weak self] toolName, params in
-                    await MainActor.run {
-                        self?.toolTrace.append(
-                            ToolTraceEvent(
-                                kind: .call,
-                                toolName: toolName,
-                                summary: self?.formatToolCallSummary(name: toolName, parameters: params) ?? toolName,
-                                status: .pending
-                            )
+                    guard let self = self else { return }
+                    let summary = self.formatToolCallSummary(name: toolName, parameters: params)
+                    self.toolTrace.append(
+                        ToolTraceEvent(
+                            kind: .call,
+                            toolName: toolName,
+                            summary: summary,
+                            status: .pending
                         )
-                    }
+                    )
+                    // Add tool call to chat messages
+                    self.messages.append(
+                        AgentMessage(
+                            role: .toolCall,
+                            text: self.formatToolParameters(params),
+                            toolName: toolName,
+                            toolParameters: self.formatToolParameters(params),
+                            toolStatus: .pending
+                        )
+                    )
                 },
                 onToolResult: { [weak self] toolName, toolResult in
-                    await MainActor.run {
-                        let truncated = toolResult.output.count > 200
-                            ? String(toolResult.output.prefix(200)) + "..."
-                            : toolResult.output
-                        self?.toolTrace.append(
-                            ToolTraceEvent(
-                                kind: .result,
-                                toolName: toolName,
-                                summary: truncated,
-                                status: toolResult.succeeded ? .succeeded : .failed
-                            )
+                    guard let self = self else { return }
+                    let status: ToolTraceStatus = toolResult.succeeded ? .succeeded : .failed
+                    self.toolTrace.append(
+                        ToolTraceEvent(
+                            kind: .result,
+                            toolName: toolName,
+                            summary: toolResult.output.count > 200
+                                ? String(toolResult.output.prefix(200)) + "..."
+                                : toolResult.output,
+                            status: status
                         )
-                    }
+                    )
+                    // Add tool result to chat messages
+                    self.messages.append(
+                        AgentMessage(
+                            role: .toolResult,
+                            text: toolResult.output,
+                            toolName: toolName,
+                            toolStatus: status
+                        )
+                    )
                 }
             )
 
@@ -277,6 +293,27 @@ final class AgentSession: ObservableObject {
             parts.append("\(key)=\(valueStr)")
         }
         return parts.isEmpty ? name : "\(name)(\(parts.joined(separator: ", ")))"
+    }
+    
+    private func formatToolParameters(_ parameters: [String: Any]) -> String {
+        var parts: [String] = []
+        for (key, value) in parameters.sorted(by: { $0.key < $1.key }) {
+            let valueStr: String
+            if let str = value as? String {
+                // For code, truncate more aggressively
+                if key == "code" && str.count > 50 {
+                    valueStr = String(str.prefix(50)) + "..."
+                } else if str.count > 100 {
+                    valueStr = String(str.prefix(100)) + "..."
+                } else {
+                    valueStr = str
+                }
+            } else {
+                valueStr = "\(value)"
+            }
+            parts.append("\(key): \(valueStr)")
+        }
+        return parts.joined(separator: "\n")
     }
 
     // MARK: - Session Control
