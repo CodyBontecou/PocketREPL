@@ -106,7 +106,7 @@ struct RootView: View {
                                 showingModelManagement = false
                             } label: {
                                 Text("Done", comment: "Button to dismiss sheet")
-                                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                    .font(.escherSubheadline)
                                     .foregroundStyle(Color.escherPrism)
                             }
                         }
@@ -159,6 +159,8 @@ struct RootView: View {
                 }
             }
             .tag(Tab.chat)
+            .accessibilityIdentifier("tab_chat")
+            .accessibilityHint(String(localized: "Chat with the AI assistant"))
 
             // Files Tab
             NavigationStack {
@@ -171,6 +173,8 @@ struct RootView: View {
                             } label: {
                                 ModelStatusView(modelManager: container.modelManager)
                             }
+                            .accessibilityLabel(String(localized: "Manage models"))
+                            .accessibilityHint(String(localized: "Open model management to download, load, or unload AI models"))
                         }
                     }
             }
@@ -181,6 +185,8 @@ struct RootView: View {
                 }
             }
             .tag(Tab.files)
+            .accessibilityIdentifier("tab_files")
+            .accessibilityHint(String(localized: "Browse project files and folders"))
             
             // Settings Tab
             NavigationStack {
@@ -193,7 +199,10 @@ struct RootView: View {
                 }
             }
             .tag(Tab.settings)
+            .accessibilityIdentifier("tab_settings")
+            .accessibilityHint(String(localized: "Adjust app settings and preferences"))
         }
+        .accessibilityIdentifier("main_tab_view")
         .tint(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
     }
     
@@ -215,10 +224,12 @@ struct RootView: View {
                                     .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 4, x: 0, y: 2)
                                 
                                 Image(systemName: "gearshape.fill")
-                                    .font(.system(size: 14, weight: .medium))
+                                    .font(.escherFootnote)
                                     .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
                             }
                         }
+                        .accessibilityLabel(String(localized: "Settings"))
+                        .accessibilityHint(String(localized: "Open app settings"))
                     }
                     
                     ToolbarItem(placement: .topBarTrailing) {
@@ -227,6 +238,8 @@ struct RootView: View {
                         } label: {
                             ModelStatusView(modelManager: container.modelManager)
                         }
+                        .accessibilityLabel(String(localized: "Manage models"))
+                        .accessibilityHint(String(localized: "Open model management to download, load, or unload AI models"))
                     }
                 }
         } detail: {

@@ -16,6 +16,74 @@ final class AgentSession: ObservableObject {
     var aiAvailabilityStatus: String {
         orchestrator.modelAvailabilityStatus
     }
+    
+    // MARK: - Context Tracking
+    
+    /// Estimated context window limit for Foundation Models
+    /// Apple Intelligence on-device models have a small context window
+    static let estimatedContextLimit = 4096
+    
+    /// Estimate tokens for a string (~4 chars per token, minimum 1)
+    private static func estimateTokens(for text: String) -> Int {
+        max(1, text.count / 4)
+    }
+    
+    /// Context settings manager for customizable prompt and tool toggles
+    private let contextSettings = ContextSettingsManager.shared
+    
+    /// Estimated tokens used by current conversation (comprehensive)
+    var estimatedContextTokens: Int {
+        var tokens = 0
+        
+        // 1. System prompt (from settings manager - may be custom or default)
+        tokens += Self.estimateTokens(for: contextSettings.effectiveSystemPrompt)
+        
+        // 2. Tool definitions schema (only count enabled tools)
+        // Each tool is ~50 tokens for its @Generable schema + descriptions
+        tokens += contextSettings.enabledToolCount * 50
+        
+        // 3. Project context (injected with prompts, ~500 char budget = ~125 tokens)
+        // This is sent with each user turn but we count it once as baseline
+        tokens += 125
+        
+        // 4. All conversation messages (user, assistant, tool calls, tool results)
+        for message in messages {
+            // Base message text
+            tokens += Self.estimateTokens(for: message.text)
+            
+            // Role/structure overhead (~5 tokens per message)
+            tokens += 5
+            
+            // Tool-specific content
+            if let toolName = message.toolName {
+                tokens += Self.estimateTokens(for: toolName) + 3 // +3 for structure
+            }
+            if let toolParams = message.toolParameters {
+                tokens += Self.estimateTokens(for: toolParams)
+            }
+        }
+        
+        // 5. Per-turn overhead for the agentic loop prompts ("Tool result:\n...\nContinue...")
+        let toolResultMessages = messages.filter { $0.role == .toolResult }.count
+        tokens += toolResultMessages * 15  // ~15 tokens per continuation prompt
+        
+        return tokens
+    }
+    
+    /// Context usage as a fraction (0.0 to 1.0+)
+    var contextUsageFraction: Double {
+        Double(estimatedContextTokens) / Double(Self.estimatedContextLimit)
+    }
+    
+    /// Whether context is getting close to the limit (>70%)
+    var isContextNearLimit: Bool {
+        contextUsageFraction > 0.7
+    }
+    
+    /// Whether context has likely exceeded the limit
+    var isContextOverLimit: Bool {
+        contextUsageFraction > 1.0
+    }
 
     let projectStore: ProjectStore
     let runtime: JSRuntime
@@ -46,10 +114,13 @@ final class AgentSession: ObservableObject {
             contextManager: contextManager
         )
         self.workspaceInfo = projectStore.workspaceInfo
-        self.systemPrompt = systemPrompt ?? Self.defaultSystemPrompt
+        // Use provided system prompt, or fall back to context settings manager
+        let effectivePrompt = systemPrompt ?? ContextSettingsManager.shared.effectiveSystemPrompt
+        self.systemPrompt = effectivePrompt
         self.orchestrator = AgentOrchestrator(
             toolExecutor: toolExecutor,
-            systemInstructions: systemPrompt ?? Self.defaultSystemPrompt
+            systemInstructions: effectivePrompt,
+            contextSettings: ContextSettingsManager.shared
         )
         self.messages = [
             AgentMessage(

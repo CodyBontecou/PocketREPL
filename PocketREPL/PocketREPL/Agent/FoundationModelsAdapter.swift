@@ -24,6 +24,7 @@ final class AgentOrchestrator: ObservableObject {
     private let systemInstructions: String
     private let maxToolIterations: Int
     private let maxConsecutiveFailures: Int
+    private let contextSettings: ContextSettingsManager?
 
     #if canImport(FoundationModels)
     @available(iOS 26.0, macOS 26.0, *)
@@ -34,14 +35,21 @@ final class AgentOrchestrator: ObservableObject {
         toolExecutor: ToolExecutor,
         systemInstructions: String,
         maxToolIterations: Int = 10,
-        maxConsecutiveFailures: Int = 3
+        maxConsecutiveFailures: Int = 3,
+        contextSettings: ContextSettingsManager? = nil
     ) {
         self.toolExecutor = toolExecutor
         self.systemInstructions = systemInstructions
         self.maxToolIterations = maxToolIterations
         self.maxConsecutiveFailures = maxConsecutiveFailures
         self.retryState = RetryState()
+        self.contextSettings = contextSettings
         self.mode = Self.detectMode()
+    }
+    
+    /// Check if a tool is enabled (always true if no context settings provided)
+    private func isToolEnabled(_ toolName: String) -> Bool {
+        contextSettings?.isToolEnabled(toolName) ?? true
     }
 
     private static func detectMode() -> Mode {
@@ -254,26 +262,46 @@ final class AgentOrchestrator: ObservableObject {
                 )
 
             case .listFiles(let tool):
+                if !isToolEnabled("list_files") {
+                    currentPrompt = "Tool 'list_files' is disabled. Please use a different approach or ask the user for guidance."
+                    continue
+                }
                 let (name, params, result) = await executeListFiles(tool, onToolCall: onToolCall, onToolResult: onToolResult)
                 toolCalls.append((name, params, result))
                 currentPrompt = "Tool result:\n\(result)\n\nContinue with the next step or respond to the user."
 
             case .readFile(let tool):
+                if !isToolEnabled("read_file") {
+                    currentPrompt = "Tool 'read_file' is disabled. Please use a different approach or ask the user for guidance."
+                    continue
+                }
                 let (name, params, result) = await executeReadFile(tool, onToolCall: onToolCall, onToolResult: onToolResult)
                 toolCalls.append((name, params, result))
                 currentPrompt = "Tool result:\n\(result)\n\nContinue with the next step or respond to the user."
 
             case .writeFile(let tool):
+                if !isToolEnabled("write_file") {
+                    currentPrompt = "Tool 'write_file' is disabled. Please use a different approach or ask the user for guidance."
+                    continue
+                }
                 let (name, params, result) = await executeWriteFile(tool, onToolCall: onToolCall, onToolResult: onToolResult)
                 toolCalls.append((name, params, result))
                 currentPrompt = "Tool result:\n\(result)\n\nContinue with the next step or respond to the user."
 
             case .searchCode(let tool):
+                if !isToolEnabled("search_code") {
+                    currentPrompt = "Tool 'search_code' is disabled. Please use a different approach or ask the user for guidance."
+                    continue
+                }
                 let (name, params, result) = await executeSearchCode(tool, onToolCall: onToolCall, onToolResult: onToolResult)
                 toolCalls.append((name, params, result))
                 currentPrompt = "Tool result:\n\(result)\n\nContinue with the next step or respond to the user."
 
             case .runSnippet(let tool):
+                if !isToolEnabled("run_snippet") {
+                    currentPrompt = "Tool 'run_snippet' is disabled. Please use a different approach or ask the user for guidance."
+                    continue
+                }
                 let (name, params, result) = await executeRunSnippet(tool, onToolCall: onToolCall, onToolResult: onToolResult)
                 toolCalls.append((name, params, result))
 
@@ -295,6 +323,10 @@ final class AgentOrchestrator: ObservableObject {
                 currentPrompt = "Tool result:\n\(result)\n\nContinue with the next step or respond to the user."
 
             case .runFile(let tool):
+                if !isToolEnabled("run_file") {
+                    currentPrompt = "Tool 'run_file' is disabled. Please use a different approach or ask the user for guidance."
+                    continue
+                }
                 let (name, params, result) = await executeRunFile(tool, onToolCall: onToolCall, onToolResult: onToolResult)
                 toolCalls.append((name, params, result))
 
@@ -429,6 +461,13 @@ final class AgentOrchestrator: ObservableObject {
         var toolCalls: [(name: String, parameters: [String: Any], result: String)] = []
 
         if let (toolName, params) = parseDirectToolCall(prompt) {
+            // Check if tool is enabled
+            if !isToolEnabled(toolName) {
+                let response = String(localized: "⚠️ Tool '\(toolName)' is disabled.\n\nYou can enable it in Context Settings by tapping the context counter.")
+                await onAssistantMessage(response)
+                return OrchestrationResult(response: response, toolCalls: [], iterations: 0, stoppedDueToRetryLimit: false)
+            }
+            
             if retryState.isAtLimit && (toolName == "run_snippet" || toolName == "run_file") {
                 let response = String(localized: "⚠️ Retry limit reached (\(maxConsecutiveFailures) consecutive failures on the same error).\n\nLast error: \(retryState.lastFailureSignature ?? "Unknown")\n\nPlease review the error and provide guidance, or use a different approach.")
                 await onAssistantMessage(response)
@@ -453,8 +492,15 @@ final class AgentOrchestrator: ObservableObject {
             return OrchestrationResult(response: response, toolCalls: toolCalls, iterations: 1, stoppedDueToRetryLimit: shouldStop)
         }
 
-        let tools = await toolExecutor.availableTools
-        let toolList = tools.map { "- \($0.id): \($0.summary)" }.joined(separator: "\n")
+        // Filter available tools to only show enabled ones
+        let allTools = await toolExecutor.availableTools
+        let enabledTools = allTools.filter { isToolEnabled($0.id) }
+        let toolList = enabledTools.map { "- \($0.id): \($0.summary)" }.joined(separator: "\n")
+        
+        let disabledNote = enabledTools.count < allTools.count 
+            ? "\n\nNote: Some tools are disabled. Tap the context counter to manage tools."
+            : ""
+        
         let response = """
             I received your prompt: "\(prompt)"
             
@@ -462,7 +508,7 @@ final class AgentOrchestrator: ObservableObject {
             In fallback mode, you can invoke tools directly:
             
             Available tools:
-            \(toolList)
+            \(toolList)\(disabledNote)
             
             Example: list_files or run_snippet {"code": "console.log('hello')"}
             """

@@ -53,12 +53,12 @@ struct ModelManagementView: View {
                             .frame(width: 24, height: 24)
                         
                         Image(systemName: "cpu")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.escherCaption.weight(.semibold))
                             .foregroundStyle(Color.escherPrism)
                     }
                     
                     Text("Models", comment: "Navigation title for model management")
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .font(.escherHeadline)
                         .foregroundStyle(Color.escherInk)
                 }
             }
@@ -101,6 +101,30 @@ struct ModelManagementView: View {
             )
         }
         .escherNavigationStyle()
+        .onChange(of: modelManager.state) { oldState, newState in
+            // Announce significant model state changes to VoiceOver users
+            let announcement: String? = switch newState {
+            case .ready:
+                if case .loading = oldState {
+                    String(localized: "Model loaded successfully")
+                } else {
+                    nil
+                }
+            case .unloaded:
+                if case .ready = oldState {
+                    String(localized: "Model unloaded")
+                } else {
+                    nil
+                }
+            case .error:
+                String(localized: "Model failed to load")
+            case .loading, .generating:
+                nil // Don't announce intermediate states
+            }
+            if let announcement {
+                UIAccessibility.post(notification: .announcement, argument: announcement)
+            }
+        }
     }
     
     // MARK: - Active Model Card
@@ -110,9 +134,9 @@ struct ModelManagementView: View {
             // Header
             HStack {
                 Text("ACTIVE MODEL", comment: "Section header for currently loaded model")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .font(.escherCaption2)
                     .tracking(1)
-                    .foregroundStyle(Color.escherMidtone)
+                    .foregroundStyle(Color.escherSecondaryText)
                 
                 Spacer()
                 
@@ -131,7 +155,7 @@ struct ModelManagementView: View {
                     
                     VStack(alignment: .leading, spacing: 6) {
                         Text(info.name)
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .font(.escherHeadline)
                             .foregroundStyle(Color.escherInk)
                         
                         HStack(spacing: 8) {
@@ -159,7 +183,7 @@ struct ModelManagementView: View {
                         Image(systemName: "eject.fill")
                         Text("Unload Model", comment: "Button to unload the current model")
                     }
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .font(.escherFootnote.weight(.semibold))
                     .foregroundStyle(Color.escherError)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -169,6 +193,8 @@ struct ModelManagementView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(String(localized: "Unload model"))
+                .accessibilityHint(String(localized: "Removes the current model from memory"))
                 
             } else {
                 // No model loaded state
@@ -179,18 +205,18 @@ struct ModelManagementView: View {
                             .frame(width: 70, height: 70)
                         
                         Image(systemName: "cpu")
-                            .font(.system(size: 28, weight: .thin))
+                            .font(.escherDisplay.weight(.thin))
                             .foregroundStyle(Color.escherMidtone.opacity(0.5))
                     }
                     
                     VStack(spacing: 4) {
                         Text("No Model Loaded", comment: "Displayed when no model is loaded")
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .font(.escherCallout.weight(.semibold))
                             .foregroundStyle(Color.escherInk)
                         
                         Text("Download and load a model to start", comment: "Instruction")
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundStyle(Color.escherMidtone)
+                            .font(.escherFootnote)
+                            .foregroundStyle(Color.escherSecondaryText)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -210,7 +236,7 @@ struct ModelManagementView: View {
                     .fill(Color.escherSuccess)
                     .frame(width: 8, height: 8)
                 Text("Ready", comment: "Model status indicating ready to use")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.escherCaption.weight(.semibold))
                     .foregroundStyle(Color.escherSuccess)
             }
         case .generating:
@@ -218,7 +244,7 @@ struct ModelManagementView: View {
                 ProgressView()
                     .scaleEffect(0.6)
                 Text("Generating", comment: "Model status indicating text generation")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.escherCaption.weight(.semibold))
                     .foregroundStyle(Color.escherPrism)
             }
         case .loading(let progress):
@@ -227,7 +253,7 @@ struct ModelManagementView: View {
                     .frame(width: 40)
                     .tint(Color.escherPrism)
                 Text("\(Int(progress * 100))%")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.escherCaption.weight(.semibold))
                     .foregroundStyle(Color.escherPrism)
             }
         case .error:
@@ -236,7 +262,7 @@ struct ModelManagementView: View {
                     .fill(Color.escherError)
                     .frame(width: 8, height: 8)
                 Text("Error", comment: "Model status indicating an error")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.escherCaption.weight(.semibold))
                     .foregroundStyle(Color.escherError)
             }
         case .unloaded:
@@ -249,9 +275,9 @@ struct ModelManagementView: View {
     private var storageCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("STORAGE", comment: "Section header for storage information")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.escherCaption2)
                 .tracking(1)
-                .foregroundStyle(Color.escherMidtone)
+                .foregroundStyle(Color.escherSecondaryText)
             
             // Tessellated storage bar
             GeometryReader { geo in
@@ -285,10 +311,10 @@ struct ModelManagementView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Models", comment: "Label for models storage")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(Color.escherMidtone)
+                        .font(.escherCaption)
+                        .foregroundStyle(Color.escherSecondaryText)
                     Text(formatBytes(storageInfo.used))
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.escherSubheadline)
                         .foregroundStyle(Color.escherInk)
                 }
                 
@@ -296,10 +322,10 @@ struct ModelManagementView: View {
                 
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("Available", comment: "Label for available storage")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(Color.escherMidtone)
+                        .font(.escherCaption)
+                        .foregroundStyle(Color.escherSecondaryText)
                     Text(formatBytes(storageInfo.available))
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.escherSubheadline)
                         .foregroundStyle(storageInfo.available < 1_000_000_000 ? Color.escherError : Color.escherInk)
                 }
             }
@@ -314,14 +340,14 @@ struct ModelManagementView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("INSTALLED", comment: "Section header for installed models")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .font(.escherCaption2)
                     .tracking(1)
-                    .foregroundStyle(Color.escherMidtone)
+                    .foregroundStyle(Color.escherSecondaryText)
                 
                 Spacer()
                 
                 Text("\(installedModels.count)")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .font(.escherCaption.weight(.bold))
                     .foregroundStyle(Color.escherPrism)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
@@ -335,8 +361,8 @@ struct ModelManagementView: View {
                 HStack {
                     Spacer()
                     Text("No models installed yet", comment: "Empty state message")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundStyle(Color.escherMidtone)
+                        .font(.escherFootnote)
+                        .foregroundStyle(Color.escherSecondaryText)
                         .padding(.vertical, 20)
                     Spacer()
                 }
@@ -367,9 +393,9 @@ struct ModelManagementView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("AVAILABLE FOR DOWNLOAD", comment: "Section header for downloadable models")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .font(.escherCaption2)
                     .tracking(1)
-                    .foregroundStyle(Color.escherMidtone)
+                    .foregroundStyle(Color.escherSecondaryText)
                 
                 Spacer()
                 
@@ -378,9 +404,9 @@ struct ModelManagementView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "plus")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.escherMini.weight(.bold))
                         Text("Custom", comment: "Button to add custom model")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .font(.escherCaption2)
                     }
                     .foregroundStyle(Color.escherPrism)
                     .padding(.horizontal, 10)
@@ -427,11 +453,11 @@ struct ModelManagementView: View {
             // Footer
             HStack(spacing: 8) {
                 Image(systemName: "info.circle")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.escherCaption)
                 Text("Models are downloaded from Hugging Face and stored locally.", comment: "Footer text")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .font(.escherCaption)
             }
-            .foregroundStyle(Color.escherMidtone)
+            .foregroundStyle(Color.escherSecondaryText)
             .padding(.top, 8)
         }
         .padding(18)
@@ -470,7 +496,7 @@ struct ModelManagementView: View {
                 InfiniteStairs(size: 56)
                 
                 Text("Loading model...", comment: "Loading overlay text")
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .font(.escherCallout.weight(.semibold))
                     .foregroundStyle(Color.escherPaper)
             }
             .padding(40)
@@ -535,9 +561,20 @@ struct ModelManagementView: View {
             
             await refreshData()
             
+            // Announce download completion to VoiceOver users
+            UIAccessibility.post(
+                notification: .announcement,
+                argument: String(localized: "Download complete: \(model.name)")
+            )
+            
         } catch {
             if (error as? ModelError) != .cancelled {
                 errorMessage = String(localized: "Download failed: \(error.localizedDescription)")
+                // Announce download failure to VoiceOver users
+                UIAccessibility.post(
+                    notification: .announcement,
+                    argument: String(localized: "Download failed for \(model.name)")
+                )
             }
         }
         
@@ -559,6 +596,11 @@ struct ModelManagementView: View {
         do {
             try await downloadManager.deleteModel(id: model.id)
             await refreshData()
+            // Announce deletion to VoiceOver users
+            UIAccessibility.post(
+                notification: .announcement,
+                argument: String(localized: "Model deleted: \(model.name)")
+            )
         } catch {
             errorMessage = String(localized: "Failed to delete model: \(error.localizedDescription)")
         }
@@ -596,9 +638,20 @@ struct ModelManagementView: View {
             customModelURL = ""
             customModelContextSize = "4096"
             
+            // Announce download completion to VoiceOver users
+            UIAccessibility.post(
+                notification: .announcement,
+                argument: String(localized: "Custom model download complete")
+            )
+            
         } catch {
             if (error as? ModelError) != .cancelled {
                 errorMessage = String(localized: "Download failed: \(error.localizedDescription)")
+                // Announce download failure to VoiceOver users
+                UIAccessibility.post(
+                    notification: .announcement,
+                    argument: String(localized: "Custom model download failed")
+                )
             }
         }
         
@@ -623,7 +676,7 @@ struct ModelBadge: View {
     
     var body: some View {
         Text(text)
-            .font(.system(size: 10, weight: .bold, design: .rounded))
+            .font(.escherMini.weight(.bold))
             .foregroundStyle(color)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
@@ -642,16 +695,16 @@ struct StatItem: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.escherMidtone)
+                .font(.escherCaption)
+                .foregroundStyle(Color.escherSecondaryText)
             
             VStack(alignment: .leading, spacing: 1) {
                 Text(value)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .font(.escherFootnote.weight(.bold))
                     .foregroundStyle(Color.escherInk)
                 Text(label)
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.escherMidtone)
+                    .font(.escherMini)
+                    .foregroundStyle(Color.escherSecondaryText)
             }
         }
     }
@@ -868,13 +921,13 @@ struct InstalledModelRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
                         Text(model.name)
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .font(.escherSubheadline)
                             .foregroundStyle(Color.escherInk)
                             .lineLimit(1)
                         
                         if isActive {
                             Text("ACTIVE", comment: "Badge indicating model is active")
-                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .font(.escherMini.weight(.bold))
                                 .foregroundStyle(Color.escherSuccess)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -886,7 +939,7 @@ struct InstalledModelRow: View {
                         
                         if model.isCustom {
                             Text("CUSTOM", comment: "Badge indicating custom model")
-                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .font(.escherMini.weight(.bold))
                                 .foregroundStyle(Color.escherPrism)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -906,15 +959,15 @@ struct InstalledModelRow: View {
                         }
                         Text(model.formattedSize)
                     }
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.escherMidtone)
+                    .font(.escherCaption)
+                    .foregroundStyle(Color.escherSecondaryText)
                 }
                 
                 Spacer()
                 
                 // Chevron indicator
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.escherCaption.weight(.semibold))
                     .foregroundStyle(Color.escherMidtone.opacity(0.5))
                 
                 if !isActive {
@@ -927,7 +980,7 @@ struct InstalledModelRow: View {
                                 .frame(width: 36, height: 36)
                             
                             Image(systemName: "play.fill")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.escherFootnote.weight(.semibold))
                                 .foregroundStyle(Color.escherPrism)
                         }
                     }
@@ -941,6 +994,13 @@ struct InstalledModelRow: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("installed_model_\(model.id)")
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(modelAccessibilityLabel)
+        .accessibilityHint(String(localized: "Double-tap to view details"))
+        .accessibilityInputLabels([model.name])
+        .accessibilityAction(named: String(localized: "Load model")) { onLoad() }
+        .accessibilityAction(named: String(localized: "Delete model")) { onDelete() }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 onDelete()
@@ -957,6 +1017,27 @@ struct InstalledModelRow: View {
                 onDelete: onDelete
             )
         }
+    }
+    
+    private var modelAccessibilityLabel: String {
+        var parts: [String] = [model.name]
+        
+        if isActive {
+            parts.append(String(localized: "currently active"))
+        }
+        
+        if model.isCustom {
+            parts.append(String(localized: "custom model"))
+        }
+        
+        if let entry = model.registryEntry {
+            parts.append("\(entry.parameterCount) parameters")
+            parts.append("\(entry.quantization) quantization")
+        }
+        
+        parts.append(model.formattedSize)
+        
+        return parts.joined(separator: ", ")
     }
 }
 
@@ -986,13 +1067,13 @@ struct DownloadableModelRow: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
                         Text(model.name)
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .font(.escherSubheadline)
                             .foregroundStyle(Color.escherInk)
                             .lineLimit(1)
                         
                         if isRecommended {
                             Text("★")
-                                .font(.system(size: 10, weight: .bold))
+                                .font(.escherMini.weight(.bold))
                                 .foregroundStyle(Color.escherWarning)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -1004,7 +1085,7 @@ struct DownloadableModelRow: View {
                         
                         if isCustom {
                             Text("CUSTOM", comment: "Badge for custom model")
-                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .font(.escherMini.weight(.bold))
                                 .foregroundStyle(Color.escherPrism)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -1016,15 +1097,15 @@ struct DownloadableModelRow: View {
                     }
                     
                     Text(model.description)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(Color.escherMidtone)
+                        .font(.escherCaption)
+                        .foregroundStyle(Color.escherSecondaryText)
                         .lineLimit(2)
                     
                     HStack(spacing: 6) {
                         ModelBadge(text: model.parameterCount, color: .escherPrism)
-                        ModelBadge(text: model.quantization, color: .escherMidtone)
+                        ModelBadge(text: model.quantization, color: .escherSecondaryText)
                         if model.sizeBytes > 0 {
-                            ModelBadge(text: model.formattedSize, color: .escherMidtone)
+                            ModelBadge(text: model.formattedSize, color: .escherSecondaryText)
                         }
                     }
                 }
@@ -1033,7 +1114,7 @@ struct DownloadableModelRow: View {
                 
                 // Chevron indicator
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.escherCaption.weight(.semibold))
                     .foregroundStyle(Color.escherMidtone.opacity(0.5))
                 
                 Button {
@@ -1045,7 +1126,7 @@ struct DownloadableModelRow: View {
                             .frame(width: 36, height: 36)
                         
                         Image(systemName: "arrow.down")
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.escherFootnote.weight(.bold))
                             .foregroundStyle(Color.escherPrism)
                     }
                 }
@@ -1058,11 +1139,38 @@ struct DownloadableModelRow: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("downloadable_model_\(model.id)")
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(downloadableModelAccessibilityLabel)
+        .accessibilityHint(String(localized: "Double-tap to view details"))
+        .accessibilityInputLabels([model.name, String(localized: "Download \(model.name)")])
+        .accessibilityAction(named: String(localized: "Download model")) { onDownload() }
         .sheet(isPresented: $showingDetail) {
             RegistryModelDetailView(model: model, onDownload: onDownload)
         }
     }
     
+    private var downloadableModelAccessibilityLabel: String {
+        var parts: [String] = [model.name]
+        
+        if isRecommended {
+            parts.append(String(localized: "recommended"))
+        }
+        
+        if isCustom {
+            parts.append(String(localized: "custom model"))
+        }
+        
+        parts.append(model.description)
+        parts.append("\(model.parameterCount) parameters")
+        parts.append("\(model.quantization) quantization")
+        
+        if model.sizeBytes > 0 {
+            parts.append(model.formattedSize)
+        }
+        
+        return parts.joined(separator: ", ")
+    }
 }
 
 /// Row showing download progress with cancel button.
@@ -1085,7 +1193,7 @@ struct DownloadProgressRow: View {
                     }
                     
                     Text(model.name)
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .font(.escherSubheadline)
                         .foregroundStyle(Color.escherInk)
                 }
                 
@@ -1094,7 +1202,7 @@ struct DownloadProgressRow: View {
                 Button(String(localized: "Cancel"), role: .destructive) {
                     onCancel()
                 }
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .font(.escherFootnote.weight(.semibold))
                 .foregroundStyle(Color.escherError)
             }
             
@@ -1122,18 +1230,18 @@ struct DownloadProgressRow: View {
             
             HStack {
                 Text(progress.formattedProgress)
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.escherMidtone)
+                    .font(.escherCaption)
+                    .foregroundStyle(Color.escherSecondaryText)
                 
                 Spacer()
                 
                 if let eta = progress.estimatedTimeRemaining {
                     Text("~\(formatDuration(eta)) remaining", comment: "Estimated time remaining")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(Color.escherMidtone)
+                        .font(.escherCaption)
+                        .foregroundStyle(Color.escherSecondaryText)
                 } else {
                     Text("\(progress.percentComplete)%")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .font(.escherCaption.weight(.bold))
                         .foregroundStyle(Color.escherPrism)
                 }
             }
@@ -1148,6 +1256,19 @@ struct DownloadProgressRow: View {
                     .strokeBorder(Color.escherPrism.opacity(0.3), lineWidth: 1)
             }
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(downloadProgressAccessibilityLabel)
+        .accessibilityValue("\(progress.percentComplete) percent")
+        .accessibilityAddTraits(.updatesFrequently)
+        .accessibilityAction(named: String(localized: "Cancel download")) { onCancel() }
+    }
+    
+    private var downloadProgressAccessibilityLabel: String {
+        var label = String(localized: "Downloading \(model.name)")
+        if let eta = progress.estimatedTimeRemaining {
+            label += ", " + String(localized: "about \(formatDuration(eta)) remaining")
+        }
+        return label
     }
     
     private func formatDuration(_ seconds: TimeInterval) -> String {
@@ -1203,14 +1324,14 @@ struct ModelDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("Model Details", comment: "Navigation title for model detail view")
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .font(.escherHeadline)
                         .foregroundStyle(Color.escherInk)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(String(localized: "Done")) {
                         dismiss()
                     }
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .font(.escherCallout.weight(.semibold))
                     .foregroundStyle(Color.escherPrism)
                 }
             }
@@ -1231,7 +1352,7 @@ struct ModelDetailView: View {
             
             VStack(spacing: 6) {
                 Text(model.name)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.escherTitle)
                     .foregroundStyle(Color.escherInk)
                     .multilineTextAlignment(.center)
                 
@@ -1241,7 +1362,7 @@ struct ModelDetailView: View {
                             .fill(Color.escherSuccess)
                             .frame(width: 8, height: 8)
                         Text("Currently Active", comment: "Badge for active model")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .font(.escherFootnote.weight(.semibold))
                             .foregroundStyle(Color.escherSuccess)
                     }
                 }
@@ -1252,7 +1373,7 @@ struct ModelDetailView: View {
                 HStack(spacing: 8) {
                     ModelBadge(text: entry.parameterCount, color: .escherPrism)
                     ModelBadge(text: entry.quantization, color: .escherWarning)
-                    ModelBadge(text: entry.family.rawValue, color: .escherMidtone)
+                    ModelBadge(text: entry.family.rawValue, color: .escherSecondaryText)
                 }
             }
         }
@@ -1266,9 +1387,9 @@ struct ModelDetailView: View {
     private var quickStatsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("RUNTIME STATS", comment: "Section header for runtime statistics")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.escherCaption2)
                 .tracking(1)
-                .foregroundStyle(Color.escherMidtone)
+                .foregroundStyle(Color.escherSecondaryText)
             
             HStack(spacing: 0) {
                 // Memory Usage
@@ -1338,9 +1459,9 @@ struct ModelDetailView: View {
     private var specsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("SPECIFICATIONS", comment: "Section header for model specifications")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.escherCaption2)
                 .tracking(1)
-                .foregroundStyle(Color.escherMidtone)
+                .foregroundStyle(Color.escherSecondaryText)
             
             VStack(spacing: 0) {
                 if let entry = model.registryEntry {
@@ -1375,9 +1496,9 @@ struct ModelDetailView: View {
     private var fileInfoSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("FILE INFORMATION", comment: "Section header for file information")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.escherCaption2)
                 .tracking(1)
-                .foregroundStyle(Color.escherMidtone)
+                .foregroundStyle(Color.escherSecondaryText)
             
             VStack(spacing: 0) {
                 SpecRow(label: String(localized: "File Size"), value: model.formattedSize)
@@ -1410,7 +1531,7 @@ struct ModelDetailView: View {
                         Image(systemName: "play.fill")
                         Text("Load Model", comment: "Button to load a model")
                     }
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .font(.escherSubheadline)
                     .foregroundStyle(Color.escherPaper)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
@@ -1430,7 +1551,7 @@ struct ModelDetailView: View {
                     Image(systemName: "trash")
                     Text("Delete Model", comment: "Button to delete a model")
                 }
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .font(.escherSubheadline)
                 .foregroundStyle(Color.escherError)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
@@ -1504,14 +1625,14 @@ struct RegistryModelDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("Model Details", comment: "Navigation title")
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .font(.escherHeadline)
                         .foregroundStyle(Color.escherInk)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(String(localized: "Done")) {
                         dismiss()
                     }
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .font(.escherCallout.weight(.semibold))
                     .foregroundStyle(Color.escherPrism)
                 }
             }
@@ -1528,20 +1649,20 @@ struct RegistryModelDetailView: View {
             
             VStack(spacing: 6) {
                 Text(model.name)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.escherTitle)
                     .foregroundStyle(Color.escherInk)
                     .multilineTextAlignment(.center)
                 
                 Text("Available for Download", comment: "Badge for downloadable model")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.escherMidtone)
+                    .font(.escherFootnote)
+                    .foregroundStyle(Color.escherSecondaryText)
             }
             
             // Badge Row
             HStack(spacing: 8) {
                 ModelBadge(text: model.parameterCount, color: .escherPrism)
                 ModelBadge(text: model.quantization, color: .escherWarning)
-                ModelBadge(text: model.family.rawValue, color: .escherMidtone)
+                ModelBadge(text: model.family.rawValue, color: .escherSecondaryText)
             }
         }
         .padding(20)
@@ -1554,12 +1675,12 @@ struct RegistryModelDetailView: View {
     private var descriptionSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("ABOUT", comment: "Section header for model description")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.escherCaption2)
                 .tracking(1)
-                .foregroundStyle(Color.escherMidtone)
+                .foregroundStyle(Color.escherSecondaryText)
             
             Text(model.description)
-                .font(.system(size: 15, weight: .regular, design: .rounded))
+                .font(.escherCallout.weight(.regular))
                 .foregroundStyle(Color.escherInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -1573,9 +1694,9 @@ struct RegistryModelDetailView: View {
     private var specsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("SPECIFICATIONS")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.escherCaption2)
                 .tracking(1)
-                .foregroundStyle(Color.escherMidtone)
+                .foregroundStyle(Color.escherSecondaryText)
             
             VStack(spacing: 0) {
                 SpecRow(label: String(localized: "Parameters"), value: model.parameterCount)
@@ -1604,9 +1725,9 @@ struct RegistryModelDetailView: View {
     private var estimatedUsageSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("ESTIMATED USAGE", comment: "Section header for usage estimates")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.escherCaption2)
                 .tracking(1)
-                .foregroundStyle(Color.escherMidtone)
+                .foregroundStyle(Color.escherSecondaryText)
             
             HStack(spacing: 0) {
                 // Memory Estimate
@@ -1637,11 +1758,11 @@ struct RegistryModelDetailView: View {
             
             HStack(spacing: 8) {
                 Image(systemName: "info.circle")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.escherCaption)
                 Text("Memory estimate is approximate. Actual usage depends on context length.", comment: "Disclaimer")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .font(.escherCaption)
             }
-            .foregroundStyle(Color.escherMidtone)
+            .foregroundStyle(Color.escherSecondaryText)
         }
         .padding(18)
         .escherCard()
@@ -1667,7 +1788,7 @@ struct RegistryModelDetailView: View {
                     Text("(\(model.formattedSize))")
                         .foregroundStyle(Color.escherPaper.opacity(0.7))
                 }
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .font(.escherSubheadline)
                 .foregroundStyle(Color.escherPaper)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
@@ -1702,16 +1823,16 @@ struct QuickStatCard: View {
     var body: some View {
         VStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 18, weight: .medium))
+                .font(.escherHeadline)
                 .foregroundStyle(color)
             
             Text(value)
-                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .font(.escherSubheadline)
                 .foregroundStyle(Color.escherInk)
             
             Text(title)
-                .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundStyle(Color.escherMidtone)
+                .font(.escherCaption2)
+                .foregroundStyle(Color.escherSecondaryText)
         }
         .frame(maxWidth: .infinity)
     }
@@ -1726,22 +1847,20 @@ struct SpecRow: View {
     var body: some View {
         HStack {
             Text(label)
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(Color.escherMidtone)
+                .font(.escherFootnote)
+                .foregroundStyle(Color.escherSecondaryText)
             
             Spacer()
             
             HStack(spacing: 4) {
                 if let icon = icon {
                     Image(systemName: icon)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.escherCaption)
                         .foregroundStyle(Color.escherPrism)
                 }
                 
                 Text(value)
-                    .font(isMonospace ? 
-                          .system(size: 13, weight: .medium, design: .monospaced) :
-                          .system(size: 14, weight: .semibold, design: .rounded))
+                    .font(isMonospace ? .escherMonoSmall : .escherFootnote.weight(.semibold))
                     .foregroundStyle(Color.escherInk)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -1782,24 +1901,24 @@ struct CustomModelInputSheet: View {
                         // Header
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Add Custom Model", comment: "Title for custom model sheet")
-                                .font(.system(size: 24, weight: .bold, design: .rounded))
+                                .font(.escherDisplay)
                                 .foregroundStyle(Color.escherInk)
                             
                             Text("Enter a Hugging Face URL to download any GGUF model.", comment: "Instruction")
-                                .font(.system(size: 14, weight: .medium, design: .rounded))
-                                .foregroundStyle(Color.escherMidtone)
+                                .font(.escherFootnote)
+                                .foregroundStyle(Color.escherSecondaryText)
                         }
                         
                         // URL Input
                         VStack(alignment: .leading, spacing: 10) {
                             Text("HUGGING FACE URL", comment: "Label for URL input field")
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .font(.escherCaption2)
                                 .tracking(1)
-                                .foregroundStyle(Color.escherMidtone)
+                                .foregroundStyle(Color.escherSecondaryText)
                             
                             TextField("https://huggingface.co/...", text: $url)
                                 .textFieldStyle(.plain)
-                                .font(.system(size: 14, weight: .medium, design: .monospaced))
+                                .font(.escherMono)
                                 .padding(14)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -1822,12 +1941,12 @@ struct CustomModelInputSheet: View {
                             // Example URLs
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("Example:", comment: "Label for example URL")
-                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(Color.escherMidtone)
+                                    .font(.escherCaption2.weight(.semibold))
+                                    .foregroundStyle(Color.escherSecondaryText)
                                 
                                 Text("https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf")
-                                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                                    .foregroundStyle(Color.escherMidtone.opacity(0.7))
+                                    .font(.escherMonoMini)
+                                    .foregroundStyle(Color.escherSecondaryText.opacity(0.85))
                                     .lineLimit(2)
                             }
                         }
@@ -1835,9 +1954,9 @@ struct CustomModelInputSheet: View {
                         // Context Size
                         VStack(alignment: .leading, spacing: 10) {
                             Text("CONTEXT SIZE (TOKENS)", comment: "Label for context size selector")
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .font(.escherCaption2)
                                 .tracking(1)
-                                .foregroundStyle(Color.escherMidtone)
+                                .foregroundStyle(Color.escherSecondaryText)
                             
                             HStack(spacing: 10) {
                                 ForEach(["2048", "4096", "8192"], id: \.self) { size in
@@ -1845,7 +1964,7 @@ struct CustomModelInputSheet: View {
                                         contextSize = size
                                     } label: {
                                         Text(size)
-                                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                            .font(.escherFootnote.weight(.semibold))
                                             .foregroundStyle(contextSize == size ? Color.escherPaper : Color.escherInk)
                                             .padding(.horizontal, 16)
                                             .padding(.vertical, 10)
@@ -1865,17 +1984,17 @@ struct CustomModelInputSheet: View {
                             }
                             
                             Text("Larger context uses more memory. Start with 4096 if unsure.", comment: "Help text")
-                                .font(.system(size: 11, weight: .medium, design: .rounded))
-                                .foregroundStyle(Color.escherMidtone)
+                                .font(.escherCaption2)
+                                .foregroundStyle(Color.escherSecondaryText)
                         }
                         
                         // Parsed model info preview
                         if let info = parsedModelInfo {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("DETECTED MODEL", comment: "Section header for detected model info")
-                                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                                    .font(.escherCaption2)
                                     .tracking(1)
-                                    .foregroundStyle(Color.escherMidtone)
+                                    .foregroundStyle(Color.escherSecondaryText)
                                 
                                 HStack(spacing: 12) {
                                     ZStack {
@@ -1884,18 +2003,18 @@ struct CustomModelInputSheet: View {
                                             .frame(width: 44, height: 44)
                                         
                                         Image(systemName: "checkmark.circle")
-                                            .font(.system(size: 20, weight: .medium))
+                                            .font(.escherTitle)
                                             .foregroundStyle(Color.escherSuccess)
                                     }
                                     
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(info.name)
-                                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                            .font(.escherSubheadline)
                                             .foregroundStyle(Color.escherInk)
                                         
                                         HStack(spacing: 6) {
                                             ModelBadge(text: info.parameterCount, color: .escherPrism)
-                                            ModelBadge(text: info.quantization, color: .escherMidtone)
+                                            ModelBadge(text: info.quantization, color: .escherSecondaryText)
                                         }
                                     }
                                     
@@ -1920,7 +2039,7 @@ struct CustomModelInputSheet: View {
                     Button(String(localized: "Cancel")) {
                         dismiss()
                     }
-                    .foregroundStyle(Color.escherMidtone)
+                    .foregroundStyle(Color.escherSecondaryText)
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
@@ -1929,8 +2048,8 @@ struct CustomModelInputSheet: View {
                         onSubmit(url, ctx)
                         dismiss()
                     }
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundStyle(isValidURL ? Color.escherPrism : Color.escherMidtone)
+                    .font(.escherSubheadline)
+                    .foregroundStyle(isValidURL ? Color.escherPrism : Color.escherSecondaryText)
                     .disabled(!isValidURL)
                 }
             }
@@ -1958,13 +2077,13 @@ struct ModelStatusView: View {
             VStack(alignment: .leading, spacing: 1) {
                 if let info = modelManager.modelInfo {
                     Text(info.name)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .font(.escherCaption.weight(.semibold))
                         .foregroundStyle(Color.escherInk)
                         .lineLimit(1)
                 } else {
                     Text("No model", comment: "Status when no model is loaded")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(Color.escherMidtone)
+                        .font(.escherCaption)
+                        .foregroundStyle(Color.escherSecondaryText)
                 }
             }
         }
@@ -2046,12 +2165,12 @@ struct ModelStatusCompactView: View {
                 .scaleEffect(0.5)
         case .error:
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.escherCaption.weight(.semibold))
                 .foregroundStyle(Color.escherError)
         case .unloaded:
             Image(systemName: "cpu")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.escherMidtone)
+                .font(.escherCaption)
+                .foregroundStyle(Color.escherSecondaryText)
         }
     }
 }

@@ -24,6 +24,7 @@ struct ChatView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }
                 messageList
+                ContextCounter(session: session)
                 inputBar
             }
         }
@@ -75,11 +76,18 @@ struct ChatView: View {
                     proxy.scrollTo(bottomID)
                 }
             }
-            .onChange(of: session.isRunning) { _, isRunning in
+            .onChange(of: session.isRunning) { oldValue, isRunning in
                 if isRunning {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                         proxy.scrollTo(bottomID)
                     }
+                }
+                // Announce state change to VoiceOver users
+                if oldValue != isRunning {
+                    let announcement = isRunning
+                        ? String(localized: "Processing your request")
+                        : String(localized: "Response received")
+                    UIAccessibility.post(notification: .announcement, argument: announcement)
                 }
             }
         }
@@ -100,20 +108,32 @@ struct ChatView: View {
                 .submitLabel(.send)
                 .onSubmit(sendMessage)
                 .disabled(session.isRunning)
+                .accessibilityIdentifier("chat_message_input")
+                .accessibilityLabel(String(localized: "Message input"))
+                .accessibilityHint(String(localized: "Type your message to the AI assistant"))
             
             // Inline buttons
             HStack(spacing: 6) {
                 // Keyboard toggle
                 Button(action: toggleKeyboard) {
                     Image(systemName: inputFocused ? "keyboard.chevron.compact.down" : "keyboard")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Color.escherMidtone)
+                        .font(.escherFootnote)
+                        .foregroundStyle(Color.escherSecondaryText)
                         .frame(width: 28, height: 28)
                         .background(
                             Circle()
                                 .fill(isDark ? Color(white: 0.22) : Color.escherMidtone.opacity(0.1))
                         )
                 }
+                .accessibilityIdentifier("chat_keyboard_toggle")
+                .accessibilityLabel(inputFocused ? String(localized: "Hide keyboard") : String(localized: "Show keyboard"))
+                .accessibilityHint(String(localized: "Double-tap to toggle the keyboard"))
+                .accessibilityInputLabels([
+                    String(localized: "Keyboard"),
+                    String(localized: "Toggle keyboard"),
+                    String(localized: "Hide keyboard"),
+                    String(localized: "Show keyboard")
+                ])
                 
                 // Send button
                 Button(action: sendMessage) {
@@ -127,15 +147,24 @@ struct ChatView: View {
                                 .stroke(Color.escherPaper, lineWidth: 1.2)
                                 .frame(width: 11, height: 11)
                                 .rotationEffect(.degrees(90))
+                                .accessibilityHidden(true)
                         } else {
                             Image(systemName: "arrow.up")
-                                .font(.system(size: 12, weight: .bold))
+                                .font(.escherCaption.weight(.bold))
                                 .foregroundStyle(Color.escherPaper.opacity(0.5))
                         }
                     }
                 }
                 .disabled(!canSend || session.isRunning)
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: canSend)
+                .accessibilityIdentifier("chat_send_button")
+                .accessibilityLabel(String(localized: "Send message"))
+                .accessibilityHint(canSend ? String(localized: "Sends your message to the AI assistant") : String(localized: "Type a message first"))
+                .accessibilityInputLabels([
+                    String(localized: "Send"),
+                    String(localized: "Send message"),
+                    String(localized: "Submit")
+                ])
             }
         }
         .padding(.leading, 14)
@@ -177,6 +206,7 @@ struct ChatView: View {
 
 struct MessageBubble: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let message: AgentMessage
     @State private var appeared = false
 
@@ -192,12 +222,35 @@ struct MessageBubble: View {
             }
         }
         .opacity(appeared ? 1 : 0)
-        .offset(y: appeared ? 0 : 8)
+        .offset(y: appeared ? 0 : (reduceMotion ? 0 : 8))
         .onAppear {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+            if reduceMotion {
                 appeared = true
+            } else {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                    appeared = true
+                }
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(messageAccessibilityLabel)
+    }
+    
+    private var messageAccessibilityLabel: String {
+        let sender: String
+        switch message.role {
+        case .user:
+            sender = String(localized: "You said")
+        case .assistant:
+            sender = String(localized: "PocketREPL said")
+        case .system:
+            sender = String(localized: "System message")
+        case .toolCall:
+            sender = String(localized: "Tool call")
+        case .toolResult:
+            sender = String(localized: "Tool result")
+        }
+        return "\(sender): \(message.text)"
     }
     
     private var standardBubble: some View {
@@ -221,15 +274,16 @@ struct MessageBubble: View {
             VStack(alignment: alignment, spacing: 6) {
                 if message.role != .user {
                     Text(roleLabel)
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .font(.escherMini.weight(.bold))
                         .textCase(.uppercase)
-                        .foregroundStyle(Color.escherMidtone)
+                        .foregroundStyle(Color.escherSecondaryText)
                         .tracking(1)
                 }
 
                 Text(LocalizedStringKey(message.text))
                     .font(.escherBody)
                     .textSelection(.enabled)
+                    .accessibilityHint(String(localized: "Double tap and hold to select text"))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .background(bubbleBackground)
@@ -327,25 +381,25 @@ struct ToolCallBubble: View {
                             .frame(width: 28, height: 28)
                         
                         Image(systemName: toolIcon)
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.escherCaption.weight(.semibold))
                             .foregroundStyle(Color.escherWarning)
                     }
                     
                     VStack(alignment: .leading, spacing: 2) {
                         Text(message.toolName ?? "Tool")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .font(.escherFootnote.weight(.semibold))
                             .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
                         
                         Text("Executing...", comment: "Shown while a tool is executing")
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundStyle(Color.escherMidtone)
+                            .font(.escherCaption2)
+                            .foregroundStyle(Color.escherSecondaryText)
                     }
                     
                     Spacer()
                     
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Color.escherMidtone)
+                        .font(.escherMini.weight(.bold))
+                        .foregroundStyle(Color.escherSecondaryText)
                         .rotationEffect(.degrees(isExpanded ? 0 : 0))
                 }
                 .padding(12)
@@ -361,8 +415,9 @@ struct ToolCallBubble: View {
                 
                 Text(params)
                     .font(.escherMonoSmall)
-                    .foregroundStyle(Color.escherMidtone)
+                    .foregroundStyle(Color.escherSecondaryText)
                     .textSelection(.enabled)
+                    .accessibilityHint(String(localized: "Double tap and hold to select text"))
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -378,6 +433,17 @@ struct ToolCallBubble: View {
         )
         .shadow(color: .escherWarning.opacity(colorScheme == .dark ? 0.2 : 0.1), radius: 8, x: 0, y: 4)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(toolCallAccessibilityLabel)
+        .accessibilityHint(String(localized: "Double-tap to \(isExpanded ? "collapse" : "expand") parameters"))
+    }
+    
+    private var toolCallAccessibilityLabel: String {
+        let toolName = message.toolName ?? String(localized: "Unknown tool")
+        if let params = message.toolParameters, !params.isEmpty, isExpanded {
+            return String(localized: "Executing \(toolName) with parameters: \(params)")
+        }
+        return String(localized: "Executing \(toolName)")
     }
     
     private var toolIcon: String {
@@ -426,19 +492,19 @@ struct ToolResultBubble: View {
                         .frame(width: 28, height: 28)
                     
                     Image(systemName: statusIcon)
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.escherCaption.weight(.bold))
                         .foregroundStyle(statusColor)
                 }
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(statusLabel)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .font(.escherFootnote.weight(.semibold))
                         .foregroundStyle(statusColor)
                     
                     if isLongOutput {
                         Text("\(message.text.count) characters", comment: "Shows character count")
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundStyle(Color.escherMidtone)
+                            .font(.escherCaption2)
+                            .foregroundStyle(Color.escherSecondaryText)
                     }
                 }
                 
@@ -447,7 +513,7 @@ struct ToolResultBubble: View {
                 if isLongOutput {
                     Button(action: { withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) { isExpanded.toggle() } }) {
                         Text(isExpanded ? String(localized: "Collapse") : String(localized: "Expand"))
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .font(.escherCaption2.weight(.semibold))
                             .foregroundStyle(Color.escherPrism)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
@@ -472,6 +538,7 @@ struct ToolResultBubble: View {
                     .font(.escherMonoSmall)
                     .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
                     .textSelection(.enabled)
+                    .accessibilityHint(String(localized: "Double tap and hold to select text"))
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -487,6 +554,18 @@ struct ToolResultBubble: View {
         )
         .shadow(color: statusColor.opacity(colorScheme == .dark ? 0.15 : 0.08), radius: 8, x: 0, y: 4)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(resultAccessibilityLabel)
+        .accessibilityHint(isLongOutput ? String(localized: "Double-tap to \(isExpanded ? "collapse" : "expand") full output") : "")
+    }
+    
+    private var resultAccessibilityLabel: String {
+        let status = statusLabel
+        if message.text.isEmpty {
+            return String(localized: "Tool result: \(status)")
+        }
+        let displayText = isExpanded || !isLongOutput ? message.text : truncatedText
+        return String(localized: "Tool result: \(status). Output: \(displayText)")
     }
     
     private var statusIcon: String {
@@ -504,8 +583,8 @@ struct ToolResultBubble: View {
         case .succeeded: return .escherSuccess
         case .failed: return .escherError
         case .pending: return .escherWarning
-        case .skipped: return .escherMidtone
-        case .none: return .escherMidtone
+        case .skipped: return .escherSecondaryText
+        case .none: return .escherSecondaryText
         }
     }
     
@@ -551,8 +630,8 @@ struct EscherTypingIndicator: View {
             InfiniteStairs(size: 32)
             
             Text("Thinking...", comment: "Shown while AI is processing")
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(Color.escherMidtone)
+                .font(.escherFootnote)
+                .foregroundStyle(Color.escherSecondaryText)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -567,6 +646,9 @@ struct EscherTypingIndicator: View {
         )
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 8, x: 0, y: 4)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(localized: "AI is thinking"))
+        .accessibilityAddTraits(.updatesFrequently)
     }
 }
 
@@ -588,24 +670,24 @@ struct AIUnavailableBanner: View {
                     
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(Color.escherWarning)
-                        .font(.system(size: 16))
+                        .font(.escherCallout)
                 }
                 
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Apple Intelligence Unavailable", comment: "Banner title when AI is not available")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .font(.escherSubheadline)
                         .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
                     
                     Text("Tap for details and options", comment: "Banner subtitle prompting user to tap")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(Color.escherMidtone)
+                        .font(.escherCaption)
+                        .foregroundStyle(Color.escherSecondaryText)
                 }
                 
                 Spacer()
                 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(Color.escherMidtone)
+                    .font(.escherCaption.weight(.bold))
+                    .foregroundStyle(Color.escherSecondaryText)
             }
             .padding(14)
             .background(
@@ -621,6 +703,94 @@ struct AIUnavailableBanner: View {
             .padding(.vertical, 8)
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(String(localized: "Apple Intelligence Unavailable"))
+        .accessibilityHint(String(localized: "Double-tap to see details and options for enabling AI features"))
+    }
+}
+
+// MARK: - Context Counter
+
+struct ContextCounter: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @ObservedObject var session: AgentSession
+    @State private var showingSettings = false
+    
+    private var tokens: Int { session.estimatedContextTokens }
+    private var limit: Int { AgentSession.estimatedContextLimit }
+    private var fraction: Double { session.contextUsageFraction }
+    
+    private var statusColor: Color {
+        if session.isContextOverLimit {
+            return .escherError
+        } else if session.isContextNearLimit {
+            return .escherWarning
+        } else {
+            return .escherSecondaryText
+        }
+    }
+    
+    var body: some View {
+        Button(action: { showingSettings = true }) {
+            HStack(spacing: 6) {
+                // Mini progress bar
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(colorScheme == .dark ? Color(white: 0.2) : Color.escherMidtone.opacity(0.15))
+                        
+                        Capsule()
+                            .fill(statusColor)
+                            .frame(width: geo.size.width * min(fraction, 1.0))
+                    }
+                }
+                .frame(width: 32, height: 4)
+                
+                // Token count
+                Text("\(tokens)/\(limit)")
+                    .font(.escherMonoMini)
+                    .foregroundStyle(statusColor)
+                
+                // Settings indicator
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(statusColor.opacity(0.7))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(colorScheme == .dark ? Color(white: 0.12) : Color.escherPaper.opacity(0.8))
+                    .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 4, x: 0, y: 2)
+            )
+            .overlay(
+                Capsule()
+                    .strokeBorder(statusColor.opacity(0.2), lineWidth: 0.5)
+            )
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .padding(.horizontal, 20)
+        .padding(.bottom, 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(contextAccessibilityLabel)
+        .accessibilityHint(String(localized: "Double-tap to customize context settings, system prompt, and tools"))
+        .sheet(isPresented: $showingSettings) {
+            ContextSettingsView(session: session)
+        }
+    }
+    
+    private var contextAccessibilityLabel: String {
+        let percentage = Int(fraction * 100)
+        let statusDescription: String
+        if session.isContextOverLimit {
+            statusDescription = String(localized: "over limit")
+        } else if session.isContextNearLimit {
+            statusDescription = String(localized: "near limit")
+        } else {
+            statusDescription = String(localized: "OK")
+        }
+        return String(localized: "Context usage: \(tokens) of \(limit) tokens, \(percentage) percent, status \(statusDescription)")
     }
 }
 

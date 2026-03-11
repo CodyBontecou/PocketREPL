@@ -25,8 +25,13 @@ extension Color {
     static let escherError = Color(red: 0.72, green: 0.38, blue: 0.38)
     
     // MARK: - Adaptive Semantic Colors
-    // Note: escherForeground, escherBackground, escherSurface, escherSurfaceSecondary
-    // are auto-generated from Assets.xcassets color sets via GeneratedAssetSymbols.swift
+    // Note: escherForeground, escherBackground, escherSurface, escherSurfaceSecondary,
+    // and escherSecondaryText are auto-generated from Assets.xcassets color sets.
+    // 
+    // escherSecondaryText: WCAG AA compliant (4.5:1+ contrast) for secondary text
+    //   - Light mode: rgb(0.40, 0.38, 0.44) - darker for contrast vs light backgrounds
+    //   - Dark mode: rgb(0.70, 0.68, 0.73) - lighter for contrast vs dark backgrounds
+    // Use escherSecondaryText for text, escherMidtone for decorative elements (borders, fills)
     
     // MARK: - Fallback Adaptive Colors (when Assets not available)
     
@@ -132,11 +137,13 @@ struct TessellationPattern: View {
                 }
             }
         }
+        .accessibilityHidden(true)
     }
 }
 
 /// Metamorphosis wave - elements that transform
 struct MetamorphosisWave: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var phase: CGFloat = 0
     
     var body: some View {
@@ -164,17 +171,21 @@ struct MetamorphosisWave: View {
             }
         }
         .onAppear {
+            guard !reduceMotion else { return }
             withAnimation(.linear(duration: 8).repeatForever(autoreverses: false)) {
                 phase = .pi * 2
             }
         }
+        .accessibilityHidden(true)
     }
 }
 
 /// Infinite staircase indicator (for loading states)
 struct InfiniteStairs: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var step: Int = 0
+    @State private var animationTimer: Timer?
     let size: CGFloat
     
     init(size: CGFloat = 40) {
@@ -211,12 +222,22 @@ struct InfiniteStairs: View {
         }
         .frame(width: size, height: size)
         .onAppear {
-            Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { _ in
+            guard !reduceMotion else {
+                step = 4 // Show static middle state when reduce motion is enabled
+                return
+            }
+            animationTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { _ in
                 withAnimation(.easeInOut(duration: 0.1)) {
                     step = (step + 1) % 8
                 }
             }
         }
+        .onDisappear {
+            animationTimer?.invalidate()
+            animationTimer = nil
+        }
+        .accessibilityLabel(String(localized: "Loading"))
+        .accessibilityAddTraits(.updatesFrequently)
     }
 }
 
@@ -276,8 +297,8 @@ struct ImpossibleButtonStyle: ButtonStyle {
     
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 15, weight: .semibold, design: .rounded))
-            .foregroundStyle(isEnabled ? Color.escherPaper : Color.escherMidtone)
+            .font(.escherSubheadline)
+            .foregroundStyle(isEnabled ? Color.escherPaper : Color.escherSecondaryText)
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
             .background(
@@ -307,21 +328,91 @@ struct ImpossibleButtonStyle: ButtonStyle {
     }
 }
 
-// MARK: - Typography
+// MARK: - Typography (Dynamic Type Support)
 
 extension Font {
-    // Display - For headers, uses geometric characteristics
-    static let escherDisplay = Font.system(size: 28, weight: .bold, design: .rounded)
-    static let escherTitle = Font.system(size: 22, weight: .semibold, design: .rounded)
-    static let escherHeadline = Font.system(size: 17, weight: .semibold, design: .rounded)
+    // MARK: - Display & Titles (Rounded Design)
     
-    // Body - Readable with subtle character
-    static let escherBody = Font.system(size: 16, weight: .regular, design: .default)
-    static let escherCaption = Font.system(size: 13, weight: .medium, design: .rounded)
+    /// Large display text (28pt equivalent) - for prominent headers
+    static var escherDisplay: Font {
+        .system(.title, design: .rounded).weight(.bold)
+    }
     
-    // Monospace - For code
-    static let escherMono = Font.system(size: 14, weight: .regular, design: .monospaced)
-    static let escherMonoSmall = Font.system(size: 12, weight: .regular, design: .monospaced)
+    /// Main title text (22pt equivalent) - for section headers
+    static var escherTitle: Font {
+        .system(.title2, design: .rounded).weight(.semibold)
+    }
+    
+    /// Headline text (17pt equivalent) - for list row titles
+    static var escherHeadline: Font {
+        .system(.headline, design: .rounded).weight(.semibold)
+    }
+    
+    /// Subheadline text (15pt equivalent) - for secondary titles
+    static var escherSubheadline: Font {
+        .system(.subheadline, design: .rounded).weight(.semibold)
+    }
+    
+    // MARK: - Body Text
+    
+    /// Standard body text (16pt equivalent)
+    static var escherBody: Font {
+        .system(.body, design: .default)
+    }
+    
+    /// Callout text (15pt equivalent) - for emphasized body
+    static var escherCallout: Font {
+        .system(.callout, design: .rounded).weight(.medium)
+    }
+    
+    /// Footnote text (13pt equivalent) - for secondary info
+    static var escherFootnote: Font {
+        .system(.footnote, design: .rounded).weight(.medium)
+    }
+    
+    /// Caption text (12pt equivalent) - for labels and metadata
+    static var escherCaption: Font {
+        .system(.caption, design: .rounded).weight(.medium)
+    }
+    
+    /// Small caption text (11pt equivalent) - for section headers, badges
+    static var escherCaption2: Font {
+        .system(.caption2, design: .rounded).weight(.bold)
+    }
+    
+    /// Extra small text (10pt equivalent) - for tiny labels
+    static var escherMini: Font {
+        .system(.caption2, design: .rounded).weight(.medium)
+    }
+    
+    // MARK: - Monospace (For Code)
+    
+    /// Code text (14pt equivalent)
+    static var escherMono: Font {
+        .system(.subheadline, design: .monospaced)
+    }
+    
+    /// Small code text (12pt equivalent)
+    static var escherMonoSmall: Font {
+        .system(.caption, design: .monospaced)
+    }
+    
+    /// Tiny code text (10pt equivalent)
+    static var escherMonoMini: Font {
+        .system(.caption2, design: .monospaced)
+    }
+    
+    // MARK: - Special Weights (Call these on existing fonts)
+    
+    /// Thin weight for large decorative icons
+    static var escherThin: Font {
+        .system(.title, design: .default).weight(.thin)
+    }
+    
+    /// Medium weight variant
+    static var escherMedium: Font {
+        .system(.body, design: .rounded).weight(.medium)
+    }
 }
 
 // MARK: - Message Bubble Shapes
@@ -398,6 +489,7 @@ struct EscherBackground: View {
                 .opacity(colorScheme == .dark ? 0.3 : 0.5)
         }
         .ignoresSafeArea()
+        .accessibilityHidden(true)
     }
 }
 

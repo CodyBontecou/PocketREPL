@@ -51,9 +51,9 @@ struct FileBrowserView: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "folder.fill")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.escherCaption)
                         Text("Root", comment: "Button to navigate to root directory")
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .font(.escherFootnote)
                     }
                     .foregroundStyle(Color.escherPrism)
                     .padding(.horizontal, 10)
@@ -63,15 +63,17 @@ struct FileBrowserView: View {
                             .fill(Color.escherPrism.opacity(0.1))
                     )
                 }
+                .accessibilityLabel(String(localized: "Root folder"))
+                .accessibilityHint(String(localized: "Navigate to the root directory"))
                 
                 ForEach(pathComponents, id: \.self) { component in
                     HStack(spacing: 8) {
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(Color.escherMidtone)
+                            .font(.escherMini.weight(.bold))
+                            .foregroundStyle(Color.escherSecondaryText)
                         
                         Text(component)
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .font(.escherFootnote)
                             .foregroundStyle(Color.escherInk)
                     }
                 }
@@ -109,8 +111,8 @@ struct FileBrowserView: View {
             InfiniteStairs(size: 48)
             
             Text("Loading files...", comment: "Loading state message for file browser")
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(Color.escherMidtone)
+                .font(.escherFootnote)
+                .foregroundStyle(Color.escherSecondaryText)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -123,18 +125,18 @@ struct FileBrowserView: View {
                     .frame(width: 80, height: 80)
                 
                 Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 32, weight: .medium))
+                    .font(.escherDisplay)
                     .foregroundStyle(Color.escherError)
             }
             
             VStack(spacing: 8) {
                 Text("Couldn't Load Files", comment: "Error title when files fail to load")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .font(.escherTitle)
                     .foregroundStyle(Color.escherInk)
                 
                 Text(message)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.escherMidtone)
+                    .font(.escherFootnote)
+                    .foregroundStyle(Color.escherSecondaryText)
                     .multilineTextAlignment(.center)
             }
             
@@ -158,18 +160,18 @@ struct FileBrowserView: View {
                     .frame(width: 100, height: 100)
                 
                 Image(systemName: "folder")
-                    .font(.system(size: 40, weight: .thin))
+                    .font(.escherThin)
                     .foregroundStyle(Color.escherMidtone.opacity(0.6))
             }
             
             VStack(spacing: 8) {
                 Text(currentPath.isEmpty ? String(localized: "Workspace is Empty") : String(localized: "Folder is Empty"))
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .font(.escherTitle)
                     .foregroundStyle(Color.escherInk)
                 
                 Text("Files will appear here as you create them\nthrough the AI assistant.", comment: "Empty state description")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.escherMidtone)
+                    .font(.escherFootnote)
+                    .foregroundStyle(Color.escherSecondaryText)
                     .multilineTextAlignment(.center)
             }
         }
@@ -205,12 +207,12 @@ struct FileBrowserView: View {
                         .frame(width: 40, height: 40)
                     
                     Image(systemName: "arrow.left")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.escherCallout.weight(.semibold))
                         .foregroundStyle(Color.escherPrism)
                 }
                 
                 Text("Back", comment: "Button to navigate to parent directory")
-                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                    .font(.escherCallout)
                     .foregroundStyle(Color.escherPrism)
                 
                 Spacer()
@@ -222,6 +224,14 @@ struct FileBrowserView: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(String(localized: "Go back"))
+        .accessibilityHint(String(localized: "Navigate to the parent folder"))
+        .accessibilityInputLabels([
+            String(localized: "Back"),
+            String(localized: "Go back"),
+            String(localized: "Parent folder"),
+            String(localized: "Up")
+        ])
     }
 
     // MARK: - Navigation
@@ -280,6 +290,7 @@ struct FileBrowserView: View {
 struct FileRow: View {
     let entry: ProjectFileEntry
     let onTap: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
 
     var body: some View {
@@ -292,25 +303,25 @@ struct FileRow: View {
                         .frame(width: 44, height: 44)
                     
                     Image(systemName: iconName)
-                        .font(.system(size: 18, weight: .medium))
+                        .font(.escherHeadline)
                         .foregroundStyle(iconColor)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(entry.name)
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .font(.escherCallout)
                         .foregroundStyle(Color.escherInk)
                         .lineLimit(1)
 
                     HStack(spacing: 8) {
                         if entry.kind == .directory {
                             Text("Folder", comment: "Label indicating an item is a folder")
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
-                                .foregroundStyle(Color.escherMidtone)
+                                .font(.escherCaption)
+                                .foregroundStyle(Color.escherSecondaryText)
                         } else if let size = entry.sizeBytes {
                             Text(formatBytes(size))
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
-                                .foregroundStyle(Color.escherMidtone)
+                                .font(.escherCaption)
+                                .foregroundStyle(Color.escherSecondaryText)
                         }
                         
                         // File extension badge
@@ -318,7 +329,7 @@ struct FileRow: View {
                             let ext = URL(fileURLWithPath: entry.name).pathExtension.uppercased()
                             if !ext.isEmpty {
                                 Text(ext)
-                                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                                    .font(.escherMini.weight(.bold))
                                     .foregroundStyle(iconColor)
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 2)
@@ -335,8 +346,8 @@ struct FileRow: View {
 
                 if entry.kind == .directory {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(Color.escherMidtone)
+                        .font(.escherCaption.weight(.bold))
+                        .foregroundStyle(Color.escherSecondaryText)
                 }
             }
             .padding(12)
@@ -354,12 +365,44 @@ struct FileRow: View {
         }
         .buttonStyle(.plain)
         .opacity(appeared ? 1 : 0)
-        .offset(x: appeared ? 0 : -8)
+        .offset(x: appeared ? 0 : (reduceMotion ? 0 : -8))
         .onAppear {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8).delay(Double.random(in: 0...0.1))) {
+            if reduceMotion {
                 appeared = true
+            } else {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8).delay(Double.random(in: 0...0.1))) {
+                    appeared = true
+                }
             }
         }
+        .accessibilityIdentifier("file_row_\(entry.name)")
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(fileAccessibilityLabel)
+        .accessibilityHint(entry.kind == .directory ? String(localized: "Double-tap to open folder") : String(localized: "Double-tap to preview file"))
+        .accessibilityInputLabels([entry.name, String(localized: "Open \(entry.name)")])
+    }
+    
+    private var fileAccessibilityLabel: String {
+        var parts: [String] = []
+        
+        if entry.kind == .directory {
+            parts.append(String(localized: "Folder"))
+        } else {
+            let ext = URL(fileURLWithPath: entry.name).pathExtension.uppercased()
+            if !ext.isEmpty {
+                parts.append("\(ext) " + String(localized: "file"))
+            } else {
+                parts.append(String(localized: "File"))
+            }
+        }
+        
+        parts.append(entry.name)
+        
+        if let size = entry.sizeBytes, entry.kind != .directory {
+            parts.append(formatBytes(size))
+        }
+        
+        return parts.joined(separator: ", ")
     }
 
     private var iconName: String {
@@ -434,8 +477,8 @@ struct FilePreviewSheet: View {
                         VStack(spacing: 20) {
                             InfiniteStairs(size: 40)
                             Text("Loading...", comment: "Generic loading message")
-                                .font(.system(size: 14, weight: .medium, design: .rounded))
-                                .foregroundStyle(Color.escherMidtone)
+                                .font(.escherFootnote)
+                                .foregroundStyle(Color.escherSecondaryText)
                         }
                     } else if let errorMessage {
                         VStack(spacing: 24) {
@@ -445,13 +488,13 @@ struct FilePreviewSheet: View {
                                     .frame(width: 60, height: 60)
                                 
                                 Image(systemName: "exclamationmark.triangle")
-                                    .font(.system(size: 24, weight: .medium))
+                                    .font(.escherTitle)
                                     .foregroundStyle(Color.escherError)
                             }
                             
                             Text(errorMessage)
-                                .font(.system(size: 14, weight: .medium, design: .rounded))
-                                .foregroundStyle(Color.escherMidtone)
+                                .font(.escherFootnote)
+                                .foregroundStyle(Color.escherSecondaryText)
                                 .multilineTextAlignment(.center)
                         }
                         .padding(32)
@@ -468,7 +511,7 @@ struct FilePreviewSheet: View {
                         dismiss()
                     } label: {
                         Text("Done", comment: "Button to dismiss sheet")
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .font(.escherSubheadline)
                             .foregroundStyle(Color.escherPrism)
                     }
                 }
@@ -486,6 +529,7 @@ struct FilePreviewSheet: View {
                 .font(.escherMono)
                 .foregroundStyle(Color.escherInk)
                 .textSelection(.enabled)
+                .accessibilityHint(String(localized: "Double tap and hold to select text"))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
         }

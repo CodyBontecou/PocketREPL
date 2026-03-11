@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Settings View
 
@@ -6,6 +7,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @State private var appearanceManager = AppearanceManager.shared
+    @State private var showingMailCompose = false
     
     var body: some View {
         NavigationStack {
@@ -16,6 +18,12 @@ struct SettingsView: View {
                     VStack(spacing: 20) {
                         // Appearance Section
                         appearanceSection
+                        
+                        // AI Section
+                        aiSection
+                        
+                        // Support Section
+                        supportSection
                         
                         // About Section
                         aboutSection
@@ -29,11 +37,11 @@ struct SettingsView: View {
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 8) {
                         Image(systemName: "gearshape.fill")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.escherFootnote.weight(.semibold))
                             .foregroundStyle(Color.escherPrism)
                         
                         Text("Settings", comment: "Navigation title for settings")
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .font(.escherHeadline)
                             .foregroundStyle(Color.escherForeground)
                     }
                 }
@@ -43,7 +51,7 @@ struct SettingsView: View {
                         dismiss()
                     } label: {
                         Text("Done", comment: "Button to dismiss settings")
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .font(.escherSubheadline)
                             .foregroundStyle(Color.escherPrism)
                     }
                 }
@@ -51,6 +59,9 @@ struct SettingsView: View {
             .escherNavigationStyle()
         }
         .presentationDragIndicator(.visible)
+        .sheet(isPresented: $showingMailCompose) {
+            MailComposeView()
+        }
     }
     
     // MARK: - Appearance Section
@@ -58,9 +69,9 @@ struct SettingsView: View {
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("APPEARANCE", comment: "Section header for appearance settings")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.escherCaption2)
                 .tracking(1)
-                .foregroundStyle(Color.escherMidtone)
+                .foregroundStyle(Color.escherSecondaryText)
             
             VStack(spacing: 12) {
                 // Mode Picker
@@ -85,14 +96,116 @@ struct SettingsView: View {
         .escherCard()
     }
     
+    // MARK: - AI Section
+    
+    private var aiSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("AI", comment: "Section header for AI settings")
+                .font(.escherCaption2)
+                .tracking(1)
+                .foregroundStyle(Color.escherSecondaryText)
+            
+            VStack(spacing: 0) {
+                // Context Settings Row - Note: Opens via the context counter in chat
+                HStack {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.escherBody)
+                        .foregroundStyle(Color.escherPrism)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Context Settings", comment: "Row title for context settings")
+                            .font(.escherCallout)
+                            .foregroundStyle(Color.escherForeground)
+                        
+                        Text("Tap the context counter in chat to customize", comment: "Row subtitle")
+                            .font(.escherCaption)
+                            .foregroundStyle(Color.escherSecondaryText)
+                    }
+                    
+                    Spacer()
+                    
+                    // Token count indicator
+                    let settings = ContextSettingsManager.shared
+                    Text("~\(settings.estimatedBaseTokens) tokens")
+                        .font(.escherCaption)
+                        .foregroundStyle(Color.escherSecondaryText)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.escherSurface.opacity(0.6))
+            )
+            
+            // Info note
+            HStack(spacing: 8) {
+                Image(systemName: "info.circle")
+                    .font(.escherCaption)
+                    .foregroundStyle(Color.escherSecondaryText)
+                
+                Text("Customize the AI's system prompt and enable/disable tools from the context counter.", comment: "Info text for AI section")
+                    .font(.escherCaption)
+                    .foregroundStyle(Color.escherSecondaryText)
+            }
+            .padding(.top, 4)
+        }
+        .padding(18)
+        .escherCard()
+    }
+    
+    // MARK: - Support Section
+    
+    private var supportSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("SUPPORT", comment: "Section header for support options")
+                .font(.escherCaption2)
+                .tracking(1)
+                .foregroundStyle(Color.escherSecondaryText)
+            
+            Button {
+                if FeedbackHelper.canSendMail {
+                    showingMailCompose = true
+                } else if let url = FeedbackHelper.mailtoURL() {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "envelope.fill")
+                        .font(.escherBody)
+                        .foregroundStyle(Color.escherPrism)
+                    
+                    Text("Send Feedback", comment: "Button to send feedback email")
+                        .font(.escherCallout)
+                        .foregroundStyle(Color.escherForeground)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "arrow.up.right")
+                        .font(.escherCaption)
+                        .foregroundStyle(Color.escherSecondaryText)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.escherSurface.opacity(0.6))
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(18)
+        .escherCard()
+    }
+    
     // MARK: - About Section
     
     private var aboutSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("ABOUT", comment: "Section header for about information")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.escherCaption2)
                 .tracking(1)
-                .foregroundStyle(Color.escherMidtone)
+                .foregroundStyle(Color.escherSecondaryText)
             
             VStack(spacing: 0) {
                 AboutRow(label: String(localized: "Version"), value: appVersion)
@@ -133,13 +246,13 @@ struct AppearanceModeButton: View {
                         .frame(width: 56, height: 56)
                     
                     Image(systemName: mode.icon)
-                        .font(.system(size: 22, weight: .medium))
-                        .foregroundStyle(isSelected ? Color.escherPrism : Color.escherMidtone)
+                        .font(.escherTitle)
+                        .foregroundStyle(isSelected ? Color.escherPrism : Color.escherSecondaryText)
                 }
                 
                 Text(mode.rawValue)
-                    .font(.system(size: 12, weight: isSelected ? .semibold : .medium, design: .rounded))
-                    .foregroundStyle(isSelected ? Color.escherPrism : Color.escherMidtone)
+                    .font(isSelected ? .escherCaption.weight(.semibold) : .escherCaption)
+                    .foregroundStyle(isSelected ? Color.escherPrism : Color.escherSecondaryText)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
@@ -164,9 +277,9 @@ struct AppearancePreview: View {
     var body: some View {
         VStack(spacing: 12) {
             Text("Preview", comment: "Label for appearance preview")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.escherCaption2)
                 .tracking(1)
-                .foregroundStyle(Color.escherMidtone)
+                .foregroundStyle(Color.escherSecondaryText)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
             HStack(spacing: 12) {
@@ -174,7 +287,7 @@ struct AppearancePreview: View {
                 VStack(alignment: .leading, spacing: 8) {
                     // User message
                     Text("Hello!", comment: "Sample user message in preview")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.escherCaption)
                         .foregroundStyle(Color.escherBackground)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
@@ -186,7 +299,7 @@ struct AppearancePreview: View {
                     
                     // Assistant message
                     Text("Hi there! 👋", comment: "Sample assistant message in preview")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.escherCaption)
                         .foregroundStyle(Color.escherForeground)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
@@ -218,14 +331,14 @@ struct AboutRow: View {
     var body: some View {
         HStack {
             Text(label)
-                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .font(.escherCallout)
                 .foregroundStyle(Color.escherForeground)
             
             Spacer()
             
             Text(value)
-                .font(.system(size: 15, weight: .regular, design: .rounded))
-                .foregroundStyle(Color.escherMidtone)
+                .font(.escherCallout.weight(.regular))
+                .foregroundStyle(Color.escherSecondaryText)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -246,6 +359,7 @@ struct AboutDivider: View {
 struct SettingsContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var appearanceManager = AppearanceManager.shared
+    @State private var showingMailCompose = false
     
     var body: some View {
         ZStack {
@@ -256,6 +370,9 @@ struct SettingsContentView: View {
                     // Appearance Section
                     appearanceSection
                     
+                    // Support Section
+                    supportSection
+                    
                     // About Section
                     aboutSection
                 }
@@ -265,6 +382,9 @@ struct SettingsContentView: View {
         .navigationTitle(String(localized: "Settings"))
         .navigationBarTitleDisplayMode(.large)
         .escherNavigationStyle()
+        .sheet(isPresented: $showingMailCompose) {
+            MailComposeView()
+        }
     }
     
     // MARK: - Appearance Section
@@ -272,9 +392,9 @@ struct SettingsContentView: View {
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("APPEARANCE", comment: "Section header")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.escherCaption2)
                 .tracking(1)
-                .foregroundStyle(Color.escherMidtone)
+                .foregroundStyle(Color.escherSecondaryText)
             
             VStack(spacing: 12) {
                 // Mode Picker
@@ -299,14 +419,58 @@ struct SettingsContentView: View {
         .escherCard()
     }
     
+    // MARK: - Support Section
+    
+    private var supportSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("SUPPORT", comment: "Section header for support options")
+                .font(.escherCaption2)
+                .tracking(1)
+                .foregroundStyle(Color.escherSecondaryText)
+            
+            Button {
+                if FeedbackHelper.canSendMail {
+                    showingMailCompose = true
+                } else if let url = FeedbackHelper.mailtoURL() {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "envelope.fill")
+                        .font(.escherBody)
+                        .foregroundStyle(Color.escherPrism)
+                    
+                    Text("Send Feedback", comment: "Button to send feedback email")
+                        .font(.escherCallout)
+                        .foregroundStyle(Color.escherForeground)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "arrow.up.right")
+                        .font(.escherCaption)
+                        .foregroundStyle(Color.escherSecondaryText)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.escherSurface.opacity(0.6))
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(18)
+        .escherCard()
+    }
+    
     // MARK: - About Section
     
     private var aboutSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("ABOUT", comment: "Section header")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.escherCaption2)
                 .tracking(1)
-                .foregroundStyle(Color.escherMidtone)
+                .foregroundStyle(Color.escherSecondaryText)
             
             VStack(spacing: 0) {
                 AboutRow(label: String(localized: "Version"), value: appVersion)

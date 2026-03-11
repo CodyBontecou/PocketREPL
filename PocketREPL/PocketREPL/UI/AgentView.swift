@@ -55,7 +55,7 @@ struct AgentView: View {
                     .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 4, x: 0, y: 2)
                 
                 Image(systemName: "list.bullet.rectangle")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.escherFootnote)
                     .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
             }
         }
@@ -89,7 +89,7 @@ struct AgentView: View {
                     .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 4, x: 0, y: 2)
                 
                 Image(systemName: "ellipsis")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.escherFootnote.weight(.bold))
                     .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
             }
         }
@@ -121,11 +121,11 @@ struct ToolTraceSheet: View {
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 8) {
                         Image(systemName: "waveform.path.ecg")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.escherFootnote.weight(.semibold))
                             .foregroundStyle(Color.escherPrism)
                         
                         Text("Tool Trace", comment: "Navigation title for tool trace view")
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .font(.escherHeadline)
                             .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
                     }
                 }
@@ -135,7 +135,7 @@ struct ToolTraceSheet: View {
                         dismiss()
                     } label: {
                         Text("Done", comment: "Button to dismiss sheet")
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .font(.escherSubheadline)
                             .foregroundStyle(Color.escherPrism)
                     }
                 }
@@ -161,12 +161,12 @@ struct ToolTraceSheet: View {
             
             VStack(spacing: 8) {
                 Text("No Tool Activity", comment: "Empty state title for tool trace")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .font(.escherTitle)
                     .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
                 
                 Text("Tool calls and results will appear here\nas you interact with PocketREPL.", comment: "Empty state description")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.escherMidtone)
+                    .font(.escherFootnote)
+                    .foregroundStyle(Color.escherSecondaryText)
                     .multilineTextAlignment(.center)
             }
         }
@@ -202,19 +202,19 @@ struct ToolTraceRow: View {
                 
                 Image(systemName: iconName)
                     .foregroundStyle(statusColor)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.escherFootnote.weight(.semibold))
             }
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text(event.toolName)
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .font(.escherSubheadline)
                         .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
 
                     Spacer()
 
                     Text(kindLabel)
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .font(.escherMini.weight(.bold))
                         .textCase(.uppercase)
                         .tracking(0.5)
                         .foregroundStyle(statusColor)
@@ -228,7 +228,7 @@ struct ToolTraceRow: View {
 
                 Text(event.summary)
                     .font(.escherMonoSmall)
-                    .foregroundStyle(Color.escherMidtone)
+                    .foregroundStyle(Color.escherSecondaryText)
                     .lineLimit(4)
             }
         }
@@ -266,7 +266,7 @@ struct ToolTraceRow: View {
         case .pending: return .escherWarning
         case .succeeded: return .escherSuccess
         case .failed: return .escherError
-        case .skipped: return .escherMidtone
+        case .skipped: return .escherSecondaryText
         }
     }
 
