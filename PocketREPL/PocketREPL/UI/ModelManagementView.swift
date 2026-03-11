@@ -3,8 +3,9 @@ import SwiftUI
 // MARK: - Model Management View
 
 /// Main view for browsing, downloading, and managing local LLM models.
-/// Redesigned with M.C. Escher impossible geometry and Apple liquid design principles.
+/// Greyscale design matching the chat interface aesthetic.
 struct ModelManagementView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var modelManager: ModelBackendManager
     
     @State private var downloadManager = ModelDownloadManager()
@@ -19,6 +20,19 @@ struct ModelManagementView: View {
     @State private var showingCustomModelSheet = false
     @State private var customModelURL = ""
     @State private var customModelContextSize = "4096"
+    
+    // Adaptive colors
+    private var foregroundColor: Color {
+        colorScheme == .dark ? .escherPaper : .escherInk
+    }
+    
+    private var surfaceColor: Color {
+        colorScheme == .dark ? Color(white: 0.14) : .escherPaper
+    }
+    
+    private var accentColor: Color {
+        colorScheme == .dark ? .escherPaper : .escherInk
+    }
     
     var body: some View {
         ZStack {
@@ -49,17 +63,17 @@ struct ModelManagementView: View {
                     // Brain/model icon with geometric frame
                     ZStack {
                         RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(Color.escherPrism.opacity(0.15))
+                            .fill(foregroundColor.opacity(0.08))
                             .frame(width: 24, height: 24)
                         
                         Image(systemName: "cpu")
                             .font(.escherCaption.weight(.semibold))
-                            .foregroundStyle(Color.escherPrism)
+                            .foregroundStyle(foregroundColor.opacity(0.7))
                     }
                     
                     Text("Models", comment: "Navigation title for model management")
                         .font(.escherHeadline)
-                        .foregroundStyle(Color.escherInk)
+                        .foregroundStyle(foregroundColor)
                 }
             }
         }
@@ -150,18 +164,19 @@ struct ModelManagementView: View {
                     ModelProviderIcon(
                         family: activeModelFamily,
                         size: 50,
-                        isActive: true
+                        isActive: true,
+                        colorScheme: colorScheme
                     )
                     
                     VStack(alignment: .leading, spacing: 6) {
                         Text(info.name)
                             .font(.escherHeadline)
-                            .foregroundStyle(Color.escherInk)
+                            .foregroundStyle(foregroundColor)
                         
                         HStack(spacing: 8) {
-                            ModelBadge(text: info.parameterCount, color: .escherPrism)
+                            GreyscaleBadge(text: info.parameterCount, colorScheme: colorScheme)
                             if let quant = info.quantization {
-                                ModelBadge(text: quant, color: .escherWarning)
+                                GreyscaleBadge(text: quant, colorScheme: colorScheme, variant: .subtle)
                             }
                         }
                     }
@@ -171,11 +186,21 @@ struct ModelManagementView: View {
                 
                 // Stats bar
                 HStack(spacing: 20) {
-                    StatItem(icon: "memorychip", value: formatMemory(info.memoryUsage), label: String(localized: "Memory"))
-                    StatItem(icon: "text.alignleft", value: "\(info.contextSize)", label: String(localized: "Context"))
+                    GreyscaleStatItem(icon: "memorychip", value: formatMemory(info.memoryUsage), label: String(localized: "Memory"), colorScheme: colorScheme)
+                    GreyscaleStatItem(icon: "text.alignleft", value: "\(info.contextSize)", label: String(localized: "Context"), colorScheme: colorScheme)
                 }
                 
-                // Unload button
+                // llama.cpp badge
+                HStack(spacing: 8) {
+                    Image(systemName: "chevron.left.forwardslash.chevron.right")
+                        .font(.escherCaption)
+                    Text("Code generation powered by llama.cpp", comment: "Badge showing llama.cpp is used")
+                        .font(.escherCaption)
+                }
+                .foregroundStyle(Color.escherSecondaryText)
+                .padding(.top, 4)
+                
+                // Unload button - uses red for destructive
                 Button(role: .destructive) {
                     Task { await modelManager.unload(clearPersistence: true) }
                 } label: {
@@ -201,20 +226,20 @@ struct ModelManagementView: View {
                 VStack(spacing: 16) {
                     ZStack {
                         Circle()
-                            .fill(Color.escherMidtone.opacity(0.08))
+                            .fill(foregroundColor.opacity(0.05))
                             .frame(width: 70, height: 70)
                         
                         Image(systemName: "cpu")
                             .font(.escherDisplay.weight(.thin))
-                            .foregroundStyle(Color.escherMidtone.opacity(0.5))
+                            .foregroundStyle(foregroundColor.opacity(0.3))
                     }
                     
                     VStack(spacing: 4) {
                         Text("No Model Loaded", comment: "Displayed when no model is loaded")
                             .font(.escherCallout.weight(.semibold))
-                            .foregroundStyle(Color.escherInk)
+                            .foregroundStyle(foregroundColor)
                         
-                        Text("Download and load a model to start", comment: "Instruction")
+                        Text("Download and load a model to generate code", comment: "Instruction")
                             .font(.escherFootnote)
                             .foregroundStyle(Color.escherSecondaryText)
                     }
@@ -233,11 +258,11 @@ struct ModelManagementView: View {
         case .ready:
             HStack(spacing: 6) {
                 Circle()
-                    .fill(Color.escherSuccess)
+                    .fill(foregroundColor)
                     .frame(width: 8, height: 8)
                 Text("Ready", comment: "Model status indicating ready to use")
                     .font(.escherCaption.weight(.semibold))
-                    .foregroundStyle(Color.escherSuccess)
+                    .foregroundStyle(foregroundColor)
             }
         case .generating:
             HStack(spacing: 6) {
@@ -245,16 +270,16 @@ struct ModelManagementView: View {
                     .scaleEffect(0.6)
                 Text("Generating", comment: "Model status indicating text generation")
                     .font(.escherCaption.weight(.semibold))
-                    .foregroundStyle(Color.escherPrism)
+                    .foregroundStyle(foregroundColor.opacity(0.7))
             }
         case .loading(let progress):
             HStack(spacing: 8) {
                 ProgressView(value: progress)
                     .frame(width: 40)
-                    .tint(Color.escherPrism)
+                    .tint(foregroundColor.opacity(0.7))
                 Text("\(Int(progress * 100))%")
                     .font(.escherCaption.weight(.semibold))
-                    .foregroundStyle(Color.escherPrism)
+                    .foregroundStyle(foregroundColor.opacity(0.7))
             }
         case .error:
             HStack(spacing: 6) {
@@ -279,26 +304,20 @@ struct ModelManagementView: View {
                 .tracking(1)
                 .foregroundStyle(Color.escherSecondaryText)
             
-            // Tessellated storage bar
+            // Greyscale storage bar
             GeometryReader { geo in
                 let totalWidth = geo.size.width
                 let total = Double(storageInfo.used + storageInfo.available)
                 let usedRatio = total > 0 ? min(1.0, Double(storageInfo.used) / total) : 0
                 
                 ZStack(alignment: .leading) {
-                    // Background with tessellation pattern
+                    // Background
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color.escherMidtone.opacity(0.1))
+                        .fill(foregroundColor.opacity(0.08))
                     
                     // Used portion
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.escherPrism, Color.escherPrism.opacity(0.7)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                        .fill(foregroundColor.opacity(0.5))
                         .frame(width: totalWidth * usedRatio)
                     
                     // Tessellation overlay
@@ -315,7 +334,7 @@ struct ModelManagementView: View {
                         .foregroundStyle(Color.escherSecondaryText)
                     Text(formatBytes(storageInfo.used))
                         .font(.escherSubheadline)
-                        .foregroundStyle(Color.escherInk)
+                        .foregroundStyle(foregroundColor)
                 }
                 
                 Spacer()
@@ -326,7 +345,7 @@ struct ModelManagementView: View {
                         .foregroundStyle(Color.escherSecondaryText)
                     Text(formatBytes(storageInfo.available))
                         .font(.escherSubheadline)
-                        .foregroundStyle(storageInfo.available < 1_000_000_000 ? Color.escherError : Color.escherInk)
+                        .foregroundStyle(storageInfo.available < 1_000_000_000 ? Color.escherError : foregroundColor)
                 }
             }
         }
@@ -348,12 +367,12 @@ struct ModelManagementView: View {
                 
                 Text("\(installedModels.count)")
                     .font(.escherCaption.weight(.bold))
-                    .foregroundStyle(Color.escherPrism)
+                    .foregroundStyle(foregroundColor.opacity(0.7))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .background(
                         Capsule()
-                            .fill(Color.escherPrism.opacity(0.12))
+                            .fill(foregroundColor.opacity(0.1))
                     )
             }
             
@@ -408,12 +427,12 @@ struct ModelManagementView: View {
                         Text("Custom", comment: "Button to add custom model")
                             .font(.escherCaption2)
                     }
-                    .foregroundStyle(Color.escherPrism)
+                    .foregroundStyle(foregroundColor.opacity(0.7))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(
                         Capsule()
-                            .fill(Color.escherPrism.opacity(0.12))
+                            .fill(foregroundColor.opacity(0.1))
                     )
                 }
                 .buttonStyle(.plain)
@@ -451,11 +470,20 @@ struct ModelManagementView: View {
             }
             
             // Footer
-            HStack(spacing: 8) {
-                Image(systemName: "info.circle")
-                    .font(.escherCaption)
-                Text("Models are downloaded from Hugging Face and stored locally.", comment: "Footer text")
-                    .font(.escherCaption)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Image(systemName: "info.circle")
+                        .font(.escherCaption)
+                    Text("Models are downloaded from Hugging Face and stored locally.", comment: "Footer text")
+                        .font(.escherCaption)
+                }
+                
+                HStack(spacing: 8) {
+                    Image(systemName: "cpu")
+                        .font(.escherCaption)
+                    Text("Code is generated on-device using llama.cpp.", comment: "Footer text about llama.cpp")
+                        .font(.escherCaption)
+                }
             }
             .foregroundStyle(Color.escherSecondaryText)
             .padding(.top, 8)
@@ -668,29 +696,61 @@ struct ModelManagementView: View {
     }
 }
 
-// MARK: - Supporting Components
+// MARK: - Greyscale Supporting Components
 
-struct ModelBadge: View {
+struct GreyscaleBadge: View {
+    @Environment(\.colorScheme) private var colorScheme
     let text: String
-    let color: Color
+    let customColorScheme: ColorScheme?
+    let variant: BadgeVariant
+    
+    enum BadgeVariant {
+        case standard
+        case subtle
+    }
+    
+    init(text: String, colorScheme: ColorScheme? = nil, variant: BadgeVariant = .standard) {
+        self.text = text
+        self.customColorScheme = colorScheme
+        self.variant = variant
+    }
+    
+    private var effectiveScheme: ColorScheme {
+        customColorScheme ?? colorScheme
+    }
+    
+    private var foreground: Color {
+        let base = effectiveScheme == .dark ? Color.escherPaper : Color.escherInk
+        return variant == .subtle ? base.opacity(0.6) : base
+    }
+    
+    private var background: Color {
+        let base = effectiveScheme == .dark ? Color.escherPaper : Color.escherInk
+        return base.opacity(variant == .subtle ? 0.06 : 0.1)
+    }
     
     var body: some View {
         Text(text)
             .font(.escherMini.weight(.bold))
-            .foregroundStyle(color)
+            .foregroundStyle(foreground)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(
                 Capsule()
-                    .fill(color.opacity(0.12))
+                    .fill(background)
             )
     }
 }
 
-struct StatItem: View {
+struct GreyscaleStatItem: View {
     let icon: String
     let value: String
     let label: String
+    let colorScheme: ColorScheme
+    
+    private var foreground: Color {
+        colorScheme == .dark ? .escherPaper : .escherInk
+    }
     
     var body: some View {
         HStack(spacing: 8) {
@@ -701,7 +761,7 @@ struct StatItem: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(value)
                     .font(.escherFootnote.weight(.bold))
-                    .foregroundStyle(Color.escherInk)
+                    .foregroundStyle(foreground)
                 Text(label)
                     .font(.escherMini)
                     .foregroundStyle(Color.escherSecondaryText)
@@ -710,57 +770,39 @@ struct StatItem: View {
     }
 }
 
-// MARK: - Model Provider Icon
+// MARK: - Model Provider Icon (Greyscale)
 
-/// Renders a distinctive icon for each model provider/family.
+/// Renders a monochromatic icon for each model provider/family.
 struct ModelProviderIcon: View {
+    @Environment(\.colorScheme) private var environmentColorScheme
     let family: ModelRegistryEntry.ModelFamily
     let size: CGFloat
     let isActive: Bool
+    let customColorScheme: ColorScheme?
     
-    init(family: ModelRegistryEntry.ModelFamily, size: CGFloat = 44, isActive: Bool = false) {
+    init(family: ModelRegistryEntry.ModelFamily, size: CGFloat = 44, isActive: Bool = false, colorScheme: ColorScheme? = nil) {
         self.family = family
         self.size = size
         self.isActive = isActive
+        self.customColorScheme = colorScheme
+    }
+    
+    private var effectiveScheme: ColorScheme {
+        customColorScheme ?? environmentColorScheme
+    }
+    
+    private var foregroundColor: Color {
+        effectiveScheme == .dark ? .escherPaper : .escherInk
     }
     
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: size * 0.23, style: .continuous)
-                .fill(backgroundColor)
+                .fill(foregroundColor.opacity(isActive ? 0.15 : 0.08))
                 .frame(width: size, height: size)
             
             iconContent
                 .frame(width: size * 0.5, height: size * 0.5)
-        }
-    }
-    
-    private var backgroundColor: Color {
-        if isActive {
-            return Color.escherSuccess.opacity(0.12)
-        }
-        return providerColor.opacity(0.12)
-    }
-    
-    private var foregroundColor: Color {
-        if isActive {
-            return Color.escherSuccess
-        }
-        return providerColor
-    }
-    
-    private var providerColor: Color {
-        switch family {
-        case .qwen:
-            return Color(red: 0.40, green: 0.51, blue: 0.96) // Alibaba blue
-        case .codegemma:
-            return Color(red: 0.26, green: 0.52, blue: 0.96) // Google blue
-        case .starcoder:
-            return Color(red: 0.96, green: 0.65, blue: 0.14) // Gold/yellow
-        case .deepseek:
-            return Color(red: 0.0, green: 0.68, blue: 0.94) // DeepSeek cyan
-        case .other:
-            return Color.escherPrism
         }
     }
     
@@ -769,20 +811,20 @@ struct ModelProviderIcon: View {
         switch family {
         case .qwen:
             QwenIcon()
-                .stroke(foregroundColor, lineWidth: size * 0.045)
+                .stroke(foregroundColor.opacity(isActive ? 1.0 : 0.6), lineWidth: size * 0.045)
         case .codegemma:
             GemmaIcon()
-                .fill(foregroundColor)
+                .fill(foregroundColor.opacity(isActive ? 1.0 : 0.6))
         case .starcoder:
             StarCoderIcon()
-                .fill(foregroundColor)
+                .fill(foregroundColor.opacity(isActive ? 1.0 : 0.6))
         case .deepseek:
             DeepSeekIcon()
-                .stroke(foregroundColor, lineWidth: size * 0.045)
+                .stroke(foregroundColor.opacity(isActive ? 1.0 : 0.6), lineWidth: size * 0.045)
         case .other:
             Image(systemName: "cube.box")
                 .font(.system(size: size * 0.4, weight: .medium))
-                .foregroundStyle(foregroundColor)
+                .foregroundStyle(foregroundColor.opacity(isActive ? 1.0 : 0.6))
         }
     }
 }
@@ -898,6 +940,7 @@ struct DeepSeekIcon: Shape {
 
 /// Row displaying an installed model with load/delete actions.
 struct InstalledModelRow: View {
+    @Environment(\.colorScheme) private var colorScheme
     let model: InstalledModel
     let isActive: Bool
     let activeModelInfo: ModelInfo?
@@ -905,6 +948,14 @@ struct InstalledModelRow: View {
     let onDelete: () -> Void
     
     @State private var showingDetail = false
+    
+    private var foreground: Color {
+        colorScheme == .dark ? .escherPaper : .escherInk
+    }
+    
+    private var surface: Color {
+        colorScheme == .dark ? Color(white: 0.18) : .escherPaper.opacity(0.6)
+    }
     
     var body: some View {
         Button {
@@ -915,37 +966,38 @@ struct InstalledModelRow: View {
                 ModelProviderIcon(
                     family: model.registryEntry?.family ?? .other,
                     size: 44,
-                    isActive: isActive
+                    isActive: isActive,
+                    colorScheme: colorScheme
                 )
                 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
                         Text(model.name)
                             .font(.escherSubheadline)
-                            .foregroundStyle(Color.escherInk)
+                            .foregroundStyle(foreground)
                             .lineLimit(1)
                         
                         if isActive {
                             Text("ACTIVE", comment: "Badge indicating model is active")
                                 .font(.escherMini.weight(.bold))
-                                .foregroundStyle(Color.escherSuccess)
+                                .foregroundStyle(foreground)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(
                                     Capsule()
-                                        .fill(Color.escherSuccess.opacity(0.15))
+                                        .fill(foreground.opacity(0.15))
                                 )
                         }
                         
                         if model.isCustom {
                             Text("CUSTOM", comment: "Badge indicating custom model")
                                 .font(.escherMini.weight(.bold))
-                                .foregroundStyle(Color.escherPrism)
+                                .foregroundStyle(foreground.opacity(0.6))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(
                                     Capsule()
-                                        .fill(Color.escherPrism.opacity(0.15))
+                                        .fill(foreground.opacity(0.08))
                                 )
                         }
                     }
@@ -968,7 +1020,7 @@ struct InstalledModelRow: View {
                 // Chevron indicator
                 Image(systemName: "chevron.right")
                     .font(.escherCaption.weight(.semibold))
-                    .foregroundStyle(Color.escherMidtone.opacity(0.5))
+                    .foregroundStyle(foreground.opacity(0.3))
                 
                 if !isActive {
                     Button {
@@ -976,12 +1028,12 @@ struct InstalledModelRow: View {
                     } label: {
                         ZStack {
                             Circle()
-                                .fill(Color.escherPrism.opacity(0.12))
+                                .fill(foreground.opacity(0.1))
                                 .frame(width: 36, height: 36)
                             
                             Image(systemName: "play.fill")
                                 .font(.escherFootnote.weight(.semibold))
-                                .foregroundStyle(Color.escherPrism)
+                                .foregroundStyle(foreground.opacity(0.7))
                         }
                     }
                     .buttonStyle(.plain)
@@ -990,7 +1042,7 @@ struct InstalledModelRow: View {
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.escherPaper.opacity(0.6))
+                    .fill(surface)
             )
         }
         .buttonStyle(.plain)
@@ -1043,6 +1095,7 @@ struct InstalledModelRow: View {
 
 /// Row displaying a downloadable model from the registry.
 struct DownloadableModelRow: View {
+    @Environment(\.colorScheme) private var colorScheme
     let model: ModelRegistryEntry
     let onDownload: () -> Void
     
@@ -1056,42 +1109,50 @@ struct DownloadableModelRow: View {
         model.isCustom
     }
     
+    private var foreground: Color {
+        colorScheme == .dark ? .escherPaper : .escherInk
+    }
+    
+    private var surface: Color {
+        colorScheme == .dark ? Color(white: 0.18) : .escherPaper.opacity(0.6)
+    }
+    
     var body: some View {
         Button {
             showingDetail = true
         } label: {
             HStack(spacing: 14) {
                 // Model Provider Icon
-                ModelProviderIcon(family: model.family, size: 44)
+                ModelProviderIcon(family: model.family, size: 44, colorScheme: colorScheme)
                 
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
                         Text(model.name)
                             .font(.escherSubheadline)
-                            .foregroundStyle(Color.escherInk)
+                            .foregroundStyle(foreground)
                             .lineLimit(1)
                         
                         if isRecommended {
                             Text("★")
                                 .font(.escherMini.weight(.bold))
-                                .foregroundStyle(Color.escherWarning)
+                                .foregroundStyle(foreground.opacity(0.7))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(
                                     Capsule()
-                                        .fill(Color.escherWarning.opacity(0.15))
+                                        .fill(foreground.opacity(0.1))
                                 )
                         }
                         
                         if isCustom {
                             Text("CUSTOM", comment: "Badge for custom model")
                                 .font(.escherMini.weight(.bold))
-                                .foregroundStyle(Color.escherPrism)
+                                .foregroundStyle(foreground.opacity(0.6))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(
                                     Capsule()
-                                        .fill(Color.escherPrism.opacity(0.15))
+                                        .fill(foreground.opacity(0.08))
                                 )
                         }
                     }
@@ -1102,10 +1163,10 @@ struct DownloadableModelRow: View {
                         .lineLimit(2)
                     
                     HStack(spacing: 6) {
-                        ModelBadge(text: model.parameterCount, color: .escherPrism)
-                        ModelBadge(text: model.quantization, color: .escherSecondaryText)
+                        GreyscaleBadge(text: model.parameterCount, colorScheme: colorScheme)
+                        GreyscaleBadge(text: model.quantization, colorScheme: colorScheme, variant: .subtle)
                         if model.sizeBytes > 0 {
-                            ModelBadge(text: model.formattedSize, color: .escherSecondaryText)
+                            GreyscaleBadge(text: model.formattedSize, colorScheme: colorScheme, variant: .subtle)
                         }
                     }
                 }
@@ -1115,19 +1176,19 @@ struct DownloadableModelRow: View {
                 // Chevron indicator
                 Image(systemName: "chevron.right")
                     .font(.escherCaption.weight(.semibold))
-                    .foregroundStyle(Color.escherMidtone.opacity(0.5))
+                    .foregroundStyle(foreground.opacity(0.3))
                 
                 Button {
                     onDownload()
                 } label: {
                     ZStack {
                         Circle()
-                            .fill(Color.escherPrism.opacity(0.12))
+                            .fill(foreground.opacity(0.1))
                             .frame(width: 36, height: 36)
                         
                         Image(systemName: "arrow.down")
                             .font(.escherFootnote.weight(.bold))
-                            .foregroundStyle(Color.escherPrism)
+                            .foregroundStyle(foreground.opacity(0.7))
                     }
                 }
                 .buttonStyle(.plain)
@@ -1135,7 +1196,7 @@ struct DownloadableModelRow: View {
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.escherPaper.opacity(0.6))
+                    .fill(surface)
             )
         }
         .buttonStyle(.plain)
@@ -1175,9 +1236,18 @@ struct DownloadableModelRow: View {
 
 /// Row showing download progress with cancel button.
 struct DownloadProgressRow: View {
+    @Environment(\.colorScheme) private var colorScheme
     let model: ModelRegistryEntry
     let progress: DownloadProgress
     let onCancel: () -> Void
+    
+    private var foreground: Color {
+        colorScheme == .dark ? .escherPaper : .escherInk
+    }
+    
+    private var surface: Color {
+        colorScheme == .dark ? Color(white: 0.14) : .escherPaper
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1186,7 +1256,7 @@ struct DownloadProgressRow: View {
                     // Animated download icon
                     ZStack {
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(Color.escherPrism.opacity(0.12))
+                            .fill(foreground.opacity(0.08))
                             .frame(width: 36, height: 36)
                         
                         InfiniteStairs(size: 20)
@@ -1194,7 +1264,7 @@ struct DownloadProgressRow: View {
                     
                     Text(model.name)
                         .font(.escherSubheadline)
-                        .foregroundStyle(Color.escherInk)
+                        .foregroundStyle(foreground)
                 }
                 
                 Spacer()
@@ -1206,20 +1276,14 @@ struct DownloadProgressRow: View {
                 .foregroundStyle(Color.escherError)
             }
             
-            // Tessellated progress bar
+            // Greyscale progress bar
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Color.escherMidtone.opacity(0.1))
+                        .fill(foreground.opacity(0.1))
                     
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.escherPrism, Color.escherPrism.opacity(0.7)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                        .fill(foreground.opacity(0.5))
                         .frame(width: geo.size.width * progress.progress)
                     
                     TessellationPattern(density: 30, opacity: 0.15)
@@ -1242,7 +1306,7 @@ struct DownloadProgressRow: View {
                 } else {
                     Text("\(progress.percentComplete)%")
                         .font(.escherCaption.weight(.bold))
-                        .foregroundStyle(Color.escherPrism)
+                        .foregroundStyle(foreground.opacity(0.7))
                 }
             }
         }
@@ -1250,10 +1314,10 @@ struct DownloadProgressRow: View {
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.escherPaper)
+                    .fill(surface)
                 
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(Color.escherPrism.opacity(0.3), lineWidth: 1)
+                    .strokeBorder(foreground.opacity(0.15), lineWidth: 1)
             }
         )
         .accessibilityElement(children: .ignore)
@@ -1286,6 +1350,7 @@ struct DownloadProgressRow: View {
 
 /// Detailed view for an installed model showing all metadata.
 struct ModelDetailView: View {
+    @Environment(\.colorScheme) private var colorScheme
     let model: InstalledModel
     let isActive: Bool
     let activeModelInfo: ModelInfo?
@@ -1293,6 +1358,10 @@ struct ModelDetailView: View {
     let onDelete: () -> Void
     
     @Environment(\.dismiss) private var dismiss
+    
+    private var foreground: Color {
+        colorScheme == .dark ? .escherPaper : .escherInk
+    }
     
     var body: some View {
         NavigationStack {
@@ -1325,14 +1394,14 @@ struct ModelDetailView: View {
                 ToolbarItem(placement: .principal) {
                     Text("Model Details", comment: "Navigation title for model detail view")
                         .font(.escherHeadline)
-                        .foregroundStyle(Color.escherInk)
+                        .foregroundStyle(foreground)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(String(localized: "Done")) {
                         dismiss()
                     }
                     .font(.escherCallout.weight(.semibold))
-                    .foregroundStyle(Color.escherPrism)
+                    .foregroundStyle(foreground.opacity(0.7))
                 }
             }
             .escherNavigationStyle()
@@ -1347,23 +1416,24 @@ struct ModelDetailView: View {
             ModelProviderIcon(
                 family: model.registryEntry?.family ?? .other,
                 size: 80,
-                isActive: isActive
+                isActive: isActive,
+                colorScheme: colorScheme
             )
             
             VStack(spacing: 6) {
                 Text(model.name)
                     .font(.escherTitle)
-                    .foregroundStyle(Color.escherInk)
+                    .foregroundStyle(foreground)
                     .multilineTextAlignment(.center)
                 
                 if isActive {
                     HStack(spacing: 6) {
                         Circle()
-                            .fill(Color.escherSuccess)
+                            .fill(foreground)
                             .frame(width: 8, height: 8)
                         Text("Currently Active", comment: "Badge for active model")
                             .font(.escherFootnote.weight(.semibold))
-                            .foregroundStyle(Color.escherSuccess)
+                            .foregroundStyle(foreground)
                     }
                 }
             }
@@ -1371,9 +1441,9 @@ struct ModelDetailView: View {
             // Badge Row
             if let entry = model.registryEntry {
                 HStack(spacing: 8) {
-                    ModelBadge(text: entry.parameterCount, color: .escherPrism)
-                    ModelBadge(text: entry.quantization, color: .escherWarning)
-                    ModelBadge(text: entry.family.rawValue, color: .escherSecondaryText)
+                    GreyscaleBadge(text: entry.parameterCount, colorScheme: colorScheme)
+                    GreyscaleBadge(text: entry.quantization, colorScheme: colorScheme, variant: .subtle)
+                    GreyscaleBadge(text: entry.family.rawValue, colorScheme: colorScheme, variant: .subtle)
                 }
             }
         }
@@ -1393,11 +1463,11 @@ struct ModelDetailView: View {
             
             HStack(spacing: 0) {
                 // Memory Usage
-                QuickStatCard(
+                GreyscaleQuickStatCard(
                     icon: "memorychip",
                     title: String(localized: "Memory"),
                     value: memoryValue,
-                    color: .escherPrism
+                    colorScheme: colorScheme
                 )
                 
                 Divider()
@@ -1405,11 +1475,11 @@ struct ModelDetailView: View {
                     .padding(.horizontal, 8)
                 
                 // Context Size
-                QuickStatCard(
+                GreyscaleQuickStatCard(
                     icon: "text.alignleft",
                     title: String(localized: "Context"),
                     value: contextValue,
-                    color: .escherSuccess
+                    colorScheme: colorScheme
                 )
                 
                 Divider()
@@ -1417,17 +1487,17 @@ struct ModelDetailView: View {
                     .padding(.horizontal, 8)
                 
                 // File Size
-                QuickStatCard(
+                GreyscaleQuickStatCard(
                     icon: "internaldrive",
                     title: String(localized: "Disk"),
                     value: model.formattedSize,
-                    color: .escherWarning
+                    colorScheme: colorScheme
                 )
             }
             .padding(16)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.escherPaper.opacity(0.6))
+                    .fill(foreground.opacity(0.05))
             )
         }
         .padding(18)
@@ -1465,26 +1535,26 @@ struct ModelDetailView: View {
             
             VStack(spacing: 0) {
                 if let entry = model.registryEntry {
-                    SpecRow(label: String(localized: "Parameters"), value: entry.parameterCount)
+                    GreyscaleSpecRow(label: String(localized: "Parameters"), value: entry.parameterCount, colorScheme: colorScheme)
                     SpecDivider()
-                    SpecRow(label: String(localized: "Quantization"), value: entry.quantization)
+                    GreyscaleSpecRow(label: String(localized: "Quantization"), value: entry.quantization, colorScheme: colorScheme)
                     SpecDivider()
-                    SpecRow(label: String(localized: "Model Family"), value: entry.family.rawValue)
+                    GreyscaleSpecRow(label: String(localized: "Model Family"), value: entry.family.rawValue, colorScheme: colorScheme)
                     SpecDivider()
-                    SpecRow(label: String(localized: "Context Window"), value: "\(formatNumber(entry.recommendedContextSize)) \(String(localized: "tokens"))")
+                    GreyscaleSpecRow(label: String(localized: "Context Window"), value: "\(formatNumber(entry.recommendedContextSize)) \(String(localized: "tokens"))", colorScheme: colorScheme)
                     if !entry.isCustom {
                         SpecDivider()
-                        SpecRow(label: String(localized: "Source"), value: String(localized: "Hugging Face"))
+                        GreyscaleSpecRow(label: String(localized: "Source"), value: String(localized: "Hugging Face"), colorScheme: colorScheme)
                     }
                 } else {
-                    SpecRow(label: String(localized: "Format"), value: "GGUF")
+                    GreyscaleSpecRow(label: String(localized: "Format"), value: "GGUF", colorScheme: colorScheme)
                     SpecDivider()
-                    SpecRow(label: String(localized: "Source"), value: String(localized: "Custom Import"))
+                    GreyscaleSpecRow(label: String(localized: "Source"), value: String(localized: "Custom Import"), colorScheme: colorScheme)
                 }
             }
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.escherPaper.opacity(0.6))
+                    .fill(foreground.opacity(0.05))
             )
         }
         .padding(18)
@@ -1501,17 +1571,17 @@ struct ModelDetailView: View {
                 .foregroundStyle(Color.escherSecondaryText)
             
             VStack(spacing: 0) {
-                SpecRow(label: String(localized: "File Size"), value: model.formattedSize)
+                GreyscaleSpecRow(label: String(localized: "File Size"), value: model.formattedSize, colorScheme: colorScheme)
                 SpecDivider()
-                SpecRow(label: String(localized: "Downloaded"), value: formatDate(model.downloadedAt))
+                GreyscaleSpecRow(label: String(localized: "Downloaded"), value: formatDate(model.downloadedAt), colorScheme: colorScheme)
                 SpecDivider()
-                SpecRow(label: String(localized: "Model ID"), value: model.id, isMonospace: true)
+                GreyscaleSpecRow(label: String(localized: "Model ID"), value: model.id, isMonospace: true, colorScheme: colorScheme)
                 SpecDivider()
-                SpecRow(label: String(localized: "Location"), value: model.path.lastPathComponent, isMonospace: true)
+                GreyscaleSpecRow(label: String(localized: "Location"), value: model.path.lastPathComponent, isMonospace: true, colorScheme: colorScheme)
             }
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.escherPaper.opacity(0.6))
+                    .fill(foreground.opacity(0.05))
             )
         }
         .padding(18)
@@ -1532,12 +1602,12 @@ struct ModelDetailView: View {
                         Text("Load Model", comment: "Button to load a model")
                     }
                     .font(.escherSubheadline)
-                    .foregroundStyle(Color.escherPaper)
+                    .foregroundStyle(colorScheme == .dark ? Color.escherInk : Color.escherPaper)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .background(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.escherPrism)
+                            .fill(foreground)
                     )
                 }
                 .buttonStyle(.plain)
@@ -1590,10 +1660,15 @@ struct ModelDetailView: View {
 
 /// Detailed view for a model available for download from the registry.
 struct RegistryModelDetailView: View {
+    @Environment(\.colorScheme) private var colorScheme
     let model: ModelRegistryEntry
     let onDownload: () -> Void
     
     @Environment(\.dismiss) private var dismiss
+    
+    private var foreground: Color {
+        colorScheme == .dark ? .escherPaper : .escherInk
+    }
     
     var body: some View {
         NavigationStack {
@@ -1626,14 +1701,14 @@ struct RegistryModelDetailView: View {
                 ToolbarItem(placement: .principal) {
                     Text("Model Details", comment: "Navigation title")
                         .font(.escherHeadline)
-                        .foregroundStyle(Color.escherInk)
+                        .foregroundStyle(foreground)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(String(localized: "Done")) {
                         dismiss()
                     }
                     .font(.escherCallout.weight(.semibold))
-                    .foregroundStyle(Color.escherPrism)
+                    .foregroundStyle(foreground.opacity(0.7))
                 }
             }
             .escherNavigationStyle()
@@ -1645,12 +1720,12 @@ struct RegistryModelDetailView: View {
     private var heroSection: some View {
         VStack(spacing: 16) {
             // Model Provider Icon
-            ModelProviderIcon(family: model.family, size: 80)
+            ModelProviderIcon(family: model.family, size: 80, colorScheme: colorScheme)
             
             VStack(spacing: 6) {
                 Text(model.name)
                     .font(.escherTitle)
-                    .foregroundStyle(Color.escherInk)
+                    .foregroundStyle(foreground)
                     .multilineTextAlignment(.center)
                 
                 Text("Available for Download", comment: "Badge for downloadable model")
@@ -1660,9 +1735,9 @@ struct RegistryModelDetailView: View {
             
             // Badge Row
             HStack(spacing: 8) {
-                ModelBadge(text: model.parameterCount, color: .escherPrism)
-                ModelBadge(text: model.quantization, color: .escherWarning)
-                ModelBadge(text: model.family.rawValue, color: .escherSecondaryText)
+                GreyscaleBadge(text: model.parameterCount, colorScheme: colorScheme)
+                GreyscaleBadge(text: model.quantization, colorScheme: colorScheme, variant: .subtle)
+                GreyscaleBadge(text: model.family.rawValue, colorScheme: colorScheme, variant: .subtle)
             }
         }
         .padding(20)
@@ -1681,7 +1756,7 @@ struct RegistryModelDetailView: View {
             
             Text(model.description)
                 .font(.escherCallout.weight(.regular))
-                .foregroundStyle(Color.escherInk)
+                .foregroundStyle(foreground)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(18)
@@ -1699,21 +1774,21 @@ struct RegistryModelDetailView: View {
                 .foregroundStyle(Color.escherSecondaryText)
             
             VStack(spacing: 0) {
-                SpecRow(label: String(localized: "Parameters"), value: model.parameterCount)
+                GreyscaleSpecRow(label: String(localized: "Parameters"), value: model.parameterCount, colorScheme: colorScheme)
                 SpecDivider()
-                SpecRow(label: String(localized: "Quantization"), value: model.quantization)
+                GreyscaleSpecRow(label: String(localized: "Quantization"), value: model.quantization, colorScheme: colorScheme)
                 SpecDivider()
-                SpecRow(label: String(localized: "Model Family"), value: model.family.rawValue)
+                GreyscaleSpecRow(label: String(localized: "Model Family"), value: model.family.rawValue, colorScheme: colorScheme)
                 SpecDivider()
-                SpecRow(label: String(localized: "Recommended Context"), value: "\(formatNumber(model.recommendedContextSize)) \(String(localized: "tokens"))")
+                GreyscaleSpecRow(label: String(localized: "Recommended Context"), value: "\(formatNumber(model.recommendedContextSize)) \(String(localized: "tokens"))", colorScheme: colorScheme)
                 SpecDivider()
-                SpecRow(label: String(localized: "Download Size"), value: model.formattedSize)
+                GreyscaleSpecRow(label: String(localized: "Download Size"), value: model.formattedSize, colorScheme: colorScheme)
                 SpecDivider()
-                SpecRow(label: String(localized: "Source"), value: String(localized: "Hugging Face"), icon: "link")
+                GreyscaleSpecRow(label: String(localized: "Source"), value: String(localized: "Hugging Face"), icon: "link", colorScheme: colorScheme)
             }
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.escherPaper.opacity(0.6))
+                    .fill(foreground.opacity(0.05))
             )
         }
         .padding(18)
@@ -1731,11 +1806,11 @@ struct RegistryModelDetailView: View {
             
             HStack(spacing: 0) {
                 // Memory Estimate
-                QuickStatCard(
+                GreyscaleQuickStatCard(
                     icon: "memorychip",
                     title: String(localized: "RAM Required"),
                     value: estimatedMemory,
-                    color: .escherPrism
+                    colorScheme: colorScheme
                 )
                 
                 Divider()
@@ -1743,17 +1818,17 @@ struct RegistryModelDetailView: View {
                     .padding(.horizontal, 8)
                 
                 // Disk Space
-                QuickStatCard(
+                GreyscaleQuickStatCard(
                     icon: "internaldrive",
                     title: String(localized: "Disk Space"),
                     value: model.formattedSize,
-                    color: .escherWarning
+                    colorScheme: colorScheme
                 )
             }
             .padding(16)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.escherPaper.opacity(0.6))
+                    .fill(foreground.opacity(0.05))
             )
             
             HStack(spacing: 8) {
@@ -1786,15 +1861,15 @@ struct RegistryModelDetailView: View {
                     Image(systemName: "arrow.down.circle.fill")
                     Text("Download Model", comment: "Button to download a model")
                     Text("(\(model.formattedSize))")
-                        .foregroundStyle(Color.escherPaper.opacity(0.7))
+                        .foregroundStyle(colorScheme == .dark ? Color.escherInk.opacity(0.7) : Color.escherPaper.opacity(0.7))
                 }
                 .font(.escherSubheadline)
-                .foregroundStyle(Color.escherPaper)
+                .foregroundStyle(colorScheme == .dark ? Color.escherInk : Color.escherPaper)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.escherPrism)
+                        .fill(foreground)
                 )
             }
             .buttonStyle(.plain)
@@ -1812,7 +1887,446 @@ struct RegistryModelDetailView: View {
     }
 }
 
-// MARK: - Supporting Detail View Components
+// MARK: - Greyscale Supporting Detail View Components
+
+struct GreyscaleQuickStatCard: View {
+    let icon: String
+    let title: String
+    let value: String
+    let colorScheme: ColorScheme
+    
+    private var foreground: Color {
+        colorScheme == .dark ? .escherPaper : .escherInk
+    }
+    
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.escherHeadline)
+                .foregroundStyle(foreground.opacity(0.6))
+            
+            Text(value)
+                .font(.escherSubheadline)
+                .foregroundStyle(foreground)
+            
+            Text(title)
+                .font(.escherCaption2)
+                .foregroundStyle(Color.escherSecondaryText)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+struct GreyscaleSpecRow: View {
+    let label: String
+    let value: String
+    var isMonospace: Bool = false
+    var icon: String? = nil
+    let colorScheme: ColorScheme
+    
+    private var foreground: Color {
+        colorScheme == .dark ? .escherPaper : .escherInk
+    }
+    
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.escherFootnote)
+                .foregroundStyle(Color.escherSecondaryText)
+            
+            Spacer()
+            
+            HStack(spacing: 4) {
+                if let icon = icon {
+                    Image(systemName: icon)
+                        .font(.escherCaption)
+                        .foregroundStyle(foreground.opacity(0.6))
+                }
+                
+                Text(value)
+                    .font(isMonospace ? .escherMonoSmall : .escherFootnote.weight(.semibold))
+                    .foregroundStyle(foreground)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+    }
+}
+
+struct SpecDivider: View {
+    var body: some View {
+        Divider()
+            .padding(.leading, 14)
+    }
+}
+
+// MARK: - Custom Model Input Sheet
+
+/// Sheet for entering a custom Hugging Face model URL.
+struct CustomModelInputSheet: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dismiss) private var dismiss
+    
+    @Binding var url: String
+    @Binding var contextSize: String
+    let onSubmit: (String, Int) -> Void
+    
+    @State private var isValidURL = false
+    @State private var parsedModelInfo: ModelRegistryEntry?
+    
+    private var foreground: Color {
+        colorScheme == .dark ? .escherPaper : .escherInk
+    }
+    
+    private var surface: Color {
+        colorScheme == .dark ? Color(white: 0.14) : .escherPaper
+    }
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                EscherBackground()
+                
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        // Header
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Add Custom Model", comment: "Title for custom model sheet")
+                                .font(.escherDisplay)
+                                .foregroundStyle(foreground)
+                            
+                            Text("Enter a Hugging Face URL to download any GGUF model.", comment: "Instruction")
+                                .font(.escherFootnote)
+                                .foregroundStyle(Color.escherSecondaryText)
+                        }
+                        
+                        // URL Input
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("HUGGING FACE URL", comment: "Label for URL input field")
+                                .font(.escherCaption2)
+                                .tracking(1)
+                                .foregroundStyle(Color.escherSecondaryText)
+                            
+                            TextField("https://huggingface.co/...", text: $url)
+                                .textFieldStyle(.plain)
+                                .font(.escherMono)
+                                .foregroundStyle(foreground)
+                                .padding(14)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(surface)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .strokeBorder(
+                                            isValidURL ? foreground.opacity(0.3) : foreground.opacity(0.1),
+                                            lineWidth: 1
+                                        )
+                                )
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.never)
+                                .keyboardType(.URL)
+                                .onChange(of: url) { _, newValue in
+                                    validateURL(newValue)
+                                }
+                            
+                            // Example URLs
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Example:", comment: "Label for example URL")
+                                    .font(.escherCaption2.weight(.semibold))
+                                    .foregroundStyle(Color.escherSecondaryText)
+                                
+                                Text("https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf")
+                                    .font(.escherMonoMini)
+                                    .foregroundStyle(Color.escherSecondaryText.opacity(0.85))
+                                    .lineLimit(2)
+                            }
+                        }
+                        
+                        // Context Size
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("CONTEXT SIZE (TOKENS)", comment: "Label for context size selector")
+                                .font(.escherCaption2)
+                                .tracking(1)
+                                .foregroundStyle(Color.escherSecondaryText)
+                            
+                            HStack(spacing: 10) {
+                                ForEach(["2048", "4096", "8192"], id: \.self) { size in
+                                    Button {
+                                        contextSize = size
+                                    } label: {
+                                        Text(size)
+                                            .font(.escherFootnote.weight(.semibold))
+                                            .foregroundStyle(contextSize == size ? (colorScheme == .dark ? Color.escherInk : Color.escherPaper) : foreground)
+                                            .padding(.horizontal, 16)
+                                            .padding(.vertical, 10)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                    .fill(contextSize == size ? foreground : surface)
+                                            )
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                    .strokeBorder(foreground.opacity(0.1), lineWidth: contextSize == size ? 0 : 1)
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                
+                                Spacer()
+                            }
+                            
+                            Text("Larger context uses more memory. Start with 4096 if unsure.", comment: "Help text")
+                                .font(.escherCaption2)
+                                .foregroundStyle(Color.escherSecondaryText)
+                        }
+                        
+                        // Parsed model info preview
+                        if let info = parsedModelInfo {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("DETECTED MODEL", comment: "Section header for detected model info")
+                                    .font(.escherCaption2)
+                                    .tracking(1)
+                                    .foregroundStyle(Color.escherSecondaryText)
+                                
+                                HStack(spacing: 12) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                            .fill(foreground.opacity(0.1))
+                                            .frame(width: 44, height: 44)
+                                        
+                                        Image(systemName: "checkmark.circle")
+                                            .font(.escherTitle)
+                                            .foregroundStyle(foreground.opacity(0.7))
+                                    }
+                                    
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(info.name)
+                                            .font(.escherSubheadline)
+                                            .foregroundStyle(foreground)
+                                        
+                                        HStack(spacing: 6) {
+                                            GreyscaleBadge(text: info.parameterCount, colorScheme: colorScheme)
+                                            GreyscaleBadge(text: info.quantization, colorScheme: colorScheme, variant: .subtle)
+                                        }
+                                    }
+                                    
+                                    Spacer()
+                                }
+                                .padding(12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(surface)
+                                )
+                            }
+                        }
+                        
+                        Spacer(minLength: 40)
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "Cancel")) {
+                        dismiss()
+                    }
+                    .foregroundStyle(Color.escherSecondaryText)
+                }
+                
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(String(localized: "Download")) {
+                        let ctx = Int(contextSize) ?? 4096
+                        onSubmit(url, ctx)
+                        dismiss()
+                    }
+                    .font(.escherSubheadline)
+                    .foregroundStyle(isValidURL ? foreground : Color.escherSecondaryText)
+                    .disabled(!isValidURL)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+    
+    private func validateURL(_ urlString: String) {
+        parsedModelInfo = ModelRegistryEntry.fromHuggingFaceURL(urlString)
+        isValidURL = parsedModelInfo != nil
+    }
+}
+
+// MARK: - Compact Model Status View
+
+/// A compact view showing current model status, suitable for toolbar or status bar.
+struct ModelStatusView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @ObservedObject var modelManager: ModelBackendManager
+    
+    private var foreground: Color {
+        colorScheme == .dark ? .escherPaper : .escherInk
+    }
+    
+    private var surface: Color {
+        colorScheme == .dark ? Color(white: 0.18) : .escherPaper
+    }
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            statusIndicator
+            
+            VStack(alignment: .leading, spacing: 1) {
+                if let info = modelManager.modelInfo {
+                    Text(info.name)
+                        .font(.escherCaption.weight(.semibold))
+                        .foregroundStyle(foreground)
+                        .lineLimit(1)
+                } else {
+                    Text("No model", comment: "Status when no model is loaded")
+                        .font(.escherCaption)
+                        .foregroundStyle(Color.escherSecondaryText)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(surface)
+        )
+        .overlay(
+            Capsule()
+                .strokeBorder(foreground.opacity(0.1), lineWidth: 0.5)
+        )
+        .shadow(color: .escherInk.opacity(0.12), radius: 8, x: 0, y: 4)
+    }
+    
+    @ViewBuilder
+    private var statusIndicator: some View {
+        switch modelManager.state {
+        case .ready:
+            ZStack {
+                Circle()
+                    .fill(foreground.opacity(0.15))
+                    .frame(width: 18, height: 18)
+                
+                PenroseTriangle()
+                    .stroke(foreground, lineWidth: 1)
+                    .frame(width: 8, height: 8)
+            }
+        case .generating:
+            ProgressView()
+                .scaleEffect(0.6)
+        case .loading:
+            ProgressView()
+                .scaleEffect(0.6)
+        case .error:
+            Circle()
+                .fill(Color.escherError)
+                .frame(width: 8, height: 8)
+        case .unloaded:
+            Circle()
+                .fill(foreground.opacity(0.3))
+                .frame(width: 8, height: 8)
+        }
+    }
+}
+
+// MARK: - Model Status Compact View (for toolbar)
+
+struct ModelStatusCompactView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @ObservedObject var modelManager: ModelBackendManager
+    
+    private var foreground: Color {
+        colorScheme == .dark ? .escherPaper : .escherInk
+    }
+    
+    private var surface: Color {
+        colorScheme == .dark ? Color(white: 0.18) : .escherPaper
+    }
+    
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(surface)
+                .frame(width: 32, height: 32)
+                .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 4, x: 0, y: 2)
+            
+            statusIndicator
+        }
+    }
+    
+    @ViewBuilder
+    private var statusIndicator: some View {
+        switch modelManager.state {
+        case .ready:
+            ZStack {
+                PenroseTriangle()
+                    .stroke(foreground, lineWidth: 1.5)
+                    .frame(width: 12, height: 12)
+            }
+        case .generating:
+            ProgressView()
+                .scaleEffect(0.5)
+        case .loading:
+            ProgressView()
+                .scaleEffect(0.5)
+        case .error:
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.escherCaption.weight(.semibold))
+                .foregroundStyle(Color.escherError)
+        case .unloaded:
+            Image(systemName: "cpu")
+                .font(.escherCaption)
+                .foregroundStyle(Color.escherSecondaryText)
+        }
+    }
+}
+
+// MARK: - Legacy Support (ModelBadge, StatItem, QuickStatCard, SpecRow for backwards compatibility)
+
+struct ModelBadge: View {
+    let text: String
+    let color: Color
+    
+    var body: some View {
+        Text(text)
+            .font(.escherMini.weight(.bold))
+            .foregroundStyle(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                Capsule()
+                    .fill(color.opacity(0.12))
+            )
+    }
+}
+
+struct StatItem: View {
+    let icon: String
+    let value: String
+    let label: String
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.escherCaption)
+                .foregroundStyle(Color.escherSecondaryText)
+            
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value)
+                    .font(.escherFootnote.weight(.bold))
+                    .foregroundStyle(Color.escherInk)
+                Text(label)
+                    .font(.escherMini)
+                    .foregroundStyle(Color.escherSecondaryText)
+            }
+        }
+    }
+}
 
 struct QuickStatCard: View {
     let icon: String
@@ -1868,310 +2382,6 @@ struct SpecRow: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-    }
-}
-
-struct SpecDivider: View {
-    var body: some View {
-        Divider()
-            .padding(.leading, 14)
-    }
-}
-
-// MARK: - Custom Model Input Sheet
-
-/// Sheet for entering a custom Hugging Face model URL.
-struct CustomModelInputSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    
-    @Binding var url: String
-    @Binding var contextSize: String
-    let onSubmit: (String, Int) -> Void
-    
-    @State private var isValidURL = false
-    @State private var parsedModelInfo: ModelRegistryEntry?
-    
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                EscherBackground()
-                
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        // Header
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Add Custom Model", comment: "Title for custom model sheet")
-                                .font(.escherDisplay)
-                                .foregroundStyle(Color.escherInk)
-                            
-                            Text("Enter a Hugging Face URL to download any GGUF model.", comment: "Instruction")
-                                .font(.escherFootnote)
-                                .foregroundStyle(Color.escherSecondaryText)
-                        }
-                        
-                        // URL Input
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("HUGGING FACE URL", comment: "Label for URL input field")
-                                .font(.escherCaption2)
-                                .tracking(1)
-                                .foregroundStyle(Color.escherSecondaryText)
-                            
-                            TextField("https://huggingface.co/...", text: $url)
-                                .textFieldStyle(.plain)
-                                .font(.escherMono)
-                                .padding(14)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(Color.escherPaper)
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .strokeBorder(
-                                            isValidURL ? Color.escherSuccess.opacity(0.5) : Color.escherMidtone.opacity(0.2),
-                                            lineWidth: 1
-                                        )
-                                )
-                                .autocorrectionDisabled()
-                                .textInputAutocapitalization(.never)
-                                .keyboardType(.URL)
-                                .onChange(of: url) { _, newValue in
-                                    validateURL(newValue)
-                                }
-                            
-                            // Example URLs
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Example:", comment: "Label for example URL")
-                                    .font(.escherCaption2.weight(.semibold))
-                                    .foregroundStyle(Color.escherSecondaryText)
-                                
-                                Text("https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf")
-                                    .font(.escherMonoMini)
-                                    .foregroundStyle(Color.escherSecondaryText.opacity(0.85))
-                                    .lineLimit(2)
-                            }
-                        }
-                        
-                        // Context Size
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("CONTEXT SIZE (TOKENS)", comment: "Label for context size selector")
-                                .font(.escherCaption2)
-                                .tracking(1)
-                                .foregroundStyle(Color.escherSecondaryText)
-                            
-                            HStack(spacing: 10) {
-                                ForEach(["2048", "4096", "8192"], id: \.self) { size in
-                                    Button {
-                                        contextSize = size
-                                    } label: {
-                                        Text(size)
-                                            .font(.escherFootnote.weight(.semibold))
-                                            .foregroundStyle(contextSize == size ? Color.escherPaper : Color.escherInk)
-                                            .padding(.horizontal, 16)
-                                            .padding(.vertical, 10)
-                                            .background(
-                                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                                    .fill(contextSize == size ? Color.escherPrism : Color.escherPaper)
-                                            )
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                                    .strokeBorder(Color.escherMidtone.opacity(0.2), lineWidth: contextSize == size ? 0 : 1)
-                                            )
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                                
-                                Spacer()
-                            }
-                            
-                            Text("Larger context uses more memory. Start with 4096 if unsure.", comment: "Help text")
-                                .font(.escherCaption2)
-                                .foregroundStyle(Color.escherSecondaryText)
-                        }
-                        
-                        // Parsed model info preview
-                        if let info = parsedModelInfo {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("DETECTED MODEL", comment: "Section header for detected model info")
-                                    .font(.escherCaption2)
-                                    .tracking(1)
-                                    .foregroundStyle(Color.escherSecondaryText)
-                                
-                                HStack(spacing: 12) {
-                                    ZStack {
-                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                            .fill(Color.escherSuccess.opacity(0.12))
-                                            .frame(width: 44, height: 44)
-                                        
-                                        Image(systemName: "checkmark.circle")
-                                            .font(.escherTitle)
-                                            .foregroundStyle(Color.escherSuccess)
-                                    }
-                                    
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(info.name)
-                                            .font(.escherSubheadline)
-                                            .foregroundStyle(Color.escherInk)
-                                        
-                                        HStack(spacing: 6) {
-                                            ModelBadge(text: info.parameterCount, color: .escherPrism)
-                                            ModelBadge(text: info.quantization, color: .escherSecondaryText)
-                                        }
-                                    }
-                                    
-                                    Spacer()
-                                }
-                                .padding(12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(Color.escherPaper)
-                                )
-                            }
-                        }
-                        
-                        Spacer(minLength: 40)
-                    }
-                    .padding(20)
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
-                        dismiss()
-                    }
-                    .foregroundStyle(Color.escherSecondaryText)
-                }
-                
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "Download")) {
-                        let ctx = Int(contextSize) ?? 4096
-                        onSubmit(url, ctx)
-                        dismiss()
-                    }
-                    .font(.escherSubheadline)
-                    .foregroundStyle(isValidURL ? Color.escherPrism : Color.escherSecondaryText)
-                    .disabled(!isValidURL)
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-    }
-    
-    private func validateURL(_ urlString: String) {
-        parsedModelInfo = ModelRegistryEntry.fromHuggingFaceURL(urlString)
-        isValidURL = parsedModelInfo != nil
-    }
-}
-
-// MARK: - Compact Model Status View
-
-/// A compact view showing current model status, suitable for toolbar or status bar.
-struct ModelStatusView: View {
-    @ObservedObject var modelManager: ModelBackendManager
-    
-    var body: some View {
-        HStack(spacing: 8) {
-            statusIndicator
-            
-            VStack(alignment: .leading, spacing: 1) {
-                if let info = modelManager.modelInfo {
-                    Text(info.name)
-                        .font(.escherCaption.weight(.semibold))
-                        .foregroundStyle(Color.escherInk)
-                        .lineLimit(1)
-                } else {
-                    Text("No model", comment: "Status when no model is loaded")
-                        .font(.escherCaption)
-                        .foregroundStyle(Color.escherSecondaryText)
-                }
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(
-            Capsule()
-                .fill(Color.escherPaper)
-        )
-        .overlay(
-            Capsule()
-                .strokeBorder(Color.escherMidtone.opacity(0.15), lineWidth: 0.5)
-        )
-        .shadow(color: .escherInk.opacity(0.12), radius: 8, x: 0, y: 4)
-    }
-    
-    @ViewBuilder
-    private var statusIndicator: some View {
-        switch modelManager.state {
-        case .ready:
-            ZStack {
-                Circle()
-                    .fill(Color.escherSuccess.opacity(0.2))
-                    .frame(width: 18, height: 18)
-                
-                PenroseTriangle()
-                    .stroke(Color.escherSuccess, lineWidth: 1)
-                    .frame(width: 8, height: 8)
-            }
-        case .generating:
-            ProgressView()
-                .scaleEffect(0.6)
-        case .loading:
-            ProgressView()
-                .scaleEffect(0.6)
-        case .error:
-            Circle()
-                .fill(Color.escherError)
-                .frame(width: 8, height: 8)
-        case .unloaded:
-            Circle()
-                .fill(Color.escherMidtone.opacity(0.4))
-                .frame(width: 8, height: 8)
-        }
-    }
-}
-
-// MARK: - Model Status Compact View (for toolbar)
-
-struct ModelStatusCompactView: View {
-    @Environment(\.colorScheme) private var colorScheme
-    @ObservedObject var modelManager: ModelBackendManager
-    
-    var body: some View {
-        ZStack {
-            Circle()
-                .fill(colorScheme == .dark ? Color(white: 0.18) : Color.escherPaper)
-                .frame(width: 32, height: 32)
-                .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 4, x: 0, y: 2)
-            
-            statusIndicator
-        }
-    }
-    
-    @ViewBuilder
-    private var statusIndicator: some View {
-        switch modelManager.state {
-        case .ready:
-            ZStack {
-                PenroseTriangle()
-                    .stroke(Color.escherSuccess, lineWidth: 1.5)
-                    .frame(width: 12, height: 12)
-            }
-        case .generating:
-            ProgressView()
-                .scaleEffect(0.5)
-        case .loading:
-            ProgressView()
-                .scaleEffect(0.5)
-        case .error:
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.escherCaption.weight(.semibold))
-                .foregroundStyle(Color.escherError)
-        case .unloaded:
-            Image(systemName: "cpu")
-                .font(.escherCaption)
-                .foregroundStyle(Color.escherSecondaryText)
-        }
     }
 }
 
