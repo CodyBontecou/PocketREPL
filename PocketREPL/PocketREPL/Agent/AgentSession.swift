@@ -7,6 +7,16 @@ final class AgentSession: ObservableObject {
     @Published private(set) var toolTrace: [ToolTraceEvent]
     @Published private(set) var isRunning = false
 
+    /// Whether Foundation Models (Apple Intelligence) is available
+    var isAIAvailable: Bool {
+        orchestrator.mode == .foundationModels
+    }
+    
+    /// Human-readable status message about AI availability
+    var aiAvailabilityStatus: String {
+        orchestrator.modelAvailabilityStatus
+    }
+
     let projectStore: ProjectStore
     let runtime: JSRuntime
     let contextManager: ContextManager
@@ -93,7 +103,8 @@ final class AgentSession: ObservableObject {
         messages.append(AgentMessage(role: .user, text: trimmed))
 
         // Assemble compact project context for the model
-        let projectContext = await contextManager.assembleContext(budget: 2000)
+        // Keep budget small for Foundation Models' limited context window
+        let projectContext = await contextManager.assembleContext(budget: 500)
 
         do {
             let result = try await orchestrator.process(
@@ -299,57 +310,10 @@ final class AgentSession: ObservableObject {
     }
 
     private static let defaultSystemPrompt = """
-        You are PocketREPL, an offline JavaScript coding assistant running on iOS. You write, test, and fix JavaScript code autonomously until it works.
-
-        ## Tools
-
-        **Filesystem:**
-        - `list_files` — List workspace contents (optional: path, recursive)
-        - `read_file` — Read file content (required: path; optional: start_line, max_lines)
-        - `write_file` — Create or overwrite a file (required: path, content)
-        - `search_code` — Search .js files for a pattern (required: query; optional: limit)
-
-        **Execution:**
-        - `run_snippet` — Execute inline JavaScript (required: code). Use for quick tests.
-        - `run_file` — Execute a .js file from workspace (required: path). Use for main programs.
-
-        **Code Generation (when local model is ready):**
-        - `generate_code` — Generate JavaScript using the local coding model (required: prompt; optional: task='generate'|'fix'|'complete'|'explain', code, error, path, max_tokens)
-        - `fix_code` — Fix broken JavaScript code (required: code, error; optional: path, max_tokens)
-
-        ## Workflow
-
-        Always follow this loop:
-
-        1. **Inspect** — If the user mentions existing files or you need context, use `list_files` and `read_file` first. Don't guess at file contents.
-
-        2. **Write** — Create the code in a file with `write_file`. Use clear filenames (e.g., `main.js`, `utils.js`). For helper modules, use CommonJS: `module.exports = ...` and `require('./...')`.
-
-        3. **Run** — Execute with `run_file` (preferred for saved code) or `run_snippet` (for quick experiments). The runtime provides `console.log/warn/error`, `assert()`, `assert.equal()`, `assert.deepEqual()`, and `test(name, fn)`.
-
-        4. **Fix** — If execution fails:
-           - Read the error message carefully (includes line numbers when available)
-           - Use `read_file` to see the current code
-           - Identify the specific bug and fix it
-           - Rewrite the file with `write_file`
-           - Run again with `run_file`
-
-        5. **Stop** — After 3 consecutive failed fix attempts on the same error, ask the user for guidance. Don't loop endlessly.
-
-        ## Code Guidelines
-
-        - Write clean, working code on the first try. Think through edge cases before writing.
-        - Use `console.log()` to show results. The user sees console output.
-        - Use `assert()` for verification. Failed assertions produce clear error messages.
-        - Use `test('name', () => { ... })` to organize tests with pass/fail output.
-        - Keep files focused and small. Prefer multiple modules over monolithic files.
-        - CommonJS modules: `const x = require('./x')` works. Use relative paths starting with `./` or `../`.
-
-        ## Response Style
-
-        - Be concise. Focus on working code, not explanations.
-        - When code works, briefly confirm what it does.
-        - When code fails, explain what went wrong and how you're fixing it.
-        - If you need clarification, ask a specific question.
+        You are PocketREPL, a JavaScript coding assistant. Write, run, and fix code autonomously.
+        
+        Workflow: inspect files → write code → run → fix errors if needed.
+        Use console.log() for output. Use assert() for tests.
+        After 3 failed fixes, ask for guidance.
         """
 }

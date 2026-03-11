@@ -329,10 +329,10 @@ actor ProjectStore {
 
         switch storageLocation.kind {
         case .applicationSupport:
-            let base = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-                ?? fileManager.temporaryDirectory.appendingPathComponent("ApplicationSupport", isDirectory: true)
+            // Use Documents directory for file sharing visibility in Files app
+            let base = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first
+                ?? fileManager.temporaryDirectory.appendingPathComponent("Documents", isDirectory: true)
             return base
-                .appendingPathComponent(appDirectoryName, isDirectory: true)
                 .appendingPathComponent(workspacesDirectoryName, isDirectory: true)
 
         case .ubiquitousContainer:

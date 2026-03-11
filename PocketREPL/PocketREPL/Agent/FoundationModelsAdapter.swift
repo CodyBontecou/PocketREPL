@@ -25,6 +25,11 @@ final class AgentOrchestrator: ObservableObject {
     private let maxToolIterations: Int
     private let maxConsecutiveFailures: Int
 
+    #if canImport(FoundationModels)
+    @available(iOS 26.0, macOS 26.0, *)
+    private var session: LanguageModelSession?
+    #endif
+
     init(
         toolExecutor: ToolExecutor,
         systemInstructions: String,
@@ -42,19 +47,50 @@ final class AgentOrchestrator: ObservableObject {
     private static func detectMode() -> Mode {
         #if canImport(FoundationModels)
         if #available(iOS 26.0, macOS 26.0, *) {
-            return .foundationModels
+            // Check if model assets are actually available
+            let availability = SystemLanguageModel.default.availability
+            switch availability {
+            case .available:
+                return .foundationModels
+            case .unavailable:
+                print("[AgentOrchestrator] Foundation Models unavailable on this device")
+                return .fallback
+            @unknown default:
+                return .fallback
+            }
         }
         #endif
         return .fallback
     }
+    
+    /// Check current model availability status
+    var modelAvailabilityStatus: String {
+        #if canImport(FoundationModels)
+        if #available(iOS 26.0, macOS 26.0, *) {
+            let availability = SystemLanguageModel.default.availability
+            switch availability {
+            case .available:
+                return "Model is ready"
+            case .unavailable(let reason):
+                switch reason {
+                case .deviceNotEligible:
+                    return "This device doesn't support Apple Intelligence"
+                case .appleIntelligenceNotEnabled:
+                    return "Apple Intelligence is not enabled. Go to Settings > Apple Intelligence & Siri to enable it."
+                case .modelNotReady:
+                    return "Model is downloading. Please wait for Apple Intelligence to finish setup."
+                @unknown default:
+                    return "Model unavailable: \(reason)"
+                }
+            @unknown default:
+                return "Unknown availability status"
+            }
+        }
+        #endif
+        return "Foundation Models not supported on this OS version"
+    }
 
     /// Process a user prompt, executing tools as needed.
-    /// - Parameters:
-    ///   - prompt: The user's message
-    ///   - projectContext: Optional assembled context from ContextManager
-    ///   - onAssistantMessage: Called when the assistant produces a message
-    ///   - onToolCall: Called when a tool is about to be executed
-    ///   - onToolResult: Called when a tool execution completes
     func process(
         prompt: String,
         projectContext: String? = nil,
@@ -99,17 +135,293 @@ final class AgentOrchestrator: ObservableObject {
         onToolCall: @escaping (String, [String: Any]) async -> Void,
         onToolResult: @escaping (String, ToolResult) async -> Void
     ) async throws -> OrchestrationResult {
-        // Foundation Models integration
-        // TODO: Implement when Foundation Models API is finalized
-        // The projectContext would be injected into the conversation context here
-        // For now, fall back to the basic mode
-        return await processWithFallback(
-            prompt: prompt,
-            projectContext: projectContext,
-            onAssistantMessage: onAssistantMessage,
-            onToolCall: onToolCall,
-            onToolResult: onToolResult
+        // Check model availability first
+        let availability = SystemLanguageModel.default.availability
+        if case .unavailable(let reason) = availability {
+            let msg: String
+            switch reason {
+            case .deviceNotEligible:
+                msg = "⚠️ This device doesn't support Apple Intelligence. Using fallback mode."
+            case .appleIntelligenceNotEnabled:
+                msg = "⚠️ Apple Intelligence is not enabled.\n\nGo to Settings > Apple Intelligence & Siri to enable it."
+            case .modelNotReady:
+                msg = "⚠️ Apple Intelligence model is still downloading.\n\nPlease wait for it to finish in Settings > Apple Intelligence & Siri."
+            @unknown default:
+                msg = "⚠️ AI model unavailable: \(reason)"
+            }
+            await onAssistantMessage(msg)
+            mode = .fallback
+            return await processWithFallback(
+                prompt: prompt,
+                projectContext: projectContext,
+                onAssistantMessage: onAssistantMessage,
+                onToolCall: onToolCall,
+                onToolResult: onToolResult
+            )
+        }
+        
+        // Create session if needed
+        if session == nil {
+            session = LanguageModelSession(instructions: Instructions(systemInstructions))
+        }
+
+        guard let session = session else {
+            throw OrchestrationError.sessionNotInitialized
+        }
+
+        // Build the full prompt with context
+        var currentPrompt = prompt
+        if let context = projectContext, !context.isEmpty {
+            currentPrompt = """
+                Context:
+                \(context)
+
+                User request:
+                \(prompt)
+                """
+        }
+
+        var toolCalls: [(name: String, parameters: [String: Any], result: String)] = []
+        var iterations = 0
+        var stoppedDueToRetryLimit = false
+        var finalResponse = ""
+
+        // Agentic loop - keep processing until model returns text or we hit limits
+        while iterations < maxToolIterations {
+            iterations += 1
+
+            let response: LanguageModelSession.Response<AgentAction>
+            do {
+                response = try await session.respond(to: currentPrompt, generating: AgentAction.self)
+            } catch let error as LanguageModelSession.GenerationError {
+                let msg: String
+                switch error {
+                case .guardrailViolation(_):
+                    msg = "I can't help with that request."
+                    
+                case .exceededContextWindowSize:
+                    // Auto-reset the session and retry with a fresh context
+                    self.session = nil
+                    msg = "⚠️ Context limit reached. Starting fresh session. Please try again."
+                    
+                case .assetsUnavailable(_):
+                    msg = """
+                        ⚠️ Apple Intelligence model is not available.
+                        
+                        To use AI features:
+                        1. Go to Settings > Apple Intelligence & Siri
+                        2. Enable Apple Intelligence
+                        3. Wait for the model to finish downloading (~4GB)
+                        """
+                    mode = .fallback
+                    
+                case .unsupportedLanguageOrLocale(_):
+                    msg = "⚠️ Your device language/locale is not supported by Apple Intelligence."
+                    mode = .fallback
+                    
+                case .rateLimited(_):
+                    msg = "⚠️ Too many requests. Please wait a moment and try again."
+                    
+                case .concurrentRequests(_):
+                    msg = "⚠️ Another request is in progress. Please wait for it to complete."
+                    
+                case .refusal(_, _):
+                    msg = "I can't help with that request."
+                    
+                case .decodingFailure(_):
+                    msg = "⚠️ Failed to process the response. Please try again."
+                    
+                case .unsupportedGuide(_):
+                    msg = "⚠️ Unsupported model configuration."
+                    
+                @unknown default:
+                    throw error
+                }
+                
+                await onAssistantMessage(msg)
+                return OrchestrationResult(
+                    response: msg,
+                    toolCalls: toolCalls,
+                    iterations: iterations,
+                    stoppedDueToRetryLimit: false
+                )
+            }
+
+            // Process the action
+            switch response.content {
+            case .respond(let textResponse):
+                // Model is done - return text response
+                finalResponse = textResponse.message
+                await onAssistantMessage(finalResponse)
+                return OrchestrationResult(
+                    response: finalResponse,
+                    toolCalls: toolCalls,
+                    iterations: iterations,
+                    stoppedDueToRetryLimit: false
+                )
+
+            case .listFiles(let tool):
+                let (name, params, result) = await executeListFiles(tool, onToolCall: onToolCall, onToolResult: onToolResult)
+                toolCalls.append((name, params, result))
+                currentPrompt = "Tool result:\n\(result)\n\nContinue with the next step or respond to the user."
+
+            case .readFile(let tool):
+                let (name, params, result) = await executeReadFile(tool, onToolCall: onToolCall, onToolResult: onToolResult)
+                toolCalls.append((name, params, result))
+                currentPrompt = "Tool result:\n\(result)\n\nContinue with the next step or respond to the user."
+
+            case .writeFile(let tool):
+                let (name, params, result) = await executeWriteFile(tool, onToolCall: onToolCall, onToolResult: onToolResult)
+                toolCalls.append((name, params, result))
+                currentPrompt = "Tool result:\n\(result)\n\nContinue with the next step or respond to the user."
+
+            case .searchCode(let tool):
+                let (name, params, result) = await executeSearchCode(tool, onToolCall: onToolCall, onToolResult: onToolResult)
+                toolCalls.append((name, params, result))
+                currentPrompt = "Tool result:\n\(result)\n\nContinue with the next step or respond to the user."
+
+            case .runSnippet(let tool):
+                let (name, params, result) = await executeRunSnippet(tool, onToolCall: onToolCall, onToolResult: onToolResult)
+                toolCalls.append((name, params, result))
+
+                // Check retry limits for execution tools
+                let isError = result.contains("[RUNTIME ERROR]") || result.contains("[SYNTAX ERROR]") || result.contains("[ASSERTION FAILED]")
+                let toolResult = isError ? ToolResult.failure(result) : ToolResult.success(result)
+                stoppedDueToRetryLimit = recordToolResult(toolResult, toolName: "run_snippet")
+                
+                if stoppedDueToRetryLimit {
+                    let msg = "⚠️ Retry limit reached after \(retryState.consecutiveFailures) consecutive failures on the same error. Please review and provide guidance."
+                    await onAssistantMessage(msg)
+                    return OrchestrationResult(
+                        response: msg,
+                        toolCalls: toolCalls,
+                        iterations: iterations,
+                        stoppedDueToRetryLimit: true
+                    )
+                }
+                currentPrompt = "Tool result:\n\(result)\n\nContinue with the next step or respond to the user."
+
+            case .runFile(let tool):
+                let (name, params, result) = await executeRunFile(tool, onToolCall: onToolCall, onToolResult: onToolResult)
+                toolCalls.append((name, params, result))
+
+                // Check retry limits for execution tools
+                let isError = result.contains("[RUNTIME ERROR]") || result.contains("[SYNTAX ERROR]") || result.contains("[ASSERTION FAILED]")
+                let toolResult = isError ? ToolResult.failure(result) : ToolResult.success(result)
+                stoppedDueToRetryLimit = recordToolResult(toolResult, toolName: "run_file")
+                
+                if stoppedDueToRetryLimit {
+                    let msg = "⚠️ Retry limit reached after \(retryState.consecutiveFailures) consecutive failures on the same error. Please review and provide guidance."
+                    await onAssistantMessage(msg)
+                    return OrchestrationResult(
+                        response: msg,
+                        toolCalls: toolCalls,
+                        iterations: iterations,
+                        stoppedDueToRetryLimit: true
+                    )
+                }
+                currentPrompt = "Tool result:\n\(result)\n\nContinue with the next step or respond to the user."
+            }
+        }
+
+        // Hit max iterations
+        let msg = "Reached maximum tool iterations (\(maxToolIterations)). Stopping."
+        await onAssistantMessage(msg)
+        return OrchestrationResult(
+            response: msg,
+            toolCalls: toolCalls,
+            iterations: iterations,
+            stoppedDueToRetryLimit: false
         )
+    }
+
+    // MARK: - Tool Execution Helpers
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private func executeListFiles(
+        _ tool: ListFilesAction,
+        onToolCall: @escaping (String, [String: Any]) async -> Void,
+        onToolResult: @escaping (String, ToolResult) async -> Void
+    ) async -> (name: String, parameters: [String: Any], result: String) {
+        let params: [String: Any] = [
+            "path": tool.path ?? "",
+            "recursive": tool.recursive
+        ]
+        await onToolCall("list_files", params)
+        let result = await toolExecutor.execute(toolName: "list_files", parameters: params)
+        await onToolResult("list_files", result)
+        return ("list_files", params, result.output)
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private func executeReadFile(
+        _ tool: ReadFileAction,
+        onToolCall: @escaping (String, [String: Any]) async -> Void,
+        onToolResult: @escaping (String, ToolResult) async -> Void
+    ) async -> (name: String, parameters: [String: Any], result: String) {
+        var params: [String: Any] = ["path": tool.path]
+        if let startLine = tool.startLine { params["start_line"] = startLine }
+        if let maxLines = tool.maxLines { params["max_lines"] = maxLines }
+        await onToolCall("read_file", params)
+        let result = await toolExecutor.execute(toolName: "read_file", parameters: params)
+        await onToolResult("read_file", result)
+        return ("read_file", params, result.output)
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private func executeWriteFile(
+        _ tool: WriteFileAction,
+        onToolCall: @escaping (String, [String: Any]) async -> Void,
+        onToolResult: @escaping (String, ToolResult) async -> Void
+    ) async -> (name: String, parameters: [String: Any], result: String) {
+        let params: [String: Any] = [
+            "path": tool.path,
+            "content": tool.content
+        ]
+        await onToolCall("write_file", params)
+        let result = await toolExecutor.execute(toolName: "write_file", parameters: params)
+        await onToolResult("write_file", result)
+        return ("write_file", params, result.output)
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private func executeSearchCode(
+        _ tool: SearchCodeAction,
+        onToolCall: @escaping (String, [String: Any]) async -> Void,
+        onToolResult: @escaping (String, ToolResult) async -> Void
+    ) async -> (name: String, parameters: [String: Any], result: String) {
+        var params: [String: Any] = ["query": tool.query]
+        if let limit = tool.limit { params["limit"] = limit }
+        await onToolCall("search_code", params)
+        let result = await toolExecutor.execute(toolName: "search_code", parameters: params)
+        await onToolResult("search_code", result)
+        return ("search_code", params, result.output)
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private func executeRunSnippet(
+        _ tool: RunSnippetAction,
+        onToolCall: @escaping (String, [String: Any]) async -> Void,
+        onToolResult: @escaping (String, ToolResult) async -> Void
+    ) async -> (name: String, parameters: [String: Any], result: String) {
+        let params: [String: Any] = ["code": tool.code]
+        await onToolCall("run_snippet", params)
+        let result = await toolExecutor.execute(toolName: "run_snippet", parameters: params)
+        await onToolResult("run_snippet", result)
+        return ("run_snippet", params, result.output)
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private func executeRunFile(
+        _ tool: RunFileAction,
+        onToolCall: @escaping (String, [String: Any]) async -> Void,
+        onToolResult: @escaping (String, ToolResult) async -> Void
+    ) async -> (name: String, parameters: [String: Any], result: String) {
+        let params: [String: Any] = ["path": tool.path]
+        await onToolCall("run_file", params)
+        let result = await toolExecutor.execute(toolName: "run_file", parameters: params)
+        await onToolResult("run_file", result)
+        return ("run_file", params, result.output)
     }
     #endif
 
@@ -121,12 +433,9 @@ final class AgentOrchestrator: ObservableObject {
         onToolResult: @escaping (String, ToolResult) async -> Void
     ) async -> OrchestrationResult {
         // Fallback mode: Parse simple tool commands from the prompt
-        // This allows basic testing without Foundation Models
         var toolCalls: [(name: String, parameters: [String: Any], result: String)] = []
 
-        // Check if the prompt looks like a direct tool invocation
         if let (toolName, params) = parseDirectToolCall(prompt) {
-            // Check if we're at the retry limit for execution tools
             if retryState.isAtLimit && (toolName == "run_snippet" || toolName == "run_file") {
                 let response = """
                     ⚠️ Retry limit reached (\(maxConsecutiveFailures) consecutive failures on the same error).
@@ -144,7 +453,6 @@ final class AgentOrchestrator: ObservableObject {
             await onToolResult(toolName, result)
             toolCalls.append((name: toolName, parameters: params, result: result.output))
 
-            // Track execution results for retry limiting
             let shouldStop = recordToolResult(result, toolName: toolName)
             retryState.recordExecution(succeeded: result.succeeded)
 
@@ -158,7 +466,6 @@ final class AgentOrchestrator: ObservableObject {
             return OrchestrationResult(response: response, toolCalls: toolCalls, iterations: 1, stoppedDueToRetryLimit: shouldStop)
         }
 
-        // Default response in fallback mode
         let tools = await toolExecutor.availableTools
         let toolList = tools.map { "- \($0.id): \($0.summary)" }.joined(separator: "\n")
         let response = """
@@ -176,13 +483,10 @@ final class AgentOrchestrator: ObservableObject {
         return OrchestrationResult(response: response, toolCalls: [], iterations: 0, stoppedDueToRetryLimit: false)
     }
 
-    /// Parse a direct tool invocation from user input.
-    /// Format: "tool_name" or "tool_name {json_params}"
     private func parseDirectToolCall(_ input: String) -> (String, [String: Any])? {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         let availableToolNames = ["list_files", "read_file", "write_file", "search_code", "run_snippet", "run_file"]
 
-        // Check for "tool_name {json}" or just "tool_name"
         for toolName in availableToolNames {
             if trimmed == toolName {
                 return (toolName, [:])
@@ -206,32 +510,31 @@ final class AgentOrchestrator: ObservableObject {
 
     func reset() {
         retryState = RetryState()
+        #if canImport(FoundationModels)
+        if #available(iOS 26.0, macOS 26.0, *) {
+            session = nil
+        }
+        #endif
     }
 
-    /// Record a tool execution result for retry tracking.
-    /// Returns true if the agent should stop due to too many consecutive failures.
     func recordToolResult(_ result: ToolResult, toolName: String) -> Bool {
         let isExecutionTool = toolName == "run_snippet" || toolName == "run_file"
 
         if result.succeeded {
             if isExecutionTool {
-                // Successful execution resets the counter
                 retryState.consecutiveFailures = 0
                 retryState.lastFailureSignature = nil
             }
             return false
         }
 
-        // Only count execution failures for retry limiting
         guard isExecutionTool else { return false }
 
-        // Check if this is the same error as before
         let signature = errorSignature(from: result.output)
 
         if retryState.lastFailureSignature == signature {
             retryState.consecutiveFailures += 1
         } else {
-            // New error type, reset counter
             retryState.consecutiveFailures = 1
             retryState.lastFailureSignature = signature
         }
@@ -239,13 +542,10 @@ final class AgentOrchestrator: ObservableObject {
         return retryState.consecutiveFailures >= maxConsecutiveFailures
     }
 
-    /// Extract a signature from an error message for deduplication.
     private func errorSignature(from output: String) -> String {
-        // Extract the core error message, ignoring line numbers and variable values
         let lines = output.components(separatedBy: "\n")
         guard let firstLine = lines.first else { return output }
 
-        // Strip line/column references like "(line 5)" or ":5:10"
         var signature = firstLine
         signature = signature.replacingOccurrences(
             of: #"\s*\(line \d+\)"#,
@@ -262,9 +562,105 @@ final class AgentOrchestrator: ObservableObject {
     }
 }
 
+// MARK: - Foundation Models Tool Definitions
+
+#if canImport(FoundationModels)
+import FoundationModels
+
+/// The model chooses one of these actions in response to each prompt.
+/// Either respond with text, or use a tool.
+@available(iOS 26.0, macOS 26.0, *)
+@Generable
+enum AgentAction {
+    /// Respond to the user with a text message. Use when you have completed the task or need to ask a question.
+    case respond(TextResponse)
+    
+    /// List files and directories in the workspace.
+    case listFiles(ListFilesAction)
+    
+    /// Read text content from a file.
+    case readFile(ReadFileAction)
+    
+    /// Create or overwrite a file with content.
+    case writeFile(WriteFileAction)
+    
+    /// Search JavaScript files for a text pattern.
+    case searchCode(SearchCodeAction)
+    
+    /// Execute inline JavaScript code.
+    case runSnippet(RunSnippetAction)
+    
+    /// Execute a JavaScript file from the workspace.
+    case runFile(RunFileAction)
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+@Generable
+struct TextResponse {
+    @Guide(description: "Your response message to the user. Be concise and helpful.")
+    var message: String
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+@Generable
+struct ListFilesAction {
+    @Guide(description: "Optional path relative to workspace root. Leave empty for root.")
+    var path: String?
+
+    @Guide(description: "Whether to list recursively into subdirectories.")
+    var recursive: Bool = false
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+@Generable
+struct ReadFileAction {
+    @Guide(description: "Path to the file relative to workspace root.")
+    var path: String
+
+    @Guide(description: "Line number to start reading from (1-indexed).")
+    var startLine: Int?
+
+    @Guide(description: "Maximum number of lines to read.")
+    var maxLines: Int?
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+@Generable
+struct WriteFileAction {
+    @Guide(description: "Path to the file relative to workspace root.")
+    var path: String
+
+    @Guide(description: "Content to write to the file.")
+    var content: String
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+@Generable
+struct SearchCodeAction {
+    @Guide(description: "Text pattern to search for in JavaScript files.")
+    var query: String
+
+    @Guide(description: "Maximum number of results to return.")
+    var limit: Int?
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+@Generable
+struct RunSnippetAction {
+    @Guide(description: "JavaScript code to execute.")
+    var code: String
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+@Generable
+struct RunFileAction {
+    @Guide(description: "Path to the JavaScript file to execute, relative to workspace root.")
+    var path: String
+}
+#endif
+
 // MARK: - Orchestration Types
 
-/// Tracks consecutive execution failures for bounded retry logic.
 struct RetryState: Sendable, Equatable {
     var consecutiveFailures: Int = 0
     var lastFailureSignature: String?

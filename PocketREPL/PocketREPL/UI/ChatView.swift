@@ -5,15 +5,36 @@ import SwiftUI
 struct ChatView: View {
     @ObservedObject var session: AgentSession
     @State private var draft = ""
+    @State private var showingAIAlert = false
     @FocusState private var inputFocused: Bool
     @Namespace private var bottomID
 
     var body: some View {
         VStack(spacing: 0) {
+            if !session.isAIAvailable {
+                AIUnavailableBanner(status: session.aiAvailabilityStatus) {
+                    showingAIAlert = true
+                }
+            }
             messageList
             inputBar
         }
         .background(Color(.systemGroupedBackground))
+        .alert("Apple Intelligence Required", isPresented: $showingAIAlert) {
+            Button("Open Settings") {
+                openAppleIntelligenceSettings()
+            }
+            Button("Continue Without AI", role: .cancel) {}
+        } message: {
+            Text(session.aiAvailabilityStatus + "\n\nWithout Apple Intelligence, you can still use tools manually by typing commands like:\n\nlist_files\nrun_snippet {\"code\": \"console.log('hi')\"}")
+        }
+    }
+    
+    private func openAppleIntelligenceSettings() {
+        // Deep link to Apple Intelligence & Siri settings
+        if let url = URL(string: "prefs:root=APPLE_INTELLIGENCE") {
+            UIApplication.shared.open(url)
+        }
     }
 
     // MARK: - Message List
@@ -60,6 +81,14 @@ struct ChatView: View {
             Divider()
 
             HStack(alignment: .bottom, spacing: 12) {
+                // Keyboard toggle button
+                Button(action: toggleKeyboard) {
+                    Image(systemName: inputFocused ? "keyboard.chevron.compact.down" : "keyboard")
+                        .font(.system(size: 20))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 32, height: 32)
+                }
+                
                 TextField("Message", text: $draft, axis: .vertical)
                     .textFieldStyle(.plain)
                     .padding(.horizontal, 16)
@@ -84,6 +113,10 @@ struct ChatView: View {
             .padding(.vertical, 10)
             .background(.bar)
         }
+    }
+    
+    private func toggleKeyboard() {
+        inputFocused.toggle()
     }
 
     private var canSend: Bool {
@@ -204,6 +237,44 @@ struct TypingIndicator: View {
         Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { _ in
             animationOffset = (animationOffset + 1) % 3
         }
+    }
+}
+
+// MARK: - AI Unavailable Banner
+
+struct AIUnavailableBanner: View {
+    let status: String
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .font(.system(size: 20))
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Apple Intelligence Unavailable")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                    
+                    Text("Tap for details")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color(.secondarySystemGroupedBackground))
+        }
+        .buttonStyle(.plain)
     }
 }
 

@@ -346,6 +346,28 @@ protocol ModelBackend: Actor {
     nonisolated func estimateTokens(for text: String) -> Int
 }
 
+// MARK: - Model Persistence
+
+/// Handles saving and restoring the last loaded model.
+enum ModelPersistence {
+    private static let lastModelIdKey = "LastLoadedModelId"
+    
+    /// Save the ID of the last loaded model.
+    static func saveLastModelId(_ modelId: String) {
+        UserDefaults.standard.set(modelId, forKey: lastModelIdKey)
+    }
+    
+    /// Get the ID of the last loaded model, if any.
+    static func lastModelId() -> String? {
+        UserDefaults.standard.string(forKey: lastModelIdKey)
+    }
+    
+    /// Clear the saved model ID.
+    static func clearLastModelId() {
+        UserDefaults.standard.removeObject(forKey: lastModelIdKey)
+    }
+}
+
 // MARK: - Model Backend Manager
 
 /// Manages model backends and provides a unified interface.
@@ -353,6 +375,9 @@ protocol ModelBackend: Actor {
 final class ModelBackendManager: ObservableObject {
     @Published private(set) var state: ModelState = .unloaded
     @Published private(set) var modelInfo: ModelInfo?
+    
+    /// The ID of the currently loaded model, if any.
+    private(set) var loadedModelId: String?
     
     private var backend: (any ModelBackend)?
     
@@ -364,7 +389,11 @@ final class ModelBackendManager: ObservableObject {
     }
     
     /// Load a model with the given configuration.
-    func load(configuration: ModelConfiguration) async throws {
+    /// - Parameters:
+    ///   - configuration: The model configuration.
+    ///   - modelId: Optional model ID to track which model is loaded.
+    ///   - persistSelection: If true, saves this model as the last loaded model.
+    func load(configuration: ModelConfiguration, modelId: String? = nil, persistSelection: Bool = true) async throws {
         guard let backend = backend else {
             throw ModelError.invalidConfiguration(reason: "No backend registered")
         }
@@ -375,6 +404,12 @@ final class ModelBackendManager: ObservableObject {
             try await backend.load(configuration: configuration)
             state = await backend.state
             modelInfo = await backend.modelInfo
+            loadedModelId = modelId
+            
+            // Persist the loaded model ID for auto-load on next launch
+            if persistSelection, let modelId = modelId {
+                ModelPersistence.saveLastModelId(modelId)
+            }
         } catch let error as ModelError {
             state = .error(error)
             throw error
@@ -386,10 +421,16 @@ final class ModelBackendManager: ObservableObject {
     }
     
     /// Unload the current model.
-    func unload() async {
+    /// - Parameter clearPersistence: If true, clears the saved model selection so it won't auto-load on next launch.
+    func unload(clearPersistence: Bool = false) async {
         await backend?.unload()
         state = .unloaded
         modelInfo = nil
+        loadedModelId = nil
+        
+        if clearPersistence {
+            ModelPersistence.clearLastModelId()
+        }
     }
     
     /// Generate a response.

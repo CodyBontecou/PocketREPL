@@ -94,7 +94,7 @@ struct ModelManagementView: View {
                 .padding(.vertical, 4)
                 
                 Button(role: .destructive) {
-                    Task { await modelManager.unload() }
+                    Task { await modelManager.unload(clearPersistence: true) }
                 } label: {
                     Label("Unload Model", systemImage: "eject")
                 }
@@ -290,7 +290,7 @@ struct ModelManagementView: View {
             // Register LlamaBackend if needed
             let backend = LlamaBackend()
             await modelManager.setBackend(backend)
-            try await modelManager.load(configuration: config)
+            try await modelManager.load(configuration: config, modelId: model.id, persistSelection: true)
             
         } catch {
             errorMessage = "Failed to load model: \(error.localizedDescription)"
