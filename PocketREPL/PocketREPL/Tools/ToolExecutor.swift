@@ -125,6 +125,14 @@ private nonisolated func boolParam(_ params: [String: Any], _ key: String, defau
     return defaultValue
 }
 
+// MARK: - Context Budget Limits
+
+/// Maximum file entries to return from list_files to conserve context
+private let maxListFilesEntries = 30
+
+/// Default maximum lines to read from a file to conserve context
+private let defaultMaxReadLines = 100
+
 // MARK: - list_files Tool
 
 struct ListFilesTool: Tool {
@@ -136,12 +144,16 @@ struct ListFilesTool: Tool {
         let recursive = boolParam(parameters, "recursive")
         
         do {
-            let entries = try await context.projectStore.listFiles(in: path, recursive: recursive)
+            let allEntries = try await context.projectStore.listFiles(in: path, recursive: recursive)
             
-            if entries.isEmpty {
+            if allEntries.isEmpty {
                 let location = path.isEmpty ? "workspace root" : "'\(path)'"
                 return .success("No files found in \(location).")
             }
+            
+            // Limit entries to conserve context
+            let entries = Array(allEntries.prefix(maxListFilesEntries))
+            let wasTruncated = allEntries.count > maxListFilesEntries
             
             var lines: [String] = []
             for entry in entries {
@@ -155,7 +167,10 @@ struct ListFilesTool: Tool {
                 lines.append("\(entry.relativePath)\(typeIndicator)\(sizeInfo)")
             }
             
-            let header = path.isEmpty ? "Contents of workspace:" : "Contents of '\(path)':"
+            var header = path.isEmpty ? "Contents of workspace:" : "Contents of '\(path)':"
+            if wasTruncated {
+                header += " (showing \(entries.count) of \(allEntries.count) entries)"
+            }
             return .success("\(header)\n\(lines.joined(separator: "\n"))")
         } catch {
             return .failure(error.localizedDescription)
@@ -173,7 +188,7 @@ struct ListFilesTool: Tool {
 
 struct ReadFileTool: Tool {
     let name = "read_file"
-    let summary = "Read text content from a file. Supports line range selection."
+    let summary = "Read text content from a file. Supports line range selection. Default limit: 100 lines."
     
     func execute(parameters: [String: Any], context: ToolContext) async -> ToolResult {
         guard let path = stringParam(parameters, "path"), !path.isEmpty else {
@@ -181,7 +196,8 @@ struct ReadFileTool: Tool {
         }
         
         let startLine = intParam(parameters, "start_line") ?? 1
-        let maxLines = intParam(parameters, "max_lines")
+        // Apply default limit to conserve context window
+        let maxLines = intParam(parameters, "max_lines") ?? defaultMaxReadLines
         
         do {
             let contents = try await context.projectStore.readFile(
@@ -234,18 +250,22 @@ struct WriteFileTool: Tool {
     }
 }
 
+/// Default maximum search results to conserve context
+private let defaultSearchLimit = 20
+
 // MARK: - search_code Tool
 
 struct SearchCodeTool: Tool {
     let name = "search_code"
-    let summary = "Search JavaScript files for a text pattern. Returns matching lines with context."
+    let summary = "Search JavaScript files for a text pattern. Returns matching lines with context. Default limit: 20 matches."
     
     func execute(parameters: [String: Any], context: ToolContext) async -> ToolResult {
         guard let query = stringParam(parameters, "query"), !query.isEmpty else {
             return .failure("Missing required parameter: query")
         }
         
-        let limit = intParam(parameters, "limit") ?? 50
+        // Lower default to conserve context window
+        let limit = intParam(parameters, "limit") ?? defaultSearchLimit
         
         do {
             let matches = try await context.projectStore.searchJavaScript(query: query, limit: limit)
@@ -384,15 +404,26 @@ private nonisolated struct ExecutionDiagnostic: Sendable {
         return parts.isEmpty ? nil : parts.joined(separator: ":")
     }
 
+    /// Maximum console entries to include in tool output
+    private static let maxConsoleEntries = 30
+    
     nonisolated func toToolResult() -> ToolResult {
         var sections: [String] = []
 
-        // Console output (always include if present)
-        let consoleOutput = result.console
+        // Console output (limited to conserve context)
+        let filteredConsole = result.console
             .filter { $0.level != .error || result.error == nil } // Don't duplicate error messages
-            .map { $0.message }
-            .joined(separator: "\n")
+        
+        let consoleTruncated = filteredConsole.count > Self.maxConsoleEntries
+        let consoleEntries = consoleTruncated 
+            ? Array(filteredConsole.suffix(Self.maxConsoleEntries))
+            : filteredConsole
+            
+        let consoleOutput = consoleEntries.map { $0.message }.joined(separator: "\n")
         if !consoleOutput.isEmpty {
+            if consoleTruncated {
+                sections.append("[... \(filteredConsole.count - Self.maxConsoleEntries) earlier console entries omitted ...]")
+            }
             sections.append(consoleOutput)
         }
 

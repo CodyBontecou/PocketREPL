@@ -4,11 +4,9 @@ struct AgentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var session: AgentSession
     @ObservedObject var modelManager: ModelBackendManager
-    let workspaceInfo: WorkspaceInfo
     let onModelButtonTapped: () -> Void
 
     @State private var showingToolTrace = false
-    @State private var showingSessionMenu = false
 
     var body: some View {
         ChatView(session: session)
@@ -25,7 +23,7 @@ struct AgentView: View {
                     HStack(spacing: 12) {
                         modelButton
                         toolTraceButton
-                        sessionMenuButton
+                        resetConversationButton
                     }
                 }
             }
@@ -62,24 +60,10 @@ struct AgentView: View {
         .accessibilityLabel(String(localized: "Tool Trace"))
     }
 
-    private var sessionMenuButton: some View {
-        Menu {
-            Section(String(localized: "Workspace: \(workspaceInfo.displayName)")) {
-                Button(role: .destructive) {
-                    Task {
-                        await session.resetRuntime()
-                    }
-                } label: {
-                    Label(String(localized: "Reset Runtime"), systemImage: "arrow.counterclockwise")
-                }
-
-                Button(role: .destructive) {
-                    Task {
-                        await session.newSession()
-                    }
-                } label: {
-                    Label(String(localized: "New Session"), systemImage: "trash")
-                }
+    private var resetConversationButton: some View {
+        Button {
+            Task {
+                await session.newSession()
             }
         } label: {
             ZStack {
@@ -88,11 +72,12 @@ struct AgentView: View {
                     .frame(width: 32, height: 32)
                     .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 4, x: 0, y: 2)
                 
-                Image(systemName: "ellipsis")
-                    .font(.escherFootnote.weight(.bold))
+                Image(systemName: "arrow.counterclockwise")
+                    .font(.escherFootnote.weight(.semibold))
                     .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
             }
         }
+        .accessibilityLabel(String(localized: "Reset Conversation"))
     }
 }
 
@@ -286,7 +271,6 @@ struct ToolTraceRow: View {
         AgentView(
             session: AppContainer.preview.agentSession,
             modelManager: AppContainer.preview.modelManager,
-            workspaceInfo: AppContainer.preview.workspaceInfo,
             onModelButtonTapped: {}
         )
     }

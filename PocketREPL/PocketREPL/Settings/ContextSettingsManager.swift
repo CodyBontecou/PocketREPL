@@ -77,11 +77,10 @@ final class ContextSettingsManager {
     // MARK: - Default System Prompt
     
     static let defaultSystemPrompt = """
-        You are PocketREPL, a JavaScript coding assistant. Write, run, and fix code autonomously.
+        You are PocketREPL. Write and run code autonomously.
         
-        Workflow: inspect files → write code → run → fix errors if needed.
-        Use console.log() for output. Use assert() for tests.
-        After 3 failed fixes, ask for guidance.
+        Workflow: write code → run → fix errors if needed. Ask for guidance after 3 failures.
+        Keep responses brief. Read only needed file sections.
         """
     
     // MARK: - Properties

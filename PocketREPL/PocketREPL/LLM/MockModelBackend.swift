@@ -15,6 +15,19 @@ actor MockModelBackend: ModelBackend {
     /// Whether to simulate errors.
     var simulateErrors: Bool = false
     
+    // MARK: - Context Tracking (Mock)
+    
+    /// Simulated current context tokens (increases with each generation)
+    private var _currentContextTokens: Int = 0
+    
+    var currentContextTokens: Int {
+        _currentContextTokens
+    }
+    
+    var maxContextTokens: Int {
+        configuration?.contextSize ?? 4096
+    }
+    
     func load(configuration: ModelConfiguration) async throws {
         guard state == .unloaded || state == .error(.cancelled) else {
             throw ModelError.invalidConfiguration(reason: "Model already loaded or loading")

@@ -31,8 +31,77 @@ final class AgentSession: ObservableObject {
     /// Context settings manager for customizable prompt and tool toggles
     private let contextSettings = ContextSettingsManager.shared
     
-    /// Estimated tokens used by current conversation (comprehensive)
+    // MARK: - Dual Model Context Tracking
+    
+    /// Cached local model context tokens (updated asynchronously)
+    private var _cachedLocalModelTokens: Int?
+    private var _cachedLocalModelLimit: Int?
+    
+    /// Foundation Models (Apple Intelligence) context tokens
+    var foundationModelTokens: Int? {
+        orchestrator.sessionContextTokens
+    }
+    
+    /// Foundation Models context limit
+    var foundationModelLimit: Int {
+        Self.estimatedContextLimit
+    }
+    
+    /// Local model (Qwen) context tokens
+    var localModelTokens: Int? {
+        _cachedLocalModelTokens
+    }
+    
+    /// Local model context limit
+    var localModelLimit: Int? {
+        _cachedLocalModelLimit
+    }
+    
+    /// Whether the local model is loaded and active
+    var isLocalModelActive: Bool {
+        modelManager?.modelInfo != nil
+    }
+    
+    /// Combined estimated tokens (primary model for display)
+    /// Shows Foundation Models context when in AI mode, local estimate otherwise
     var estimatedContextTokens: Int {
+        // Foundation Models is the primary context to track (agent conversation)
+        if let sessionTokens = orchestrator.sessionContextTokens {
+            return sessionTokens
+        }
+        
+        // Fall back to local estimation for the conversation
+        return localEstimatedContextTokens
+    }
+    
+    /// The context limit to use (Foundation Models limit for primary display)
+    var effectiveContextLimit: Int {
+        Self.estimatedContextLimit
+    }
+    
+    /// Whether we're using real session context (vs local estimate)
+    var isUsingRealContextTracking: Bool {
+        orchestrator.sessionContextTokens != nil
+    }
+    
+    /// Whether local model has context in use
+    var isLocalModelContextActive: Bool {
+        (_cachedLocalModelTokens ?? 0) > 0
+    }
+    
+    /// Refresh local model context tracking (call periodically or after generations)
+    func refreshLocalModelContext() async {
+        guard let modelManager = modelManager else {
+            _cachedLocalModelTokens = nil
+            _cachedLocalModelLimit = nil
+            return
+        }
+        _cachedLocalModelTokens = await modelManager.currentContextTokens
+        _cachedLocalModelLimit = await modelManager.maxContextTokens
+    }
+    
+    /// Local estimate of tokens (used when Foundation Models session isn't available)
+    private var localEstimatedContextTokens: Int {
         var tokens = 0
         
         // 1. System prompt (from settings manager - may be custom or default)
@@ -72,7 +141,7 @@ final class AgentSession: ObservableObject {
     
     /// Context usage as a fraction (0.0 to 1.0+)
     var contextUsageFraction: Double {
-        Double(estimatedContextTokens) / Double(Self.estimatedContextLimit)
+        Double(estimatedContextTokens) / Double(effectiveContextLimit)
     }
     
     /// Whether context is getting close to the limit (>70%)

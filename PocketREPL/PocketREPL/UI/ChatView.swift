@@ -406,7 +406,7 @@ struct ToolCallBubble: View {
                             .font(.escherFootnote.weight(.semibold))
                             .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
                         
-                        Text("Executing...", comment: "Shown while a tool is executing")
+                        Text(executingStatusText)
                             .font(.escherCaption2)
                             .foregroundStyle(Color.escherSecondaryText)
                     }
@@ -470,7 +470,20 @@ struct ToolCallBubble: View {
         case "search_code": return "magnifyingglass"
         case "run_snippet": return "play.fill"
         case "run_file": return "play.rectangle.fill"
+        case "generate_code", "fix_code": return "cpu"
         default: return "wrench.fill"
+        }
+    }
+    
+    /// Status text shown while a tool is executing
+    private var executingStatusText: String {
+        switch message.toolName {
+        case "generate_code":
+            return String(localized: "Generating code with llama.cpp...")
+        case "fix_code":
+            return String(localized: "Fixing code with llama.cpp...")
+        default:
+            return String(localized: "Executing...")
         }
     }
 }
@@ -513,9 +526,24 @@ struct ToolResultBubble: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(statusLabel)
-                        .font(.escherFootnote.weight(.semibold))
-                        .foregroundStyle(statusColor)
+                    HStack(spacing: 6) {
+                        Text(statusLabel)
+                            .font(.escherFootnote.weight(.semibold))
+                            .foregroundStyle(statusColor)
+                        
+                        // Show llama.cpp badge for code generation tools
+                        if isCodeGenerationTool && message.toolStatus == .succeeded {
+                            Text("llama.cpp")
+                                .font(.escherMini.weight(.bold))
+                                .foregroundStyle(Color.blue)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.blue.opacity(0.12))
+                                )
+                        }
+                    }
                     
                     if isLongOutput {
                         Text("\(message.text.count) characters", comment: "Shows character count")
@@ -605,6 +633,16 @@ struct ToolResultBubble: View {
     }
     
     private var statusLabel: String {
+        // Special label for code generation tools
+        if isCodeGenerationTool {
+            switch message.toolStatus {
+            case .succeeded: return String(localized: "Code Generated")
+            case .failed: return String(localized: "Generation Failed")
+            case .pending: return String(localized: "Generating...")
+            default: break
+            }
+        }
+        
         switch message.toolStatus {
         case .succeeded: return String(localized: "Completed")
         case .failed: return String(localized: "Failed")
@@ -612,6 +650,11 @@ struct ToolResultBubble: View {
         case .skipped: return String(localized: "Skipped")
         case .none: return String(localized: "Result")
         }
+    }
+    
+    /// Whether this is a code generation tool (uses local llama.cpp model)
+    private var isCodeGenerationTool: Bool {
+        message.toolName == "generate_code" || message.toolName == "fix_code"
     }
     
     private var resultBackground: Color {
@@ -738,7 +781,7 @@ struct ContextCounter: View {
     private var fmFraction: Double { session.contextUsageFraction }
     private var fmIsRealTracking: Bool { session.isUsingRealContextTracking }
     
-    // Local Model (secondary - code generation)
+    // Local Model (llama.cpp - used to generate code)
     private var localTokens: Int? { session.localModelTokens }
     private var localLimit: Int? { session.localModelLimit }
     private var localFraction: Double? {
@@ -852,10 +895,10 @@ struct ContextCounter: View {
         
         var label = String(localized: "Agent context: \(fmTokens) of \(fmLimit) tokens, \(percentage) percent, status \(statusDescription), \(trackingType) tracking")
         
-        // Add local model info if active
+        // Add local model info if active (llama.cpp for code generation)
         if showLocalModel, let localTok = localTokens, let localLim = localLimit {
             let localPct = Int((localFraction ?? 0) * 100)
-            label += String(localized: ". Local model: \(localTok) of \(localLim) tokens, \(localPct) percent")
+            label += String(localized: ". Code generation model (llama.cpp): \(localTok) of \(localLim) tokens, \(localPct) percent")
         }
         
         return label

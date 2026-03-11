@@ -22,6 +22,24 @@ actor LlamaBackend: ModelBackend {
     private var configuration: ModelConfiguration?
     private var isCancelled = false
     
+    // MARK: - Context Tracking
+    
+    /// Current number of tokens used in the context window
+    var currentContextTokens: Int {
+        context?.currentContextUsed ?? 0
+    }
+    
+    /// Maximum context size (tokens)
+    var maxContextTokens: Int {
+        context?.contextSize ?? 0
+    }
+    
+    /// Context usage as a fraction (0.0 to 1.0)
+    var contextUsageFraction: Double {
+        guard let ctx = context, ctx.contextSize > 0 else { return 0 }
+        return Double(ctx.currentContextUsed) / Double(ctx.contextSize)
+    }
+    
     // MARK: - Static Initialization
     
     private static var isBackendInitialized = false
@@ -303,6 +321,30 @@ nonisolated final class LlamaContext: @unchecked Sendable {
     private let lock = NSLock()
     private var shouldStop = false
     
+    // Context tracking
+    private var _tokensUsed: Int = 0
+    
+    /// Current number of tokens in the context (tracked by generation)
+    var currentContextUsed: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return _tokensUsed
+    }
+    
+    /// Update the token count after generation
+    func updateTokensUsed(_ count: Int) {
+        lock.lock()
+        _tokensUsed = count
+        lock.unlock()
+    }
+    
+    /// Reset token count (e.g., when clearing context)
+    func resetTokensUsed() {
+        lock.lock()
+        _tokensUsed = 0
+        lock.unlock()
+    }
+    
     private init(
         model: OpaquePointer,
         ctx: OpaquePointer,
@@ -503,6 +545,7 @@ nonisolated final class LlamaContext: @unchecked Sendable {
         // Clear memory (KV cache)
         let memory = llama_get_memory(ctx)
         llama_memory_clear(memory, true)
+        resetTokensUsed()
         
         // Process prompt in batches
         var mutableTokens = promptTokens
@@ -512,6 +555,9 @@ nonisolated final class LlamaContext: @unchecked Sendable {
         if decodeResult != 0 {
             throw ModelError.inferenceError(reason: "Failed to decode prompt (error: \(decodeResult))")
         }
+        
+        // Track prompt tokens
+        updateTokensUsed(promptTokens.count)
         
         // Create sampler chain
         let samplerParams = llama_sampler_chain_default_params()
@@ -562,6 +608,9 @@ nonisolated final class LlamaContext: @unchecked Sendable {
             tokens.append(piece)
             generatedText += piece
             generatedCount += 1
+            
+            // Update context tracking
+            updateTokensUsed(promptTokens.count + generatedCount)
             
             // Notify callback
             try onToken(piece)
@@ -618,6 +667,7 @@ nonisolated final class LlamaContext: @unchecked Sendable {
         // Clear memory (KV cache)
         let memory = llama_get_memory(ctx)
         llama_memory_clear(memory, true)
+        resetTokensUsed()
         
         // Process prompt
         var mutableTokens = promptTokens
@@ -626,6 +676,9 @@ nonisolated final class LlamaContext: @unchecked Sendable {
         if decodeResult != 0 {
             throw ModelError.inferenceError(reason: "Failed to decode prompt")
         }
+        
+        // Track prompt tokens
+        updateTokensUsed(promptTokens.count)
         
         // Create sampler chain
         let samplerParams = llama_sampler_chain_default_params()
@@ -678,6 +731,9 @@ nonisolated final class LlamaContext: @unchecked Sendable {
             let piece = tokenToPiece(currentToken)
             generatedText += piece
             generatedCount += 1
+            
+            // Update context tracking
+            updateTokensUsed(promptTokens.count + generatedCount)
             
             // Check stop sequences
             let hitStopSequence = stopSequences.contains(where: { generatedText.hasSuffix($0) })

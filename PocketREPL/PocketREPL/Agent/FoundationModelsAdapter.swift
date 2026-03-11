@@ -5,6 +5,49 @@ import Foundation
 import FoundationModels
 #endif
 
+// MARK: - Context Budget Constants
+
+/// Maximum characters for a single tool result sent to the model.
+/// ~800 tokens at 4 chars/token = 3200 chars. We use 2000 to leave room.
+private let maxToolResultChars = 2000
+
+/// Maximum lines for tool output (prevents runaway console output)
+private let maxToolResultLines = 50
+
+/// Truncates tool output to fit within context budget.
+/// Preserves the beginning and end of output when truncating.
+private func truncateForContext(_ text: String, maxChars: Int = maxToolResultChars, maxLines: Int = maxToolResultLines) -> String {
+    // First, limit by lines
+    let lines = text.components(separatedBy: "\n")
+    var truncatedByLines = text
+    var linesTruncated = false
+    
+    if lines.count > maxLines {
+        let keepStart = maxLines / 2
+        let keepEnd = maxLines - keepStart - 1
+        let startLines = lines.prefix(keepStart)
+        let endLines = lines.suffix(keepEnd)
+        let omitted = lines.count - keepStart - keepEnd
+        truncatedByLines = startLines.joined(separator: "\n") + "\n[... \(omitted) lines omitted ...]\n" + endLines.joined(separator: "\n")
+        linesTruncated = true
+    }
+    
+    // Then, limit by characters
+    if truncatedByLines.count <= maxChars {
+        return truncatedByLines
+    }
+    
+    // Keep start and end portions
+    let keepStart = maxChars * 2 / 3
+    let keepEnd = maxChars - keepStart - 50 // Leave room for truncation message
+    let startPortion = String(truncatedByLines.prefix(keepStart))
+    let endPortion = String(truncatedByLines.suffix(keepEnd))
+    let omittedChars = truncatedByLines.count - keepStart - keepEnd
+    
+    let truncationNote = linesTruncated ? "" : "[... \(omittedChars) chars omitted ...]"
+    return startPortion + "\n" + truncationNote + "\n" + endPortion
+}
+
 // MARK: - Orchestration Session
 
 /// Orchestrates the agent's write-run-fix loop with tool execution.
@@ -19,6 +62,10 @@ final class AgentOrchestrator: ObservableObject {
     @Published private(set) var mode: Mode = .fallback
     @Published private(set) var isProcessing = false
     @Published private(set) var retryState: RetryState
+    
+    /// Estimated tokens used by the Foundation Models session transcript.
+    /// Returns nil if no session exists or Foundation Models is unavailable.
+    @Published private(set) var sessionContextTokens: Int?
 
     private let toolExecutor: ToolExecutor
     private let systemInstructions: String
@@ -29,6 +76,48 @@ final class AgentOrchestrator: ObservableObject {
     #if canImport(FoundationModels)
     @available(iOS 26.0, macOS 26.0, *)
     private var session: LanguageModelSession?
+    #endif
+    
+    /// Updates the session context token estimate from the transcript
+    private func updateSessionContextTokens() {
+        #if canImport(FoundationModels)
+        if #available(iOS 26.0, macOS 26.0, *) {
+            guard let session = session else {
+                sessionContextTokens = nil
+                return
+            }
+            
+            // Estimate tokens from the session transcript
+            var tokens = 0
+            
+            // System instructions
+            tokens += max(1, systemInstructions.count / 4)
+            
+            // Tool definitions (~50 tokens per enabled tool)
+            tokens += (contextSettings?.enabledToolCount ?? 6) * 50
+            
+            // Iterate through transcript entries using Collection protocol
+            let transcript = session.transcript
+            for index in transcript.startIndex..<transcript.endIndex {
+                let entry = transcript[index]
+                tokens += estimateEntryTokens(entry)
+            }
+            
+            sessionContextTokens = tokens
+            return
+        }
+        #endif
+        sessionContextTokens = nil
+    }
+    
+    #if canImport(FoundationModels)
+    @available(iOS 26.0, macOS 26.0, *)
+    private func estimateEntryTokens(_ entry: Transcript.Entry) -> Int {
+        // Use the entry's CustomStringConvertible description to estimate tokens
+        // This is a reasonable proxy since all entry types conform to it
+        let description = String(describing: entry)
+        return max(1, description.count / 4)
+    }
     #endif
 
     init(
@@ -201,6 +290,8 @@ final class AgentOrchestrator: ObservableObject {
             let response: LanguageModelSession.Response<AgentAction>
             do {
                 response = try await session.respond(to: currentPrompt, generating: AgentAction.self)
+                // Update context token tracking after each turn
+                updateSessionContextTokens()
             } catch let error as LanguageModelSession.GenerationError {
                 let msg: String
                 switch error {
@@ -210,6 +301,7 @@ final class AgentOrchestrator: ObservableObject {
                 case .exceededContextWindowSize:
                     // Auto-reset the session and retry with a fresh context
                     self.session = nil
+                    updateSessionContextTokens() // Reset context tracking
                     msg = String(localized: "⚠️ Context limit reached. Starting fresh session. Please try again.")
                     
                 case .assetsUnavailable(_):
@@ -268,7 +360,7 @@ final class AgentOrchestrator: ObservableObject {
                 }
                 let (name, params, result) = await executeListFiles(tool, onToolCall: onToolCall, onToolResult: onToolResult)
                 toolCalls.append((name, params, result))
-                currentPrompt = "Tool result:\n\(result)\n\nContinue with the next step or respond to the user."
+                currentPrompt = "Tool result:\n\(truncateForContext(result))\n\nContinue with the next step or respond to the user."
 
             case .readFile(let tool):
                 if !isToolEnabled("read_file") {
@@ -277,7 +369,7 @@ final class AgentOrchestrator: ObservableObject {
                 }
                 let (name, params, result) = await executeReadFile(tool, onToolCall: onToolCall, onToolResult: onToolResult)
                 toolCalls.append((name, params, result))
-                currentPrompt = "Tool result:\n\(result)\n\nContinue with the next step or respond to the user."
+                currentPrompt = "Tool result:\n\(truncateForContext(result))\n\nContinue with the next step or respond to the user."
 
             case .writeFile(let tool):
                 if !isToolEnabled("write_file") {
@@ -286,7 +378,7 @@ final class AgentOrchestrator: ObservableObject {
                 }
                 let (name, params, result) = await executeWriteFile(tool, onToolCall: onToolCall, onToolResult: onToolResult)
                 toolCalls.append((name, params, result))
-                currentPrompt = "Tool result:\n\(result)\n\nContinue with the next step or respond to the user."
+                currentPrompt = "Tool result:\n\(truncateForContext(result))\n\nContinue with the next step or respond to the user."
 
             case .searchCode(let tool):
                 if !isToolEnabled("search_code") {
@@ -295,7 +387,7 @@ final class AgentOrchestrator: ObservableObject {
                 }
                 let (name, params, result) = await executeSearchCode(tool, onToolCall: onToolCall, onToolResult: onToolResult)
                 toolCalls.append((name, params, result))
-                currentPrompt = "Tool result:\n\(result)\n\nContinue with the next step or respond to the user."
+                currentPrompt = "Tool result:\n\(truncateForContext(result))\n\nContinue with the next step or respond to the user."
 
             case .runSnippet(let tool):
                 if !isToolEnabled("run_snippet") {
@@ -320,7 +412,7 @@ final class AgentOrchestrator: ObservableObject {
                         stoppedDueToRetryLimit: true
                     )
                 }
-                currentPrompt = "Tool result:\n\(result)\n\nContinue with the next step or respond to the user."
+                currentPrompt = "Tool result:\n\(truncateForContext(result))\n\nContinue with the next step or respond to the user."
 
             case .runFile(let tool):
                 if !isToolEnabled("run_file") {
@@ -345,7 +437,7 @@ final class AgentOrchestrator: ObservableObject {
                         stoppedDueToRetryLimit: true
                     )
                 }
-                currentPrompt = "Tool result:\n\(result)\n\nContinue with the next step or respond to the user."
+                currentPrompt = "Tool result:\n\(truncateForContext(result))\n\nContinue with the next step or respond to the user."
             }
         }
 
@@ -637,7 +729,7 @@ struct TextResponse {
 @available(iOS 26.0, macOS 26.0, *)
 @Generable
 struct ListFilesAction {
-    @Guide(description: "Optional path relative to workspace root. Leave empty for root.")
+    @Guide(description: "Optional path relative to workspace root. Leave empty for root. Returns up to 30 entries.")
     var path: String?
 
     @Guide(description: "Whether to list recursively into subdirectories.")
@@ -650,10 +742,10 @@ struct ReadFileAction {
     @Guide(description: "Path to the file relative to workspace root.")
     var path: String
 
-    @Guide(description: "Line number to start reading from (1-indexed).")
+    @Guide(description: "Line number to start reading from (1-indexed). Use for large files.")
     var startLine: Int?
 
-    @Guide(description: "Maximum number of lines to read.")
+    @Guide(description: "Maximum lines to read. Default 100. Use smaller values for large files.")
     var maxLines: Int?
 }
 
@@ -663,7 +755,7 @@ struct WriteFileAction {
     @Guide(description: "Path to the file relative to workspace root.")
     var path: String
 
-    @Guide(description: "Content to write to the file.")
+    @Guide(description: "Content to write. Keep code concise to conserve context.")
     var content: String
 }
 
@@ -673,14 +765,14 @@ struct SearchCodeAction {
     @Guide(description: "Text pattern to search for in JavaScript files.")
     var query: String
 
-    @Guide(description: "Maximum number of results to return.")
+    @Guide(description: "Maximum results. Default 20. Use lower values if you only need a few matches.")
     var limit: Int?
 }
 
 @available(iOS 26.0, macOS 26.0, *)
 @Generable
 struct RunSnippetAction {
-    @Guide(description: "JavaScript code to execute.")
+    @Guide(description: "JavaScript code to execute. Keep snippets focused and concise.")
     var code: String
 }
 

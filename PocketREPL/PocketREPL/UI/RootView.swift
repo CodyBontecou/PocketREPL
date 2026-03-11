@@ -81,6 +81,7 @@ struct RootView: View {
     enum Tab {
         case files
         case chat
+        case docs
         case settings
     }
 
@@ -148,7 +149,6 @@ struct RootView: View {
                 AgentView(
                     session: container.agentSession,
                     modelManager: container.modelManager,
-                    workspaceInfo: container.workspaceInfo,
                     onModelButtonTapped: { showingModelManagement = true }
                 )
             }
@@ -187,6 +187,20 @@ struct RootView: View {
             .tag(Tab.files)
             .accessibilityIdentifier("tab_files")
             .accessibilityHint(String(localized: "Browse project files and folders"))
+            
+            // Docs Tab
+            NavigationStack {
+                DocsView()
+            }
+            .tabItem {
+                VStack {
+                    Image(systemName: selectedTab == .docs ? "book.closed.fill" : "book.closed")
+                    Text("Docs", comment: "Tab label for documentation view")
+                }
+            }
+            .tag(Tab.docs)
+            .accessibilityIdentifier("tab_docs")
+            .accessibilityHint(String(localized: "Learn how PocketREPL works"))
             
             // Settings Tab
             NavigationStack {
@@ -246,7 +260,6 @@ struct RootView: View {
             AgentView(
                 session: container.agentSession,
                 modelManager: container.modelManager,
-                workspaceInfo: container.workspaceInfo,
                 onModelButtonTapped: { showingModelManagement = true }
             )
         }

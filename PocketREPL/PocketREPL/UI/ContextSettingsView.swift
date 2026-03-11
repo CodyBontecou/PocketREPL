@@ -14,13 +14,44 @@ struct ContextSettingsView: View {
     private var limit: Int { AgentSession.estimatedContextLimit }
     private var fraction: Double { session.contextUsageFraction }
     
+    // MARK: - Greyscale Palette
+    
+    private var cardBackground: Color {
+        colorScheme == .dark ? Color(white: 0.12) : Color.escherPaper
+    }
+    
+    private var surfaceBackground: Color {
+        colorScheme == .dark ? Color(white: 0.08) : Color(white: 0.96)
+    }
+    
+    private var borderColor: Color {
+        colorScheme == .dark ? Color(white: 0.22) : Color(white: 0.85)
+    }
+    
+    private var primaryText: Color {
+        colorScheme == .dark ? Color(white: 0.92) : Color(white: 0.1)
+    }
+    
+    private var secondaryText: Color {
+        colorScheme == .dark ? Color(white: 0.55) : Color(white: 0.45)
+    }
+    
+    private var tertiaryText: Color {
+        colorScheme == .dark ? Color(white: 0.38) : Color(white: 0.62)
+    }
+    
+    private var accentGrey: Color {
+        colorScheme == .dark ? Color(white: 0.7) : Color(white: 0.25)
+    }
+    
     var body: some View {
         NavigationStack {
             ZStack {
-                EscherBackground()
+                // Minimal background
+                surfaceBackground.ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(spacing: 20) {
+                    VStack(spacing: 24) {
                         // Context Usage Overview
                         contextOverviewSection
                         
@@ -34,6 +65,7 @@ struct ContextSettingsView: View {
                         actionsSection
                     }
                     .padding(16)
+                    .padding(.bottom, 20)
                 }
             }
             .navigationTitle("")
@@ -42,12 +74,12 @@ struct ContextSettingsView: View {
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 8) {
                         Image(systemName: "slider.horizontal.3")
-                            .font(.escherFootnote.weight(.semibold))
-                            .foregroundStyle(Color.escherPrism)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(accentGrey)
                         
                         Text("Context Settings", comment: "Navigation title")
                             .font(.escherHeadline)
-                            .foregroundStyle(Color.escherForeground)
+                            .foregroundStyle(primaryText)
                     }
                 }
                 
@@ -57,11 +89,11 @@ struct ContextSettingsView: View {
                     } label: {
                         Text("Done", comment: "Button to dismiss")
                             .font(.escherSubheadline)
-                            .foregroundStyle(Color.escherPrism)
+                            .foregroundStyle(primaryText)
                     }
                 }
             }
-            .escherNavigationStyle()
+            .toolbarBackground(.hidden, for: .navigationBar)
         }
         .presentationDragIndicator(.visible)
         .alert(String(localized: "Reset All Settings?"), isPresented: $showingResetAlert) {
@@ -88,156 +120,169 @@ struct ContextSettingsView: View {
     // MARK: - Context Overview Section
     
     private var contextOverviewSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("CONTEXT USAGE", comment: "Section header")
-                .font(.escherCaption2)
-                .tracking(1)
-                .foregroundStyle(Color.escherSecondaryText)
+        VStack(alignment: .leading, spacing: 16) {
+            // Section header
+            Text("CONTEXT USAGE")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .tracking(1.2)
+                .foregroundStyle(tertiaryText)
             
-            VStack(spacing: 16) {
-                // Usage bar
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("\(tokens) / \(limit) tokens")
-                            .font(.escherCallout.weight(.semibold))
-                            .foregroundStyle(Color.escherForeground)
+            VStack(spacing: 18) {
+                // Usage display
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("\(tokens)")
+                            .font(.system(size: 28, weight: .semibold, design: .rounded))
+                            .foregroundStyle(primaryText)
+                        
+                        Text("/ \(limit) tokens")
+                            .font(.escherCallout)
+                            .foregroundStyle(secondaryText)
                         
                         Spacer()
                         
+                        // Percentage badge
                         Text("\(Int(fraction * 100))%")
-                            .font(.escherCaption.weight(.semibold))
+                            .font(.system(size: 13, weight: .bold, design: .monospaced))
                             .foregroundStyle(statusColor)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill(statusColor.opacity(0.12))
+                            )
                     }
                     
+                    // Progress bar
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .fill(colorScheme == .dark ? Color(white: 0.2) : Color.escherMidtone.opacity(0.15))
+                            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                                .fill(colorScheme == .dark ? Color(white: 0.18) : Color(white: 0.88))
                             
-                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            RoundedRectangle(cornerRadius: 3, style: .continuous)
                                 .fill(statusColor)
                                 .frame(width: geo.size.width * min(fraction, 1.0))
                         }
                     }
-                    .frame(height: 8)
+                    .frame(height: 6)
                 }
                 
-                // Breakdown
-                VStack(spacing: 8) {
-                    BreakdownRow(
+                // Divider
+                Rectangle()
+                    .fill(borderColor)
+                    .frame(height: 1)
+                
+                // Breakdown grid
+                VStack(spacing: 10) {
+                    GreyscaleBreakdownRow(
                         icon: "text.bubble",
                         label: String(localized: "System Prompt"),
-                        value: "~\(settingsManager.effectiveSystemPrompt.count / 4) tokens"
+                        value: "~\(settingsManager.effectiveSystemPrompt.count / 4)",
+                        colorScheme: colorScheme
                     )
                     
-                    BreakdownRow(
+                    GreyscaleBreakdownRow(
                         icon: "wrench.and.screwdriver",
                         label: String(localized: "Tool Schemas"),
-                        value: "~\(settingsManager.enabledToolCount * 50) tokens (\(settingsManager.enabledToolCount) tools)"
+                        value: "~\(settingsManager.enabledToolCount * 50)",
+                        detail: "\(settingsManager.enabledToolCount) tools",
+                        colorScheme: colorScheme
                     )
                     
-                    BreakdownRow(
+                    GreyscaleBreakdownRow(
                         icon: "folder",
                         label: String(localized: "Project Context"),
-                        value: "~125 tokens"
+                        value: "~125",
+                        colorScheme: colorScheme
                     )
                     
-                    BreakdownRow(
+                    GreyscaleBreakdownRow(
                         icon: "bubble.left.and.bubble.right",
                         label: String(localized: "Messages"),
-                        value: "\(session.messages.count) messages"
+                        value: "\(session.messages.count)",
+                        detail: "messages",
+                        colorScheme: colorScheme
                     )
                 }
-                .padding(.top, 4)
             }
+            .padding(18)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(cardBackground)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(borderColor, lineWidth: 0.5)
+            )
         }
-        .padding(18)
-        .escherCard()
     }
     
     private var statusColor: Color {
         if session.isContextOverLimit {
-            return .escherError
+            return Color(red: 0.85, green: 0.35, blue: 0.35)
         } else if session.isContextNearLimit {
-            return .escherWarning
+            return Color(red: 0.85, green: 0.65, blue: 0.35)
         } else {
-            return .escherSuccess
+            return colorScheme == .dark ? Color(white: 0.5) : Color(white: 0.4)
         }
     }
     
     // MARK: - System Prompt Section
     
     private var systemPromptSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("SYSTEM PROMPT", comment: "Section header")
-                    .font(.escherCaption2)
-                    .tracking(1)
-                    .foregroundStyle(Color.escherSecondaryText)
+                Text("SYSTEM PROMPT")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .tracking(1.2)
+                    .foregroundStyle(tertiaryText)
                 
                 Spacer()
                 
-                // Token estimate badge
+                // Token estimate
                 Text("~\(settingsManager.effectiveSystemPrompt.count / 4) tokens")
-                    .font(.escherCaption2)
-                    .foregroundStyle(Color.escherSecondaryText)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(Color.escherSurface)
-                    )
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundStyle(tertiaryText)
             }
             
-            VStack(spacing: 12) {
+            VStack(spacing: 14) {
                 // Custom prompt toggle
-                Toggle(isOn: $settingsManager.useCustomSystemPrompt) {
-                    HStack(spacing: 10) {
-                        Image(systemName: settingsManager.useCustomSystemPrompt ? "pencil.circle.fill" : "pencil.circle")
-                            .font(.escherBody)
-                            .foregroundStyle(settingsManager.useCustomSystemPrompt ? Color.escherPrism : Color.escherSecondaryText)
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Custom Prompt", comment: "Toggle label")
-                                .font(.escherCallout)
-                                .foregroundStyle(Color.escherForeground)
-                            
-                            Text("Override the default system instructions", comment: "Toggle description")
-                                .font(.escherCaption)
-                                .foregroundStyle(Color.escherSecondaryText)
-                        }
-                    }
-                }
-                .toggleStyle(EscherToggleStyle())
+                GreyscaleToggleRow(
+                    icon: settingsManager.useCustomSystemPrompt ? "pencil.circle.fill" : "pencil.circle",
+                    title: String(localized: "Custom Prompt"),
+                    subtitle: String(localized: "Override the default system instructions"),
+                    isOn: $settingsManager.useCustomSystemPrompt,
+                    colorScheme: colorScheme
+                )
                 
                 // Prompt editor (when custom is enabled)
                 if settingsManager.useCustomSystemPrompt {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 10) {
                         TextEditor(text: $settingsManager.customSystemPrompt)
                             .font(.escherMonoSmall)
-                            .foregroundStyle(Color.escherForeground)
+                            .foregroundStyle(primaryText)
                             .scrollContentBackground(.hidden)
-                            .frame(minHeight: 150)
-                            .padding(12)
+                            .frame(minHeight: 140)
+                            .padding(14)
                             .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(colorScheme == .dark ? Color(white: 0.12) : Color.escherPaper)
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(colorScheme == .dark ? Color(white: 0.08) : Color(white: 0.95))
                             )
                             .overlay(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .strokeBorder(Color.escherMidtone.opacity(0.2), lineWidth: 1)
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .strokeBorder(borderColor, lineWidth: 0.5)
                             )
                         
-                        HStack {
-                            Button {
-                                settingsManager.customSystemPrompt = ContextSettingsManager.defaultSystemPrompt
-                            } label: {
-                                Label(String(localized: "Reset to Default"), systemImage: "arrow.counterclockwise")
-                                    .font(.escherCaption)
-                                    .foregroundStyle(Color.escherPrism)
+                        Button {
+                            settingsManager.customSystemPrompt = ContextSettingsManager.defaultSystemPrompt
+                        } label: {
+                            HStack(spacing: 5) {
+                                Image(systemName: "arrow.counterclockwise")
+                                    .font(.system(size: 11, weight: .semibold))
+                                Text("Reset to Default")
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
                             }
-                            
-                            Spacer()
+                            .foregroundStyle(secondaryText)
                         }
                     }
                     .transition(.opacity.combined(with: .move(edge: .top)))
@@ -245,69 +290,78 @@ struct ContextSettingsView: View {
                 
                 // Default prompt preview (when not using custom)
                 if !settingsManager.useCustomSystemPrompt {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Default prompt:", comment: "Label for default prompt preview")
-                            .font(.escherCaption)
-                            .foregroundStyle(Color.escherSecondaryText)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Default prompt:")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundStyle(tertiaryText)
                         
                         Text(ContextSettingsManager.defaultSystemPrompt)
                             .font(.escherMonoSmall)
-                            .foregroundStyle(Color.escherSecondaryText)
+                            .foregroundStyle(secondaryText)
                             .lineLimit(4)
-                            .padding(12)
+                            .padding(14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(colorScheme == .dark ? Color(white: 0.08) : Color.escherMidtone.opacity(0.08))
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(colorScheme == .dark ? Color(white: 0.06) : Color(white: 0.94))
                             )
                     }
                 }
             }
+            .padding(18)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(cardBackground)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(borderColor, lineWidth: 0.5)
+            )
         }
-        .padding(18)
-        .escherCard()
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: settingsManager.useCustomSystemPrompt)
     }
     
     // MARK: - Tools Section
     
     private var toolsSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("TOOLS", comment: "Section header")
-                    .font(.escherCaption2)
-                    .tracking(1)
-                    .foregroundStyle(Color.escherSecondaryText)
+                Text("TOOLS")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .tracking(1.2)
+                    .foregroundStyle(tertiaryText)
                 
                 Spacer()
                 
                 // Quick actions
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     Button(String(localized: "All On")) {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                             settingsManager.enableAllTools()
                         }
                     }
-                    .font(.escherCaption2.weight(.semibold))
-                    .foregroundStyle(Color.escherPrism)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(accentGrey)
                     
-                    Text("•")
-                        .foregroundStyle(Color.escherSecondaryText)
+                    Text("·")
+                        .foregroundStyle(tertiaryText)
                     
                     Button(String(localized: "All Off")) {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                             settingsManager.disableAllTools()
                         }
                     }
-                    .font(.escherCaption2.weight(.semibold))
-                    .foregroundStyle(Color.escherSecondaryText)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(tertiaryText)
                 }
             }
             
             VStack(spacing: 0) {
                 ForEach(Array(settingsManager.toolConfigurations.enumerated()), id: \.element.id) { index, tool in
-                    ToolToggleRow(
+                    GreyscaleToolRow(
                         tool: tool,
-                        isEnabled: tool.isEnabled
+                        isEnabled: tool.isEnabled,
+                        colorScheme: colorScheme
                     ) {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                             settingsManager.toggleTool(tool.id)
@@ -316,223 +370,312 @@ struct ContextSettingsView: View {
                     
                     if index < settingsManager.toolConfigurations.count - 1 {
                         Rectangle()
-                            .fill(Color.escherMidtone.opacity(0.1))
-                            .frame(height: 1)
-                            .padding(.leading, 52)
+                            .fill(borderColor.opacity(0.5))
+                            .frame(height: 0.5)
+                            .padding(.leading, 56)
                     }
                 }
             }
+            .padding(.vertical, 4)
             .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.escherSurface.opacity(0.6))
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(cardBackground)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(borderColor, lineWidth: 0.5)
             )
             
             // Tools info note
             HStack(spacing: 8) {
                 Image(systemName: "info.circle")
-                    .font(.escherCaption)
-                    .foregroundStyle(Color.escherSecondaryText)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(tertiaryText)
                 
-                Text("Disabling tools reduces context usage but limits what the AI can do.", comment: "Info note about disabling tools")
-                    .font(.escherCaption)
-                    .foregroundStyle(Color.escherSecondaryText)
+                Text("Disabling tools reduces context usage but limits capabilities.")
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundStyle(tertiaryText)
             }
-            .padding(.top, 4)
         }
-        .padding(18)
-        .escherCard()
     }
     
     // MARK: - Actions Section
     
     private var actionsSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("ACTIONS", comment: "Section header")
-                .font(.escherCaption2)
-                .tracking(1)
-                .foregroundStyle(Color.escherSecondaryText)
+        VStack(alignment: .leading, spacing: 16) {
+            Text("ACTIONS")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .tracking(1.2)
+                .foregroundStyle(tertiaryText)
             
-            VStack(spacing: 12) {
+            VStack(spacing: 1) {
                 // New Session button
                 Button {
                     showingNewSessionAlert = true
                 } label: {
-                    HStack {
-                        Image(systemName: "arrow.counterclockwise.circle.fill")
-                            .font(.escherBody)
-                            .foregroundStyle(Color.escherPrism)
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("New Session", comment: "Button label")
-                                .font(.escherCallout)
-                                .foregroundStyle(Color.escherForeground)
+                    HStack(spacing: 14) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(colorScheme == .dark ? Color(white: 0.18) : Color(white: 0.9))
+                                .frame(width: 36, height: 36)
                             
-                            Text("Clear messages and reset context", comment: "Button description")
-                                .font(.escherCaption)
-                                .foregroundStyle(Color.escherSecondaryText)
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(accentGrey)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("New Session")
+                                .font(.escherCallout)
+                                .foregroundStyle(primaryText)
+                            
+                            Text("Clear messages and reset context")
+                                .font(.system(size: 12, weight: .regular, design: .rounded))
+                                .foregroundStyle(secondaryText)
                         }
                         
                         Spacer()
                         
                         Image(systemName: "chevron.right")
-                            .font(.escherCaption)
-                            .foregroundStyle(Color.escherSecondaryText)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(tertiaryText)
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 14)
                     .padding(.vertical, 14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.escherSurface.opacity(0.6))
-                    )
+                    .background(cardBackground)
                 }
                 .buttonStyle(.plain)
                 
-                // Reset Settings button
+                Rectangle()
+                    .fill(borderColor.opacity(0.5))
+                    .frame(height: 0.5)
+                    .padding(.leading, 64)
+                
+                // Reset Settings button (destructive - keep red)
                 Button {
                     showingResetAlert = true
                 } label: {
-                    HStack {
-                        Image(systemName: "arrow.uturn.backward.circle")
-                            .font(.escherBody)
-                            .foregroundStyle(Color.escherWarning)
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Reset All Settings", comment: "Button label")
-                                .font(.escherCallout)
-                                .foregroundStyle(Color.escherForeground)
+                    HStack(spacing: 14) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color(red: 0.85, green: 0.35, blue: 0.35).opacity(0.12))
+                                .frame(width: 36, height: 36)
                             
-                            Text("Restore default prompt and enable all tools", comment: "Button description")
-                                .font(.escherCaption)
-                                .foregroundStyle(Color.escherSecondaryText)
+                            Image(systemName: "arrow.uturn.backward")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(Color(red: 0.85, green: 0.35, blue: 0.35))
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Reset All Settings")
+                                .font(.escherCallout)
+                                .foregroundStyle(primaryText)
+                            
+                            Text("Restore default prompt and enable all tools")
+                                .font(.system(size: 12, weight: .regular, design: .rounded))
+                                .foregroundStyle(secondaryText)
                         }
                         
                         Spacer()
                         
                         Image(systemName: "chevron.right")
-                            .font(.escherCaption)
-                            .foregroundStyle(Color.escherSecondaryText)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(tertiaryText)
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 14)
                     .padding(.vertical, 14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.escherSurface.opacity(0.6))
-                    )
+                    .background(cardBackground)
                 }
                 .buttonStyle(.plain)
             }
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(borderColor, lineWidth: 0.5)
+            )
         }
-        .padding(18)
-        .escherCard()
     }
 }
 
-// MARK: - Breakdown Row
+// MARK: - Greyscale Breakdown Row
 
-private struct BreakdownRow: View {
+private struct GreyscaleBreakdownRow: View {
     let icon: String
     let label: String
     let value: String
+    var detail: String? = nil
+    let colorScheme: ColorScheme
+    
+    private var secondaryText: Color {
+        colorScheme == .dark ? Color(white: 0.55) : Color(white: 0.45)
+    }
+    
+    private var primaryText: Color {
+        colorScheme == .dark ? Color(white: 0.8) : Color(white: 0.2)
+    }
+    
+    private var tertiaryText: Color {
+        colorScheme == .dark ? Color(white: 0.38) : Color(white: 0.62)
+    }
     
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.escherCaption)
-                .foregroundStyle(Color.escherSecondaryText)
-                .frame(width: 20)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(tertiaryText)
+                .frame(width: 18)
             
             Text(label)
-                .font(.escherCaption)
-                .foregroundStyle(Color.escherSecondaryText)
+                .font(.system(size: 13, weight: .regular, design: .rounded))
+                .foregroundStyle(secondaryText)
             
             Spacer()
             
-            Text(value)
-                .font(.escherCaption)
-                .foregroundStyle(Color.escherForeground)
+            HStack(spacing: 4) {
+                Text(value)
+                    .font(.system(size: 13, weight: .medium, design: .monospaced))
+                    .foregroundStyle(primaryText)
+                
+                if let detail = detail {
+                    Text(detail)
+                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                        .foregroundStyle(tertiaryText)
+                }
+            }
         }
     }
 }
 
-// MARK: - Tool Toggle Row
+// MARK: - Greyscale Toggle Row
 
-private struct ToolToggleRow: View {
-    let tool: ToolConfiguration
-    let isEnabled: Bool
-    let onToggle: () -> Void
+private struct GreyscaleToggleRow: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    @Binding var isOn: Bool
+    let colorScheme: ColorScheme
+    
+    private var primaryText: Color {
+        colorScheme == .dark ? Color(white: 0.92) : Color(white: 0.1)
+    }
+    
+    private var secondaryText: Color {
+        colorScheme == .dark ? Color(white: 0.55) : Color(white: 0.45)
+    }
+    
+    private var accentGrey: Color {
+        colorScheme == .dark ? Color(white: 0.7) : Color(white: 0.25)
+    }
     
     var body: some View {
-        Button(action: onToggle) {
+        Button(action: { isOn.toggle() }) {
             HStack(spacing: 12) {
-                // Tool icon
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(isEnabled ? Color.escherPrism.opacity(0.15) : Color.escherMidtone.opacity(0.1))
-                        .frame(width: 36, height: 36)
-                    
-                    Image(systemName: tool.icon)
-                        .font(.escherCallout)
-                        .foregroundStyle(isEnabled ? Color.escherPrism : Color.escherSecondaryText)
-                }
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(isOn ? primaryText : secondaryText)
+                    .frame(width: 24)
                 
-                // Tool info
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(tool.name)
+                    Text(title)
                         .font(.escherCallout)
-                        .foregroundStyle(isEnabled ? Color.escherForeground : Color.escherSecondaryText)
+                        .foregroundStyle(primaryText)
                     
-                    Text(tool.summary)
-                        .font(.escherCaption)
-                        .foregroundStyle(Color.escherSecondaryText)
-                        .lineLimit(1)
+                    Text(subtitle)
+                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .foregroundStyle(secondaryText)
                 }
                 
                 Spacer()
                 
-                // Toggle indicator
+                // Minimal toggle
                 ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(isEnabled ? Color.escherPrism : Color.escherMidtone.opacity(0.3))
-                        .frame(width: 44, height: 26)
+                    Capsule()
+                        .fill(isOn 
+                              ? (colorScheme == .dark ? Color(white: 0.45) : Color(white: 0.25))
+                              : (colorScheme == .dark ? Color(white: 0.22) : Color(white: 0.82)))
+                        .frame(width: 46, height: 28)
                     
                     Circle()
                         .fill(Color.white)
-                        .frame(width: 22, height: 22)
-                        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
-                        .offset(x: isEnabled ? 9 : -9)
+                        .frame(width: 24, height: 24)
+                        .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
+                        .offset(x: isOn ? 9 : -9)
                 }
+                .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isOn)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 }
 
-// MARK: - Escher Toggle Style
+// MARK: - Greyscale Tool Row
 
-struct EscherToggleStyle: ToggleStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        Button(action: { configuration.isOn.toggle() }) {
-            HStack {
-                configuration.label
+private struct GreyscaleToolRow: View {
+    let tool: ToolConfiguration
+    let isEnabled: Bool
+    let colorScheme: ColorScheme
+    let onToggle: () -> Void
+    
+    private var primaryText: Color {
+        colorScheme == .dark ? Color(white: 0.92) : Color(white: 0.1)
+    }
+    
+    private var secondaryText: Color {
+        colorScheme == .dark ? Color(white: 0.55) : Color(white: 0.45)
+    }
+    
+    private var tertiaryText: Color {
+        colorScheme == .dark ? Color(white: 0.38) : Color(white: 0.62)
+    }
+    
+    var body: some View {
+        Button(action: onToggle) {
+            HStack(spacing: 14) {
+                // Tool icon
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(isEnabled 
+                              ? (colorScheme == .dark ? Color(white: 0.22) : Color(white: 0.88))
+                              : (colorScheme == .dark ? Color(white: 0.14) : Color(white: 0.94)))
+                        .frame(width: 36, height: 36)
+                    
+                    Image(systemName: tool.icon)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(isEnabled ? primaryText : tertiaryText)
+                }
+                
+                // Tool info
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(tool.name)
+                        .font(.escherCallout)
+                        .foregroundStyle(isEnabled ? primaryText : secondaryText)
+                    
+                    Text(tool.summary)
+                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .foregroundStyle(tertiaryText)
+                        .lineLimit(1)
+                }
                 
                 Spacer()
                 
+                // Minimal toggle
                 ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(configuration.isOn ? Color.escherPrism : Color.escherMidtone.opacity(0.3))
-                        .frame(width: 44, height: 26)
+                    Capsule()
+                        .fill(isEnabled 
+                              ? (colorScheme == .dark ? Color(white: 0.45) : Color(white: 0.25))
+                              : (colorScheme == .dark ? Color(white: 0.22) : Color(white: 0.82)))
+                        .frame(width: 46, height: 28)
                     
                     Circle()
                         .fill(Color.white)
-                        .frame(width: 22, height: 22)
-                        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
-                        .offset(x: configuration.isOn ? 9 : -9)
+                        .frame(width: 24, height: 24)
+                        .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
+                        .offset(x: isEnabled ? 9 : -9)
                 }
-                .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isOn)
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

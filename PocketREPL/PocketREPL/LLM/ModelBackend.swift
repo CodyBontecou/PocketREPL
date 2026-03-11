@@ -318,6 +318,12 @@ protocol ModelBackend: Actor {
     /// Information about the loaded model (nil if not loaded).
     var modelInfo: ModelInfo? { get }
     
+    /// Current number of tokens used in the context window.
+    var currentContextTokens: Int { get }
+    
+    /// Maximum context size (tokens).
+    var maxContextTokens: Int { get }
+    
     /// Load the model into memory.
     /// - Parameter configuration: Model configuration including path and inference settings.
     /// - Throws: `ModelError` if loading fails.
@@ -380,6 +386,22 @@ final class ModelBackendManager: ObservableObject {
     private(set) var loadedModelId: String?
     
     private var backend: (any ModelBackend)?
+    
+    // MARK: - Context Tracking
+    
+    /// Current number of tokens used in the context window.
+    var currentContextTokens: Int {
+        get async {
+            await backend?.currentContextTokens ?? 0
+        }
+    }
+    
+    /// Maximum context size (tokens).
+    var maxContextTokens: Int {
+        get async {
+            await backend?.maxContextTokens ?? 0
+        }
+    }
     
     /// Register a backend implementation.
     func setBackend(_ backend: any ModelBackend) async {
