@@ -15,6 +15,8 @@ struct ModelRegistryEntry: Codable, Identifiable, Sendable {
     let parameterCount: String
     let recommendedContextSize: Int
     let family: ModelFamily
+    /// Whether this is a user-added custom model
+    var isCustom: Bool = false
     
     enum ModelFamily: String, Codable, Sendable {
         case qwen = "Qwen"
@@ -26,6 +28,168 @@ struct ModelRegistryEntry: Codable, Identifiable, Sendable {
     
     var formattedSize: String {
         ByteCountFormatter.string(fromByteCount: sizeBytes, countStyle: .file)
+    }
+    
+    /// Create a custom model entry from a Hugging Face URL.
+    /// Supports URLs like:
+    /// - https://huggingface.co/{org}/{repo}/resolve/main/{filename}.gguf
+    /// - https://huggingface.co/{org}/{repo}/blob/main/{filename}.gguf
+    static func fromHuggingFaceURL(
+        _ urlString: String,
+        contextSize: Int = 4096
+    ) -> ModelRegistryEntry? {
+        // Clean up the URL string
+        var cleanURL = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Convert blob URLs to resolve URLs (direct download)
+        cleanURL = cleanURL.replacingOccurrences(of: "/blob/", with: "/resolve/")
+        
+        guard let url = URL(string: cleanURL),
+              url.host?.contains("huggingface.co") == true else {
+            return nil
+        }
+        
+        // Extract filename from URL
+        let filename = url.lastPathComponent
+        guard filename.hasSuffix(".gguf") else {
+            return nil
+        }
+        
+        // Parse path components: /org/repo/resolve/branch/path/to/file.gguf
+        let pathComponents = url.pathComponents.filter { $0 != "/" }
+        guard pathComponents.count >= 4 else {
+            return nil
+        }
+        
+        let org = pathComponents[0]
+        let repo = pathComponents[1]
+        
+        // Generate a unique ID from the URL
+        let id = "custom-\(cleanURL.hashValue)"
+        
+        // Extract model info from filename
+        let nameWithoutExt = filename.replacingOccurrences(of: ".gguf", with: "")
+        let displayName = "\(org)/\(repo)"
+        
+        // Try to detect quantization from filename
+        let quantization = extractQuantization(from: nameWithoutExt)
+        
+        // Try to detect parameter count from filename or repo name
+        let parameterCount = extractParameterCount(from: "\(repo) \(nameWithoutExt)")
+        
+        return ModelRegistryEntry(
+            id: id,
+            name: displayName,
+            description: "Custom model: \(filename)",
+            sizeBytes: 0, // Unknown until we start downloading
+            downloadURL: url,
+            sha256: nil,
+            quantization: quantization,
+            parameterCount: parameterCount,
+            recommendedContextSize: contextSize,
+            family: .other,
+            isCustom: true
+        )
+    }
+    
+    /// Extract quantization format from filename (e.g., Q4_K_M, Q8_0, etc.)
+    private static func extractQuantization(from filename: String) -> String {
+        let patterns = [
+            "q4_k_m", "q4_k_s", "q4_0", "q4_1",
+            "q5_k_m", "q5_k_s", "q5_0", "q5_1",
+            "q6_k", "q8_0", "f16", "f32",
+            "iq4_xs", "iq4_nl", "iq3_xxs", "iq2_xxs"
+        ]
+        
+        let lowercased = filename.lowercased()
+        for pattern in patterns {
+            if lowercased.contains(pattern) {
+                return pattern.uppercased()
+            }
+        }
+        return "Unknown"
+    }
+    
+    /// Extract parameter count from text (e.g., "0.5B", "1.5B", "7B", etc.)
+    private static func extractParameterCount(from text: String) -> String {
+        let patterns = [
+            ("0\\.5b", "0.5B"), ("0\\.6b", "0.6B"),
+            ("1\\.3b", "1.3B"), ("1\\.5b", "1.5B"),
+            ("2b", "2B"), ("3b", "3B"), ("7b", "7B"),
+            ("8b", "8B"), ("13b", "13B"), ("14b", "14B"),
+            ("32b", "32B"), ("70b", "70B")
+        ]
+        
+        let lowercased = text.lowercased()
+        for (pattern, result) in patterns {
+            if let _ = lowercased.range(of: pattern, options: .regularExpression) {
+                return result
+            }
+        }
+        return "Unknown"
+    }
+}
+
+// MARK: - Custom Model Storage
+
+/// Manages persistence of user-added custom models.
+nonisolated enum CustomModelStorage {
+    private static let customModelsKey = "CustomModels"
+    
+    /// Load all saved custom models.
+    static func loadCustomModels() -> [ModelRegistryEntry] {
+        guard let data = UserDefaults.standard.data(forKey: customModelsKey),
+              let models = try? JSONDecoder().decode([ModelRegistryEntry].self, from: data) else {
+            return []
+        }
+        return models
+    }
+    
+    /// Save a custom model.
+    static func saveCustomModel(_ model: ModelRegistryEntry) {
+        var models = loadCustomModels()
+        // Remove existing with same ID if present
+        models.removeAll { $0.id == model.id }
+        models.append(model)
+        
+        if let data = try? JSONEncoder().encode(models) {
+            UserDefaults.standard.set(data, forKey: customModelsKey)
+        }
+    }
+    
+    /// Delete a custom model.
+    static func deleteCustomModel(id: String) {
+        var models = loadCustomModels()
+        models.removeAll { $0.id == id }
+        
+        if let data = try? JSONEncoder().encode(models) {
+            UserDefaults.standard.set(data, forKey: customModelsKey)
+        }
+    }
+    
+    /// Update a custom model's size after download.
+    static func updateModelSize(id: String, sizeBytes: Int64) {
+        var models = loadCustomModels()
+        if let index = models.firstIndex(where: { $0.id == id }) {
+            let old = models[index]
+            models[index] = ModelRegistryEntry(
+                id: old.id,
+                name: old.name,
+                description: old.description,
+                sizeBytes: sizeBytes,
+                downloadURL: old.downloadURL,
+                sha256: old.sha256,
+                quantization: old.quantization,
+                parameterCount: old.parameterCount,
+                recommendedContextSize: old.recommendedContextSize,
+                family: old.family,
+                isCustom: true
+            )
+            
+            if let data = try? JSONEncoder().encode(models) {
+                UserDefaults.standard.set(data, forKey: customModelsKey)
+            }
+        }
     }
 }
 
@@ -108,6 +272,16 @@ enum ModelRegistry {
     static func model(withId id: String) -> ModelRegistryEntry? {
         models.first { $0.id == id }
     }
+    
+    /// All models including custom user-added models.
+    nonisolated static var allModels: [ModelRegistryEntry] {
+        models + CustomModelStorage.loadCustomModels()
+    }
+    
+    /// Find a model by ID, including custom models.
+    nonisolated static func anyModel(withId id: String) -> ModelRegistryEntry? {
+        allModels.first { $0.id == id }
+    }
 }
 
 // MARK: - Installed Model
@@ -126,6 +300,10 @@ struct InstalledModel: Identifiable, Sendable {
     
     var formattedSize: String {
         ByteCountFormatter.string(fromByteCount: sizeBytes, countStyle: .file)
+    }
+    
+    var isCustom: Bool {
+        registryEntry?.isCustom ?? id.hasPrefix("custom-")
     }
 }
 
@@ -463,9 +641,9 @@ actor ModelDownloadManager {
             let size = Int64(values?.fileSize ?? 0)
             let created = values?.creationDate ?? Date()
             
-            // Try to match to registry
+            // Try to match to registry (including custom models)
             let id = url.deletingPathExtension().lastPathComponent
-            let registryEntry = ModelRegistry.model(withId: id)
+            let registryEntry = ModelRegistry.anyModel(withId: id)
             
             return InstalledModel(
                 id: id,
@@ -475,6 +653,113 @@ actor ModelDownloadManager {
                 downloadedAt: created
             )
         }.sorted { $0.downloadedAt > $1.downloadedAt }
+    }
+    
+    /// Download a custom model from a Hugging Face URL.
+    /// - Parameters:
+    ///   - urlString: The Hugging Face URL to the GGUF file.
+    ///   - contextSize: The context size to use for this model.
+    ///   - onProgress: Progress callback (0.0 to 1.0).
+    /// - Returns: URL to the downloaded model file.
+    func downloadCustomModel(
+        urlString: String,
+        contextSize: Int = 4096,
+        onProgress: @escaping @Sendable (DownloadProgress) -> Void
+    ) async throws -> URL {
+        // Parse the URL and create a model entry
+        guard let model = ModelRegistryEntry.fromHuggingFaceURL(urlString, contextSize: contextSize) else {
+            throw ModelError.invalidConfiguration(
+                reason: "Invalid Hugging Face URL. Expected format: https://huggingface.co/{org}/{repo}/resolve/main/{filename}.gguf"
+            )
+        }
+        
+        // Save the custom model entry
+        CustomModelStorage.saveCustomModel(model)
+        
+        // Download the model
+        let destination = try await downloadCustomEntry(model: model, onProgress: onProgress)
+        
+        // Update the stored model with actual file size
+        let attrs = try? FileManager.default.attributesOfItem(atPath: destination.path)
+        let fileSize = attrs?[.size] as? Int64 ?? 0
+        CustomModelStorage.updateModelSize(id: model.id, sizeBytes: fileSize)
+        
+        return destination
+    }
+    
+    /// Download a custom model entry (similar to registry download but with size discovery).
+    private func downloadCustomEntry(
+        model: ModelRegistryEntry,
+        onProgress: @escaping @Sendable (DownloadProgress) -> Void
+    ) async throws -> URL {
+        let destination = modelsDirectory.appendingPathComponent("\(model.id).gguf")
+        
+        // Check if already downloaded
+        if FileManager.default.fileExists(atPath: destination.path) {
+            let attrs = try? FileManager.default.attributesOfItem(atPath: destination.path)
+            let fileSize = attrs?[.size] as? Int64 ?? 0
+            if fileSize > 0 {
+                return destination
+            }
+            // Empty or corrupt file - delete and re-download
+            try? FileManager.default.removeItem(at: destination)
+        }
+        
+        // Check if download already in progress
+        if activeDownloads[model.id] != nil {
+            throw ModelError.invalidConfiguration(reason: "Download already in progress for this model")
+        }
+        
+        // Create download request
+        var request = URLRequest(url: model.downloadURL)
+        request.setValue("PocketREPL/1.0", forHTTPHeaderField: "User-Agent")
+        
+        // First, do a HEAD request to get the file size
+        var headRequest = request
+        headRequest.httpMethod = "HEAD"
+        
+        var expectedSize: Int64 = 0
+        if let (_, headResponse) = try? await session.data(for: headRequest),
+           let httpResponse = headResponse as? HTTPURLResponse {
+            expectedSize = Int64(httpResponse.value(forHTTPHeaderField: "Content-Length") ?? "0") ?? 0
+        }
+        
+        // Check available storage
+        let availableSpace = availableStorage()
+        if expectedSize > 0 && availableSpace < expectedSize + 100_000_000 {
+            throw ModelError.invalidConfiguration(
+                reason: "Insufficient storage. Need \(ByteCountFormatter.string(fromByteCount: expectedSize, countStyle: .file)) but only \(ByteCountFormatter.string(fromByteCount: availableSpace, countStyle: .file)) available."
+            )
+        }
+        
+        // Create download task
+        let task = session.downloadTask(with: request)
+        
+        var downloadTask = DownloadTask(modelId: model.id, task: task)
+        downloadTask.totalBytes = expectedSize
+        activeDownloads[model.id] = downloadTask
+        
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                Task {
+                    do {
+                        let partialPath = destination.appendingPathExtension("partial")
+                        let result = try await self.performDownload(
+                            task: task,
+                            model: model,
+                            destination: destination,
+                            partialPath: partialPath,
+                            onProgress: onProgress
+                        )
+                        continuation.resume(returning: result)
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
+        } onCancel: {
+            Task { await self.cancelDownload(modelId: model.id) }
+        }
     }
     
     /// Delete an installed model.
@@ -490,6 +775,11 @@ actor ModelDownloadManager {
         // Also delete metadata
         let metadataPath = path.appendingPathExtension("meta.json")
         try? FileManager.default.removeItem(at: metadataPath)
+        
+        // If this was a custom model, remove it from storage
+        if id.hasPrefix("custom-") {
+            CustomModelStorage.deleteCustomModel(id: id)
+        }
     }
     
     /// Delete all installed models.

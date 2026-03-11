@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - Model Management View
 
 /// Main view for browsing, downloading, and managing local LLM models.
+/// Redesigned with M.C. Escher impossible geometry and Apple liquid design principles.
 struct ModelManagementView: View {
     @ObservedObject var modelManager: ModelBackendManager
     
@@ -15,23 +16,53 @@ struct ModelManagementView: View {
     @State private var modelToDelete: InstalledModel?
     @State private var isLoading = false
     @State private var storageInfo: (used: Int64, available: Int64) = (0, 0)
+    @State private var showingCustomModelSheet = false
+    @State private var customModelURL = ""
+    @State private var customModelContextSize = "4096"
     
     var body: some View {
-        List {
-            // Active Model Section
-            activeModelSection
+        ZStack {
+            EscherBackground()
             
-            // Storage Section
-            storageSection
-            
-            // Installed Models Section
-            installedModelsSection
-            
-            // Available Models Section
-            availableModelsSection
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Active Model Card
+                    activeModelCard
+                    
+                    // Storage Visualization
+                    storageCard
+                    
+                    // Installed Models
+                    installedModelsSection
+                    
+                    // Available Models
+                    availableModelsSection
+                }
+                .padding(16)
+            }
         }
-        .navigationTitle("Models")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                HStack(spacing: 8) {
+                    // Brain/model icon with geometric frame
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(Color.escherPrism.opacity(0.15))
+                            .frame(width: 24, height: 24)
+                        
+                        Image(systemName: "cpu")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color.escherPrism)
+                    }
+                    
+                    Text("Models")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.escherInk)
+                }
+            }
+        }
         .refreshable {
             await refreshData()
         }
@@ -60,204 +91,393 @@ struct ModelManagementView: View {
                 loadingOverlay
             }
         }
+        .sheet(isPresented: $showingCustomModelSheet) {
+            CustomModelInputSheet(
+                url: $customModelURL,
+                contextSize: $customModelContextSize,
+                onSubmit: { url, contextSize in
+                    Task { await downloadCustomModel(url: url, contextSize: contextSize) }
+                }
+            )
+        }
+        .escherNavigationStyle()
     }
     
-    // MARK: - Active Model Section
+    // MARK: - Active Model Card
     
-    @ViewBuilder
-    private var activeModelSection: some View {
-        Section {
+    private var activeModelCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Header
+            HStack {
+                Text("ACTIVE MODEL")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .tracking(1)
+                    .foregroundStyle(Color.escherMidtone)
+                
+                Spacer()
+                
+                modelStateIndicator
+            }
+            
             if let info = modelManager.modelInfo {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(info.name)
-                                .font(.headline)
-                            Text("\(info.parameterCount) • \(info.quantization ?? "Unknown")")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                // Model info
+                HStack(alignment: .top, spacing: 14) {
+                    // Model Provider Icon for active model
+                    ModelProviderIcon(
+                        family: activeModelFamily,
+                        size: 50,
+                        isActive: true
+                    )
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(info.name)
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundStyle(Color.escherInk)
+                        
+                        HStack(spacing: 8) {
+                            ModelBadge(text: info.parameterCount, color: .escherPrism)
+                            if let quant = info.quantization {
+                                ModelBadge(text: quant, color: .escherWarning)
+                            }
                         }
-                        Spacer()
-                        modelStateIndicator
                     }
                     
-                    HStack {
-                        Label(formatMemory(info.memoryUsage), systemImage: "memorychip")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Label("\(info.contextSize) tokens", systemImage: "text.alignleft")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                    Spacer()
                 }
-                .padding(.vertical, 4)
                 
+                // Stats bar
+                HStack(spacing: 20) {
+                    StatItem(icon: "memorychip", value: formatMemory(info.memoryUsage), label: "Memory")
+                    StatItem(icon: "text.alignleft", value: "\(info.contextSize)", label: "Context")
+                }
+                
+                // Unload button
                 Button(role: .destructive) {
                     Task { await modelManager.unload(clearPersistence: true) }
                 } label: {
-                    Label("Unload Model", systemImage: "eject")
+                    HStack {
+                        Image(systemName: "eject.fill")
+                        Text("Unload Model")
+                    }
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.escherError)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color.escherError.opacity(0.1))
+                    )
                 }
+                .buttonStyle(.plain)
+                
             } else {
-                ContentUnavailableView {
-                    Label("No Model Loaded", systemImage: "cpu")
-                } description: {
-                    Text("Download and load a model to start coding with AI")
+                // No model loaded state
+                VStack(spacing: 16) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.escherMidtone.opacity(0.08))
+                            .frame(width: 70, height: 70)
+                        
+                        Image(systemName: "cpu")
+                            .font(.system(size: 28, weight: .thin))
+                            .foregroundStyle(Color.escherMidtone.opacity(0.5))
+                    }
+                    
+                    VStack(spacing: 4) {
+                        Text("No Model Loaded")
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Color.escherInk)
+                        
+                        Text("Download and load a model to start")
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .foregroundStyle(Color.escherMidtone)
+                    }
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
             }
-        } header: {
-            Text("Active Model")
         }
+        .padding(18)
+        .escherCard()
     }
     
     @ViewBuilder
     private var modelStateIndicator: some View {
         switch modelManager.state {
         case .ready:
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(Color.escherSuccess)
+                    .frame(width: 8, height: 8)
+                Text("Ready")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.escherSuccess)
+            }
         case .generating:
-            ProgressView()
+            HStack(spacing: 6) {
+                ProgressView()
+                    .scaleEffect(0.6)
+                Text("Generating")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.escherPrism)
+            }
         case .loading(let progress):
-            ProgressView(value: progress)
-                .frame(width: 24)
+            HStack(spacing: 8) {
+                ProgressView(value: progress)
+                    .frame(width: 40)
+                    .tint(Color.escherPrism)
+                Text("\(Int(progress * 100))%")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.escherPrism)
+            }
         case .error:
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.red)
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(Color.escherError)
+                    .frame(width: 8, height: 8)
+                Text("Error")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.escherError)
+            }
         case .unloaded:
             EmptyView()
         }
     }
     
-    // MARK: - Storage Section
+    // MARK: - Storage Card
     
-    @ViewBuilder
-    private var storageSection: some View {
-        Section {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Models")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(formatBytes(storageInfo.used))
-                        .fontWeight(.medium)
-                }
+    private var storageCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("STORAGE")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .tracking(1)
+                .foregroundStyle(Color.escherMidtone)
+            
+            // Tessellated storage bar
+            GeometryReader { geo in
+                let totalWidth = geo.size.width
+                let total = Double(storageInfo.used + storageInfo.available)
+                let usedRatio = total > 0 ? min(1.0, Double(storageInfo.used) / total) : 0
                 
-                HStack {
-                    Text("Available")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(formatBytes(storageInfo.available))
-                        .fontWeight(.medium)
-                        .foregroundStyle(storageInfo.available < 1_000_000_000 ? .red : .primary)
-                }
-                
-                // Storage bar
-                GeometryReader { geo in
-                    let totalWidth = geo.size.width
-                    let usedRatio = min(1.0, Double(storageInfo.used) / Double(storageInfo.used + storageInfo.available))
+                ZStack(alignment: .leading) {
+                    // Background with tessellation pattern
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color.escherMidtone.opacity(0.1))
                     
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(.quaternary)
-                            .frame(height: 8)
-                        
-                        Capsule()
-                            .fill(.blue)
-                            .frame(width: totalWidth * usedRatio, height: 8)
-                    }
+                    // Used portion
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.escherPrism, Color.escherPrism.opacity(0.7)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: totalWidth * usedRatio)
+                    
+                    // Tessellation overlay
+                    TessellationPattern(density: 20, opacity: 0.1)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
-                .frame(height: 8)
             }
-            .padding(.vertical, 4)
-        } header: {
-            Text("Storage")
+            .frame(height: 12)
+            
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Models")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(Color.escherMidtone)
+                    Text(formatBytes(storageInfo.used))
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.escherInk)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("Available")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(Color.escherMidtone)
+                    Text(formatBytes(storageInfo.available))
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(storageInfo.available < 1_000_000_000 ? Color.escherError : Color.escherInk)
+                }
+            }
         }
+        .padding(18)
+        .escherCard()
     }
     
     // MARK: - Installed Models Section
     
-    @ViewBuilder
     private var installedModelsSection: some View {
-        Section {
-            if installedModels.isEmpty {
-                Text("No models installed")
-                    .foregroundStyle(.secondary)
-                    .italic()
-            } else {
-                ForEach(installedModels) { model in
-                    InstalledModelRow(
-                        model: model,
-                        isActive: modelManager.modelInfo?.name == model.name,
-                        onLoad: { Task { await loadModel(model) } },
-                        onDelete: {
-                            modelToDelete = model
-                            showingDeleteConfirmation = true
-                        }
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("INSTALLED")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .tracking(1)
+                    .foregroundStyle(Color.escherMidtone)
+                
+                Spacer()
+                
+                Text("\(installedModels.count)")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.escherPrism)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule()
+                            .fill(Color.escherPrism.opacity(0.12))
                     )
+            }
+            
+            if installedModels.isEmpty {
+                HStack {
+                    Spacer()
+                    Text("No models installed yet")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(Color.escherMidtone)
+                        .padding(.vertical, 20)
+                    Spacer()
+                }
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(installedModels) { model in
+                        InstalledModelRow(
+                            model: model,
+                            isActive: modelManager.modelInfo?.name == model.name,
+                            activeModelInfo: modelManager.modelInfo?.name == model.name ? modelManager.modelInfo : nil,
+                            onLoad: { Task { await loadModel(model) } },
+                            onDelete: {
+                                modelToDelete = model
+                                showingDeleteConfirmation = true
+                            }
+                        )
+                    }
                 }
             }
-        } header: {
-            HStack {
-                Text("Installed")
-                Spacer()
-                Text("\(installedModels.count) model\(installedModels.count == 1 ? "" : "s")")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
         }
+        .padding(18)
+        .escherCard()
     }
     
     // MARK: - Available Models Section
     
-    @ViewBuilder
     private var availableModelsSection: some View {
-        Section {
-            ForEach(availableModels) { model in
-                if let progress = downloadProgress[model.id] {
-                    DownloadProgressRow(
-                        model: model,
-                        progress: progress,
-                        onCancel: { Task { await cancelDownload(model.id) } }
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("AVAILABLE FOR DOWNLOAD")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .tracking(1)
+                    .foregroundStyle(Color.escherMidtone)
+                
+                Spacer()
+                
+                Button {
+                    showingCustomModelSheet = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 10, weight: .bold))
+                        Text("Custom")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                    }
+                    .foregroundStyle(Color.escherPrism)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule()
+                            .fill(Color.escherPrism.opacity(0.12))
                     )
-                } else {
-                    DownloadableModelRow(model: model) {
-                        Task { await downloadModel(model) }
+                }
+                .buttonStyle(.plain)
+            }
+            
+            VStack(spacing: 10) {
+                ForEach(availableModels) { model in
+                    if let progress = downloadProgress[model.id] {
+                        DownloadProgressRow(
+                            model: model,
+                            progress: progress,
+                            onCancel: { Task { await cancelDownload(model.id) } }
+                        )
+                    } else {
+                        DownloadableModelRow(model: model) {
+                            Task { await downloadModel(model) }
+                        }
+                    }
+                }
+                
+                // Show pending custom models (not yet downloaded)
+                ForEach(pendingCustomModels) { model in
+                    if let progress = downloadProgress[model.id] {
+                        DownloadProgressRow(
+                            model: model,
+                            progress: progress,
+                            onCancel: { Task { await cancelDownload(model.id) } }
+                        )
+                    } else {
+                        DownloadableModelRow(model: model) {
+                            Task { await downloadModel(model) }
+                        }
                     }
                 }
             }
-        } header: {
-            Text("Available for Download")
-        } footer: {
-            Text("Models are downloaded from Hugging Face and stored locally on your device.")
+            
+            // Footer
+            HStack(spacing: 8) {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 12, weight: .medium))
+                Text("Models are downloaded from Hugging Face and stored locally.")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+            }
+            .foregroundStyle(Color.escherMidtone)
+            .padding(.top, 8)
         }
+        .padding(18)
+        .escherCard()
     }
     
-    // Available models = registry models not yet installed
     private var availableModels: [ModelRegistryEntry] {
         let installedIds = Set(installedModels.map { $0.id })
         return ModelRegistry.models.filter { !installedIds.contains($0.id) }
     }
     
+    private var pendingCustomModels: [ModelRegistryEntry] {
+        let installedIds = Set(installedModels.map { $0.id })
+        return CustomModelStorage.loadCustomModels().filter { !installedIds.contains($0.id) }
+    }
+    
+    /// Get the model family for the currently active model
+    private var activeModelFamily: ModelRegistryEntry.ModelFamily {
+        // Try to find the installed model that matches the current model info
+        if let info = modelManager.modelInfo {
+            if let installed = installedModels.first(where: { $0.name == info.name }) {
+                return installed.registryEntry?.family ?? .other
+            }
+        }
+        return .other
+    }
+    
     // MARK: - Loading Overlay
     
-    @ViewBuilder
     private var loadingOverlay: some View {
         ZStack {
-            Color.black.opacity(0.4)
+            Color.escherInk.opacity(0.5)
                 .ignoresSafeArea()
             
-            VStack(spacing: 16) {
-                ProgressView()
-                    .scaleEffect(1.5)
-                    .tint(.white)
+            VStack(spacing: 24) {
+                InfiniteStairs(size: 56)
+                
                 Text("Loading model...")
-                    .font(.headline)
-                    .foregroundStyle(.white)
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.escherPaper)
             }
-            .padding(32)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .padding(40)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
         }
     }
     
@@ -283,11 +503,10 @@ struct ModelManagementView: View {
             let config = ModelConfiguration(
                 modelPath: model.path.path,
                 contextSize: entry.recommendedContextSize,
-                gpuLayers: 99, // Max GPU layers for device
+                gpuLayers: 99,
                 threadCount: 4
             )
             
-            // Register LlamaBackend if needed
             let backend = LlamaBackend()
             await modelManager.setBackend(backend)
             try await modelManager.load(configuration: config, modelId: model.id, persistSelection: true)
@@ -314,7 +533,6 @@ struct ModelManagementView: View {
                 }
             }
             
-            // Success - refresh list
             await refreshData()
             
         } catch {
@@ -334,7 +552,6 @@ struct ModelManagementView: View {
     }
     
     private func deleteModel(_ model: InstalledModel) async {
-        // Unload if active
         if modelManager.modelInfo?.name == model.name {
             await modelManager.unload()
         }
@@ -347,7 +564,47 @@ struct ModelManagementView: View {
         }
     }
     
-    // MARK: - Formatting Helpers
+    private func downloadCustomModel(url: String, contextSize: Int) async {
+        // Create a temporary ID for progress tracking
+        guard let model = ModelRegistryEntry.fromHuggingFaceURL(url, contextSize: contextSize) else {
+            errorMessage = "Invalid Hugging Face URL. Expected format:\nhttps://huggingface.co/{org}/{repo}/resolve/main/{filename}.gguf"
+            return
+        }
+        
+        activeDownloads.insert(model.id)
+        downloadProgress[model.id] = DownloadProgress(
+            modelId: model.id,
+            progress: 0,
+            bytesDownloaded: 0,
+            totalBytes: 0,
+            estimatedTimeRemaining: nil
+        )
+        
+        do {
+            _ = try await downloadManager.downloadCustomModel(
+                urlString: url,
+                contextSize: contextSize
+            ) { progress in
+                Task { @MainActor in
+                    downloadProgress[model.id] = progress
+                }
+            }
+            
+            await refreshData()
+            
+            // Clear the input fields
+            customModelURL = ""
+            customModelContextSize = "4096"
+            
+        } catch {
+            if (error as? ModelError) != .cancelled {
+                errorMessage = "Download failed: \(error.localizedDescription)"
+            }
+        }
+        
+        downloadProgress.removeValue(forKey: model.id)
+        activeDownloads.remove(model.id)
+    }
     
     private func formatBytes(_ bytes: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
@@ -358,64 +615,347 @@ struct ModelManagementView: View {
     }
 }
 
-// MARK: - Supporting Views
+// MARK: - Supporting Components
+
+struct ModelBadge: View {
+    let text: String
+    let color: Color
+    
+    var body: some View {
+        Text(text)
+            .font(.system(size: 10, weight: .bold, design: .rounded))
+            .foregroundStyle(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                Capsule()
+                    .fill(color.opacity(0.12))
+            )
+    }
+}
+
+struct StatItem: View {
+    let icon: String
+    let value: String
+    let label: String
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Color.escherMidtone)
+            
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.escherInk)
+                Text(label)
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .foregroundStyle(Color.escherMidtone)
+            }
+        }
+    }
+}
+
+// MARK: - Model Provider Icon
+
+/// Renders a distinctive icon for each model provider/family.
+struct ModelProviderIcon: View {
+    let family: ModelRegistryEntry.ModelFamily
+    let size: CGFloat
+    let isActive: Bool
+    
+    init(family: ModelRegistryEntry.ModelFamily, size: CGFloat = 44, isActive: Bool = false) {
+        self.family = family
+        self.size = size
+        self.isActive = isActive
+    }
+    
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: size * 0.23, style: .continuous)
+                .fill(backgroundColor)
+                .frame(width: size, height: size)
+            
+            iconContent
+                .frame(width: size * 0.5, height: size * 0.5)
+        }
+    }
+    
+    private var backgroundColor: Color {
+        if isActive {
+            return Color.escherSuccess.opacity(0.12)
+        }
+        return providerColor.opacity(0.12)
+    }
+    
+    private var foregroundColor: Color {
+        if isActive {
+            return Color.escherSuccess
+        }
+        return providerColor
+    }
+    
+    private var providerColor: Color {
+        switch family {
+        case .qwen:
+            return Color(red: 0.40, green: 0.51, blue: 0.96) // Alibaba blue
+        case .codegemma:
+            return Color(red: 0.26, green: 0.52, blue: 0.96) // Google blue
+        case .starcoder:
+            return Color(red: 0.96, green: 0.65, blue: 0.14) // Gold/yellow
+        case .deepseek:
+            return Color(red: 0.0, green: 0.68, blue: 0.94) // DeepSeek cyan
+        case .other:
+            return Color.escherPrism
+        }
+    }
+    
+    @ViewBuilder
+    private var iconContent: some View {
+        switch family {
+        case .qwen:
+            QwenIcon()
+                .stroke(foregroundColor, lineWidth: size * 0.045)
+        case .codegemma:
+            GemmaIcon()
+                .fill(foregroundColor)
+        case .starcoder:
+            StarCoderIcon()
+                .fill(foregroundColor)
+        case .deepseek:
+            DeepSeekIcon()
+                .stroke(foregroundColor, lineWidth: size * 0.045)
+        case .other:
+            Image(systemName: "cube.box")
+                .font(.system(size: size * 0.4, weight: .medium))
+                .foregroundStyle(foregroundColor)
+        }
+    }
+}
+
+/// Qwen icon - stylized "Q" with cloud influence (Alibaba Cloud)
+struct QwenIcon: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) * 0.45
+        
+        // Main circle (Q body)
+        path.addArc(center: center, radius: radius, startAngle: .degrees(45), endAngle: .degrees(360 + 45), clockwise: false)
+        
+        // Q tail - diagonal stroke
+        let tailStart = CGPoint(x: center.x + radius * 0.4, y: center.y + radius * 0.4)
+        let tailEnd = CGPoint(x: center.x + radius * 0.95, y: center.y + radius * 0.95)
+        path.move(to: tailStart)
+        path.addLine(to: tailEnd)
+        
+        return path
+    }
+}
+
+/// CodeGemma icon - gemstone/diamond shape (Google's Gemini inspiration)
+struct GemmaIcon: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width
+        let h = rect.height
+        
+        // Diamond with facets
+        path.move(to: CGPoint(x: w * 0.5, y: 0))
+        path.addLine(to: CGPoint(x: w, y: h * 0.35))
+        path.addLine(to: CGPoint(x: w * 0.5, y: h))
+        path.addLine(to: CGPoint(x: 0, y: h * 0.35))
+        path.closeSubpath()
+        
+        // Inner facet (creates gem effect)
+        path.move(to: CGPoint(x: w * 0.25, y: h * 0.35))
+        path.addLine(to: CGPoint(x: w * 0.5, y: h * 0.15))
+        path.addLine(to: CGPoint(x: w * 0.75, y: h * 0.35))
+        path.addLine(to: CGPoint(x: w * 0.5, y: h * 0.55))
+        path.closeSubpath()
+        
+        return path
+    }
+}
+
+/// StarCoder icon - 5-pointed star (BigCode/HuggingFace)
+struct StarCoderIcon: Shape {
+    func path(in rect: CGRect) -> Path {
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let outerRadius = min(rect.width, rect.height) * 0.5
+        let innerRadius = outerRadius * 0.4
+        
+        var path = Path()
+        
+        for i in 0..<5 {
+            let outerAngle = Angle(degrees: Double(i) * 72 - 90)
+            let innerAngle = Angle(degrees: Double(i) * 72 - 90 + 36)
+            
+            let outerPoint = CGPoint(
+                x: center.x + outerRadius * CGFloat(cos(outerAngle.radians)),
+                y: center.y + outerRadius * CGFloat(sin(outerAngle.radians))
+            )
+            let innerPoint = CGPoint(
+                x: center.x + innerRadius * CGFloat(cos(innerAngle.radians)),
+                y: center.y + innerRadius * CGFloat(sin(innerAngle.radians))
+            )
+            
+            if i == 0 {
+                path.move(to: outerPoint)
+            } else {
+                path.addLine(to: outerPoint)
+            }
+            path.addLine(to: innerPoint)
+        }
+        path.closeSubpath()
+        
+        return path
+    }
+}
+
+/// DeepSeek icon - wave/search pattern (deep exploration)
+struct DeepSeekIcon: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width
+        let h = rect.height
+        
+        // Magnifying glass circle
+        let glassCenter = CGPoint(x: w * 0.4, y: h * 0.4)
+        let glassRadius = w * 0.32
+        path.addArc(center: glassCenter, radius: glassRadius, startAngle: .degrees(0), endAngle: .degrees(360), clockwise: false)
+        
+        // Handle
+        let handleStart = CGPoint(x: glassCenter.x + glassRadius * 0.7, y: glassCenter.y + glassRadius * 0.7)
+        let handleEnd = CGPoint(x: w * 0.95, y: h * 0.95)
+        path.move(to: handleStart)
+        path.addLine(to: handleEnd)
+        
+        // Inner wave (represents "deep" search)
+        path.move(to: CGPoint(x: glassCenter.x - glassRadius * 0.5, y: glassCenter.y))
+        path.addQuadCurve(
+            to: CGPoint(x: glassCenter.x + glassRadius * 0.5, y: glassCenter.y),
+            control: CGPoint(x: glassCenter.x, y: glassCenter.y - glassRadius * 0.4)
+        )
+        
+        return path
+    }
+}
 
 /// Row displaying an installed model with load/delete actions.
 struct InstalledModelRow: View {
     let model: InstalledModel
     let isActive: Bool
+    let activeModelInfo: ModelInfo?
     let onLoad: () -> Void
     let onDelete: () -> Void
     
+    @State private var showingDetail = false
+    
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(model.name)
-                        .font(.headline)
-                    if isActive {
-                        Text("ACTIVE")
-                            .font(.caption2)
-                            .fontWeight(.bold)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(.green.opacity(0.2))
-                            .foregroundStyle(.green)
-                            .clipShape(Capsule())
+        Button {
+            showingDetail = true
+        } label: {
+            HStack(spacing: 14) {
+                // Model Provider Icon
+                ModelProviderIcon(
+                    family: model.registryEntry?.family ?? .other,
+                    size: 44,
+                    isActive: isActive
+                )
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(model.name)
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Color.escherInk)
+                            .lineLimit(1)
+                        
+                        if isActive {
+                            Text("ACTIVE")
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .foregroundStyle(Color.escherSuccess)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.escherSuccess.opacity(0.15))
+                                )
+                        }
+                        
+                        if model.isCustom {
+                            Text("CUSTOM")
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .foregroundStyle(Color.escherPrism)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.escherPrism.opacity(0.15))
+                                )
+                        }
                     }
+                    
+                    HStack(spacing: 6) {
+                        if let entry = model.registryEntry {
+                            Text(entry.parameterCount)
+                            Text("•")
+                            Text(entry.quantization)
+                            Text("•")
+                        }
+                        Text(model.formattedSize)
+                    }
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(Color.escherMidtone)
                 }
                 
-                HStack(spacing: 12) {
-                    if let entry = model.registryEntry {
-                        Text(entry.parameterCount)
-                        Text(entry.quantization)
+                Spacer()
+                
+                // Chevron indicator
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.escherMidtone.opacity(0.5))
+                
+                if !isActive {
+                    Button {
+                        onLoad()
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(Color.escherPrism.opacity(0.12))
+                                .frame(width: 36, height: 36)
+                            
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Color.escherPrism)
+                        }
                     }
-                    Text(model.formattedSize)
+                    .buttonStyle(.plain)
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
             }
-            
-            Spacer()
-            
-            if !isActive {
-                Button {
-                    onLoad()
-                } label: {
-                    Image(systemName: "play.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(.blue)
-                }
-                .buttonStyle(.plain)
-            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.escherPaper.opacity(0.6))
+            )
         }
-        .padding(.vertical, 4)
+        .buttonStyle(.plain)
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 onDelete()
             } label: {
                 Label("Delete", systemImage: "trash")
             }
+        }
+        .sheet(isPresented: $showingDetail) {
+            ModelDetailView(
+                model: model,
+                isActive: isActive,
+                activeModelInfo: activeModelInfo,
+                onLoad: onLoad,
+                onDelete: onDelete
+            )
         }
     }
 }
@@ -425,52 +965,104 @@ struct DownloadableModelRow: View {
     let model: ModelRegistryEntry
     let onDownload: () -> Void
     
+    @State private var showingDetail = false
+    
+    private var isRecommended: Bool {
+        model.description.contains("Recommended")
+    }
+    
+    private var isCustom: Bool {
+        model.isCustom
+    }
+    
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(model.name)
-                        .font(.headline)
+        Button {
+            showingDetail = true
+        } label: {
+            HStack(spacing: 14) {
+                // Model Provider Icon
+                ModelProviderIcon(family: model.family, size: 44)
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Text(model.name)
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Color.escherInk)
+                            .lineLimit(1)
+                        
+                        if isRecommended {
+                            Text("★")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(Color.escherWarning)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.escherWarning.opacity(0.15))
+                                )
+                        }
+                        
+                        if isCustom {
+                            Text("CUSTOM")
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .foregroundStyle(Color.escherPrism)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.escherPrism.opacity(0.15))
+                                )
+                        }
+                    }
                     
-                    if model.id == ModelRegistry.models.first(where: { $0.description.contains("Recommended") })?.id {
-                        Text("RECOMMENDED")
-                            .font(.caption2)
-                            .fontWeight(.bold)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(.blue.opacity(0.2))
-                            .foregroundStyle(.blue)
-                            .clipShape(Capsule())
+                    Text(model.description)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(Color.escherMidtone)
+                        .lineLimit(2)
+                    
+                    HStack(spacing: 6) {
+                        ModelBadge(text: model.parameterCount, color: .escherPrism)
+                        ModelBadge(text: model.quantization, color: .escherMidtone)
+                        if model.sizeBytes > 0 {
+                            ModelBadge(text: model.formattedSize, color: .escherMidtone)
+                        }
                     }
                 }
                 
-                Text(model.description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                Spacer()
                 
-                HStack(spacing: 12) {
-                    Label(model.parameterCount, systemImage: "cpu")
-                    Label(model.quantization, systemImage: "square.grid.3x3")
-                    Label(model.formattedSize, systemImage: "arrow.down.circle")
+                // Chevron indicator
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.escherMidtone.opacity(0.5))
+                
+                Button {
+                    onDownload()
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Color.escherPrism.opacity(0.12))
+                            .frame(width: 36, height: 36)
+                        
+                        Image(systemName: "arrow.down")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Color.escherPrism)
+                    }
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .buttonStyle(.plain)
             }
-            
-            Spacer()
-            
-            Button {
-                onDownload()
-            } label: {
-                Image(systemName: "icloud.and.arrow.down")
-                    .font(.title2)
-                    .foregroundStyle(.blue)
-            }
-            .buttonStyle(.plain)
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.escherPaper.opacity(0.6))
+            )
         }
-        .padding(.vertical, 4)
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showingDetail) {
+            RegistryModelDetailView(model: model, onDownload: onDownload)
+        }
     }
+    
 }
 
 /// Row showing download progress with cancel button.
@@ -480,39 +1072,82 @@ struct DownloadProgressRow: View {
     let onCancel: () -> Void
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(model.name)
-                    .font(.headline)
+                HStack(spacing: 10) {
+                    // Animated download icon
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Color.escherPrism.opacity(0.12))
+                            .frame(width: 36, height: 36)
+                        
+                        InfiniteStairs(size: 20)
+                    }
+                    
+                    Text(model.name)
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color.escherInk)
+                }
+                
                 Spacer()
+                
                 Button("Cancel", role: .destructive) {
                     onCancel()
                 }
-                .font(.subheadline)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(Color.escherError)
             }
             
-            ProgressView(value: progress.progress)
-                .tint(.blue)
+            // Tessellated progress bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.escherMidtone.opacity(0.1))
+                    
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.escherPrism, Color.escherPrism.opacity(0.7)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: geo.size.width * progress.progress)
+                    
+                    TessellationPattern(density: 30, opacity: 0.15)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                }
+            }
+            .frame(height: 8)
             
             HStack {
                 Text(progress.formattedProgress)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(Color.escherMidtone)
                 
                 Spacer()
                 
                 if let eta = progress.estimatedTimeRemaining {
                     Text("~\(formatDuration(eta)) remaining")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(Color.escherMidtone)
                 } else {
                     Text("\(progress.percentComplete)%")
-                        .font(.caption)
-                        .fontWeight(.medium)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.escherPrism)
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(14)
+        .background(
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.escherPaper)
+                
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(Color.escherPrism.opacity(0.3), lineWidth: 1)
+            }
+        )
     }
     
     private func formatDuration(_ seconds: TimeInterval) -> String {
@@ -526,6 +1161,790 @@ struct DownloadProgressRow: View {
     }
 }
 
+// MARK: - Model Detail View (Installed Models)
+
+/// Detailed view for an installed model showing all metadata.
+struct ModelDetailView: View {
+    let model: InstalledModel
+    let isActive: Bool
+    let activeModelInfo: ModelInfo?
+    let onLoad: () -> Void
+    let onDelete: () -> Void
+    
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                EscherBackground()
+                
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // Hero Section
+                        heroSection
+                        
+                        // Quick Stats
+                        quickStatsSection
+                        
+                        // Detailed Specifications
+                        specsSection
+                        
+                        // File Information
+                        fileInfoSection
+                        
+                        // Actions
+                        actionsSection
+                    }
+                    .padding(16)
+                }
+            }
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Model Details")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.escherInk)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.escherPrism)
+                }
+            }
+            .escherNavigationStyle()
+        }
+    }
+    
+    // MARK: - Hero Section
+    
+    private var heroSection: some View {
+        VStack(spacing: 16) {
+            // Model Provider Icon
+            ModelProviderIcon(
+                family: model.registryEntry?.family ?? .other,
+                size: 80,
+                isActive: isActive
+            )
+            
+            VStack(spacing: 6) {
+                Text(model.name)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.escherInk)
+                    .multilineTextAlignment(.center)
+                
+                if isActive {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color.escherSuccess)
+                            .frame(width: 8, height: 8)
+                        Text("Currently Active")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Color.escherSuccess)
+                    }
+                }
+            }
+            
+            // Badge Row
+            if let entry = model.registryEntry {
+                HStack(spacing: 8) {
+                    ModelBadge(text: entry.parameterCount, color: .escherPrism)
+                    ModelBadge(text: entry.quantization, color: .escherWarning)
+                    ModelBadge(text: entry.family.rawValue, color: .escherMidtone)
+                }
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .escherCard()
+    }
+    
+    // MARK: - Quick Stats Section
+    
+    private var quickStatsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("RUNTIME STATS")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .tracking(1)
+                .foregroundStyle(Color.escherMidtone)
+            
+            HStack(spacing: 0) {
+                // Memory Usage
+                QuickStatCard(
+                    icon: "memorychip",
+                    title: "Memory",
+                    value: memoryValue,
+                    color: .escherPrism
+                )
+                
+                Divider()
+                    .frame(height: 40)
+                    .padding(.horizontal, 8)
+                
+                // Context Size
+                QuickStatCard(
+                    icon: "text.alignleft",
+                    title: "Context",
+                    value: contextValue,
+                    color: .escherSuccess
+                )
+                
+                Divider()
+                    .frame(height: 40)
+                    .padding(.horizontal, 8)
+                
+                // File Size
+                QuickStatCard(
+                    icon: "internaldrive",
+                    title: "Disk",
+                    value: model.formattedSize,
+                    color: .escherWarning
+                )
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.escherPaper.opacity(0.6))
+            )
+        }
+        .padding(18)
+        .escherCard()
+    }
+    
+    private var memoryValue: String {
+        if let info = activeModelInfo {
+            return formatMemory(info.memoryUsage)
+        } else if let entry = model.registryEntry {
+            // Estimate: ~1.5x file size when loaded
+            let estimated = Int64(Double(entry.sizeBytes) * 1.5)
+            return "~\(formatMemory(estimated))"
+        }
+        return "—"
+    }
+    
+    private var contextValue: String {
+        if let info = activeModelInfo {
+            return formatNumber(info.contextSize)
+        } else if let entry = model.registryEntry {
+            return formatNumber(entry.recommendedContextSize)
+        }
+        return "—"
+    }
+    
+    // MARK: - Specs Section
+    
+    private var specsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("SPECIFICATIONS")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .tracking(1)
+                .foregroundStyle(Color.escherMidtone)
+            
+            VStack(spacing: 0) {
+                if let entry = model.registryEntry {
+                    SpecRow(label: "Parameters", value: entry.parameterCount)
+                    SpecDivider()
+                    SpecRow(label: "Quantization", value: entry.quantization)
+                    SpecDivider()
+                    SpecRow(label: "Model Family", value: entry.family.rawValue)
+                    SpecDivider()
+                    SpecRow(label: "Context Window", value: "\(formatNumber(entry.recommendedContextSize)) tokens")
+                    if !entry.isCustom {
+                        SpecDivider()
+                        SpecRow(label: "Source", value: "Hugging Face")
+                    }
+                } else {
+                    SpecRow(label: "Format", value: "GGUF")
+                    SpecDivider()
+                    SpecRow(label: "Source", value: "Custom Import")
+                }
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.escherPaper.opacity(0.6))
+            )
+        }
+        .padding(18)
+        .escherCard()
+    }
+    
+    // MARK: - File Info Section
+    
+    private var fileInfoSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("FILE INFORMATION")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .tracking(1)
+                .foregroundStyle(Color.escherMidtone)
+            
+            VStack(spacing: 0) {
+                SpecRow(label: "File Size", value: model.formattedSize)
+                SpecDivider()
+                SpecRow(label: "Downloaded", value: formatDate(model.downloadedAt))
+                SpecDivider()
+                SpecRow(label: "Model ID", value: model.id, isMonospace: true)
+                SpecDivider()
+                SpecRow(label: "Location", value: model.path.lastPathComponent, isMonospace: true)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.escherPaper.opacity(0.6))
+            )
+        }
+        .padding(18)
+        .escherCard()
+    }
+    
+    // MARK: - Actions Section
+    
+    private var actionsSection: some View {
+        VStack(spacing: 12) {
+            if !isActive {
+                Button {
+                    dismiss()
+                    onLoad()
+                } label: {
+                    HStack {
+                        Image(systemName: "play.fill")
+                        Text("Load Model")
+                    }
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.escherPaper)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.escherPrism)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            
+            Button(role: .destructive) {
+                dismiss()
+                onDelete()
+            } label: {
+                HStack {
+                    Image(systemName: "trash")
+                    Text("Delete Model")
+                }
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundStyle(Color.escherError)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.escherError.opacity(0.1))
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(18)
+        .escherCard()
+    }
+    
+    // MARK: - Helpers
+    
+    private func formatMemory(_ bytes: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: bytes, countStyle: .memory)
+    }
+    
+    private func formatNumber(_ number: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        return formatter.string(from: NSNumber(value: number)) ?? "\(number)"
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
+
+// MARK: - Registry Model Detail View (Available for Download)
+
+/// Detailed view for a model available for download from the registry.
+struct RegistryModelDetailView: View {
+    let model: ModelRegistryEntry
+    let onDownload: () -> Void
+    
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                EscherBackground()
+                
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // Hero Section
+                        heroSection
+                        
+                        // Description
+                        descriptionSection
+                        
+                        // Specifications
+                        specsSection
+                        
+                        // Estimated Usage
+                        estimatedUsageSection
+                        
+                        // Download Action
+                        actionSection
+                    }
+                    .padding(16)
+                }
+            }
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Model Details")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.escherInk)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.escherPrism)
+                }
+            }
+            .escherNavigationStyle()
+        }
+    }
+    
+    // MARK: - Hero Section
+    
+    private var heroSection: some View {
+        VStack(spacing: 16) {
+            // Model Provider Icon
+            ModelProviderIcon(family: model.family, size: 80)
+            
+            VStack(spacing: 6) {
+                Text(model.name)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.escherInk)
+                    .multilineTextAlignment(.center)
+                
+                Text("Available for Download")
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(Color.escherMidtone)
+            }
+            
+            // Badge Row
+            HStack(spacing: 8) {
+                ModelBadge(text: model.parameterCount, color: .escherPrism)
+                ModelBadge(text: model.quantization, color: .escherWarning)
+                ModelBadge(text: model.family.rawValue, color: .escherMidtone)
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .escherCard()
+    }
+    
+    // MARK: - Description Section
+    
+    private var descriptionSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("ABOUT")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .tracking(1)
+                .foregroundStyle(Color.escherMidtone)
+            
+            Text(model.description)
+                .font(.system(size: 15, weight: .regular, design: .rounded))
+                .foregroundStyle(Color.escherInk)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .escherCard()
+    }
+    
+    // MARK: - Specs Section
+    
+    private var specsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("SPECIFICATIONS")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .tracking(1)
+                .foregroundStyle(Color.escherMidtone)
+            
+            VStack(spacing: 0) {
+                SpecRow(label: "Parameters", value: model.parameterCount)
+                SpecDivider()
+                SpecRow(label: "Quantization", value: model.quantization)
+                SpecDivider()
+                SpecRow(label: "Model Family", value: model.family.rawValue)
+                SpecDivider()
+                SpecRow(label: "Recommended Context", value: "\(formatNumber(model.recommendedContextSize)) tokens")
+                SpecDivider()
+                SpecRow(label: "Download Size", value: model.formattedSize)
+                SpecDivider()
+                SpecRow(label: "Source", value: "Hugging Face", icon: "link")
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.escherPaper.opacity(0.6))
+            )
+        }
+        .padding(18)
+        .escherCard()
+    }
+    
+    // MARK: - Estimated Usage Section
+    
+    private var estimatedUsageSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("ESTIMATED USAGE")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .tracking(1)
+                .foregroundStyle(Color.escherMidtone)
+            
+            HStack(spacing: 0) {
+                // Memory Estimate
+                QuickStatCard(
+                    icon: "memorychip",
+                    title: "RAM Required",
+                    value: estimatedMemory,
+                    color: .escherPrism
+                )
+                
+                Divider()
+                    .frame(height: 40)
+                    .padding(.horizontal, 8)
+                
+                // Disk Space
+                QuickStatCard(
+                    icon: "internaldrive",
+                    title: "Disk Space",
+                    value: model.formattedSize,
+                    color: .escherWarning
+                )
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.escherPaper.opacity(0.6))
+            )
+            
+            HStack(spacing: 8) {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 12, weight: .medium))
+                Text("Memory estimate is approximate. Actual usage depends on context length.")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+            }
+            .foregroundStyle(Color.escherMidtone)
+        }
+        .padding(18)
+        .escherCard()
+    }
+    
+    private var estimatedMemory: String {
+        // Estimate: ~1.5x file size when loaded
+        let estimated = Int64(Double(model.sizeBytes) * 1.5)
+        return "~\(ByteCountFormatter.string(fromByteCount: estimated, countStyle: .memory))"
+    }
+    
+    // MARK: - Action Section
+    
+    private var actionSection: some View {
+        VStack(spacing: 12) {
+            Button {
+                dismiss()
+                onDownload()
+            } label: {
+                HStack {
+                    Image(systemName: "arrow.down.circle.fill")
+                    Text("Download Model")
+                    Text("(\(model.formattedSize))")
+                        .foregroundStyle(Color.escherPaper.opacity(0.7))
+                }
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundStyle(Color.escherPaper)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.escherPrism)
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(18)
+        .escherCard()
+    }
+    
+    // MARK: - Helpers
+    
+    private func formatNumber(_ number: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        return formatter.string(from: NSNumber(value: number)) ?? "\(number)"
+    }
+}
+
+// MARK: - Supporting Detail View Components
+
+struct QuickStatCard: View {
+    let icon: String
+    let title: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(color)
+            
+            Text(value)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(Color.escherInk)
+            
+            Text(title)
+                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .foregroundStyle(Color.escherMidtone)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+struct SpecRow: View {
+    let label: String
+    let value: String
+    var isMonospace: Bool = false
+    var icon: String? = nil
+    
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundStyle(Color.escherMidtone)
+            
+            Spacer()
+            
+            HStack(spacing: 4) {
+                if let icon = icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Color.escherPrism)
+                }
+                
+                Text(value)
+                    .font(isMonospace ? 
+                          .system(size: 13, weight: .medium, design: .monospaced) :
+                          .system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.escherInk)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+    }
+}
+
+struct SpecDivider: View {
+    var body: some View {
+        Divider()
+            .padding(.leading, 14)
+    }
+}
+
+// MARK: - Custom Model Input Sheet
+
+/// Sheet for entering a custom Hugging Face model URL.
+struct CustomModelInputSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    
+    @Binding var url: String
+    @Binding var contextSize: String
+    let onSubmit: (String, Int) -> Void
+    
+    @State private var isValidURL = false
+    @State private var parsedModelInfo: ModelRegistryEntry?
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                EscherBackground()
+                
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        // Header
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Add Custom Model")
+                                .font(.system(size: 24, weight: .bold, design: .rounded))
+                                .foregroundStyle(Color.escherInk)
+                            
+                            Text("Enter a Hugging Face URL to download any GGUF model.")
+                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                                .foregroundStyle(Color.escherMidtone)
+                        }
+                        
+                        // URL Input
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("HUGGING FACE URL")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .tracking(1)
+                                .foregroundStyle(Color.escherMidtone)
+                            
+                            TextField("https://huggingface.co/...", text: $url)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: 14, weight: .medium, design: .monospaced))
+                                .padding(14)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(Color.escherPaper)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .strokeBorder(
+                                            isValidURL ? Color.escherSuccess.opacity(0.5) : Color.escherMidtone.opacity(0.2),
+                                            lineWidth: 1
+                                        )
+                                )
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.never)
+                                .keyboardType(.URL)
+                                .onChange(of: url) { _, newValue in
+                                    validateURL(newValue)
+                                }
+                            
+                            // Example URLs
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Example:")
+                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(Color.escherMidtone)
+                                
+                                Text("https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf")
+                                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                    .foregroundStyle(Color.escherMidtone.opacity(0.7))
+                                    .lineLimit(2)
+                            }
+                        }
+                        
+                        // Context Size
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("CONTEXT SIZE (TOKENS)")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .tracking(1)
+                                .foregroundStyle(Color.escherMidtone)
+                            
+                            HStack(spacing: 10) {
+                                ForEach(["2048", "4096", "8192"], id: \.self) { size in
+                                    Button {
+                                        contextSize = size
+                                    } label: {
+                                        Text(size)
+                                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                            .foregroundStyle(contextSize == size ? Color.escherPaper : Color.escherInk)
+                                            .padding(.horizontal, 16)
+                                            .padding(.vertical, 10)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                    .fill(contextSize == size ? Color.escherPrism : Color.escherPaper)
+                                            )
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                    .strokeBorder(Color.escherMidtone.opacity(0.2), lineWidth: contextSize == size ? 0 : 1)
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                
+                                Spacer()
+                            }
+                            
+                            Text("Larger context uses more memory. Start with 4096 if unsure.")
+                                .font(.system(size: 11, weight: .medium, design: .rounded))
+                                .foregroundStyle(Color.escherMidtone)
+                        }
+                        
+                        // Parsed model info preview
+                        if let info = parsedModelInfo {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("DETECTED MODEL")
+                                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                                    .tracking(1)
+                                    .foregroundStyle(Color.escherMidtone)
+                                
+                                HStack(spacing: 12) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                            .fill(Color.escherSuccess.opacity(0.12))
+                                            .frame(width: 44, height: 44)
+                                        
+                                        Image(systemName: "checkmark.circle")
+                                            .font(.system(size: 20, weight: .medium))
+                                            .foregroundStyle(Color.escherSuccess)
+                                    }
+                                    
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(info.name)
+                                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                            .foregroundStyle(Color.escherInk)
+                                        
+                                        HStack(spacing: 6) {
+                                            ModelBadge(text: info.parameterCount, color: .escherPrism)
+                                            ModelBadge(text: info.quantization, color: .escherMidtone)
+                                        }
+                                    }
+                                    
+                                    Spacer()
+                                }
+                                .padding(12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(Color.escherPaper)
+                                )
+                            }
+                        }
+                        
+                        Spacer(minLength: 40)
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundStyle(Color.escherMidtone)
+                }
+                
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Download") {
+                        let ctx = Int(contextSize) ?? 4096
+                        onSubmit(url, ctx)
+                        dismiss()
+                    }
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(isValidURL ? Color.escherPrism : Color.escherMidtone)
+                    .disabled(!isValidURL)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+    
+    private func validateURL(_ urlString: String) {
+        parsedModelInfo = ModelRegistryEntry.fromHuggingFaceURL(urlString)
+        isValidURL = parsedModelInfo != nil
+    }
+}
+
 // MARK: - Compact Model Status View
 
 /// A compact view showing current model status, suitable for toolbar or status bar.
@@ -533,32 +1952,48 @@ struct ModelStatusView: View {
     @ObservedObject var modelManager: ModelBackendManager
     
     var body: some View {
-        HStack(spacing: 6) {
-            statusIcon
+        HStack(spacing: 8) {
+            statusIndicator
             
-            if let info = modelManager.modelInfo {
-                Text(info.name)
-                    .font(.caption)
-                    .lineLimit(1)
-            } else {
-                Text("No model")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 1) {
+                if let info = modelManager.modelInfo {
+                    Text(info.name)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color.escherInk)
+                        .lineLimit(1)
+                } else {
+                    Text("No model")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(Color.escherMidtone)
+                }
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(.ultraThinMaterial)
-        .clipShape(Capsule())
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(Color.escherPaper)
+        )
+        .overlay(
+            Capsule()
+                .strokeBorder(Color.escherMidtone.opacity(0.15), lineWidth: 0.5)
+        )
+        .shadow(color: .escherInk.opacity(0.12), radius: 8, x: 0, y: 4)
     }
     
     @ViewBuilder
-    private var statusIcon: some View {
+    private var statusIndicator: some View {
         switch modelManager.state {
         case .ready:
-            Circle()
-                .fill(.green)
-                .frame(width: 8, height: 8)
+            ZStack {
+                Circle()
+                    .fill(Color.escherSuccess.opacity(0.2))
+                    .frame(width: 18, height: 18)
+                
+                PenroseTriangle()
+                    .stroke(Color.escherSuccess, lineWidth: 1)
+                    .frame(width: 8, height: 8)
+            }
         case .generating:
             ProgressView()
                 .scaleEffect(0.6)
@@ -567,11 +2002,11 @@ struct ModelStatusView: View {
                 .scaleEffect(0.6)
         case .error:
             Circle()
-                .fill(.red)
+                .fill(Color.escherError)
                 .frame(width: 8, height: 8)
         case .unloaded:
             Circle()
-                .fill(.gray)
+                .fill(Color.escherMidtone.opacity(0.4))
                 .frame(width: 8, height: 8)
         }
     }
@@ -590,4 +2025,36 @@ struct ModelStatusView: View {
         ModelStatusView(modelManager: ModelBackendManager())
     }
     .padding()
+    .background(EscherBackground())
+}
+
+#Preview("Installed Model Detail") {
+    let sampleModel = InstalledModel(
+        id: "qwen2.5-coder-1.5b-q4km",
+        path: URL(filePath: "/Models/qwen2.5-coder-1.5b.gguf"),
+        sizeBytes: 934_000_000,
+        registryEntry: ModelRegistry.models[1],
+        downloadedAt: Date()
+    )
+    
+    ModelDetailView(
+        model: sampleModel,
+        isActive: true,
+        activeModelInfo: ModelInfo(
+            name: "Qwen2.5-Coder-1.5B",
+            parameterCount: "1.5B",
+            contextSize: 4096,
+            memoryUsage: 1_400_000_000,
+            quantization: "Q4_K_M"
+        ),
+        onLoad: {},
+        onDelete: {}
+    )
+}
+
+#Preview("Registry Model Detail") {
+    RegistryModelDetailView(
+        model: ModelRegistry.models[1],
+        onDownload: {}
+    )
 }

@@ -37,22 +37,17 @@ final class AppContainer {
     
     /// Automatically loads the last used model if one was saved.
     func autoLoadLastModelIfNeeded() async {
-        // Skip if a model is already loaded
         guard modelManager.state == .unloaded else { return }
         
-        // Check if we have a saved model ID
         guard let lastModelId = ModelPersistence.lastModelId() else { return }
         
-        // Check if this model is still installed
         let installedModels = await downloadManager.installedModels()
         guard let model = installedModels.first(where: { $0.id == lastModelId }),
               let entry = model.registryEntry else {
-            // Model was removed or is unknown, clear the persistence
             ModelPersistence.clearLastModelId()
             return
         }
         
-        // Load the model
         do {
             let config = ModelConfiguration(
                 modelPath: model.path.path,
@@ -65,7 +60,6 @@ final class AppContainer {
             await modelManager.setBackend(backend)
             try await modelManager.load(configuration: config, modelId: model.id, persistSelection: false)
         } catch {
-            // Failed to auto-load, clear persistence so we don't keep trying
             print("[AppContainer] Failed to auto-load model \(lastModelId): \(error)")
             ModelPersistence.clearLastModelId()
         }
@@ -95,51 +89,9 @@ struct RootView: View {
     var body: some View {
         Group {
             if horizontalSizeClass == .compact {
-                // iPhone: Use TabView for easy switching
-                TabView(selection: $selectedTab) {
-                    NavigationStack {
-                        AgentView(session: container.agentSession, workspaceInfo: container.workspaceInfo)
-                            .toolbar {
-                                ToolbarItem(placement: .topBarLeading) {
-                                    Button {
-                                        showingModelManagement = true
-                                    } label: {
-                                        ModelStatusView(modelManager: container.modelManager)
-                                    }
-                                }
-                            }
-                    }
-                    .tabItem {
-                        Label("Chat", systemImage: "bubble.left.and.bubble.right")
-                    }
-                    .tag(Tab.chat)
-
-                    NavigationStack {
-                        FileBrowserView(projectStore: container.projectStore)
-                            .navigationTitle(container.workspaceInfo.displayName)
-                    }
-                    .tabItem {
-                        Label("Files", systemImage: "folder")
-                    }
-                    .tag(Tab.files)
-                }
+                compactLayout
             } else {
-                // iPad: Use NavigationSplitView for side-by-side
-                NavigationSplitView {
-                    FileBrowserView(projectStore: container.projectStore)
-                        .navigationTitle(container.workspaceInfo.displayName)
-                        .toolbar {
-                            ToolbarItem(placement: .topBarTrailing) {
-                                Button {
-                                    showingModelManagement = true
-                                } label: {
-                                    ModelStatusView(modelManager: container.modelManager)
-                                }
-                            }
-                        }
-                } detail: {
-                    AgentView(session: container.agentSession, workspaceInfo: container.workspaceInfo)
-                }
+                regularLayout
             }
         }
         .sheet(isPresented: $showingModelManagement) {
@@ -147,12 +99,17 @@ struct RootView: View {
                 ModelManagementView(modelManager: container.modelManager)
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
-                            Button("Done") {
+                            Button {
                                 showingModelManagement = false
+                            } label: {
+                                Text("Done")
+                                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(Color.escherPrism)
                             }
                         }
                     }
             }
+            .presentationDragIndicator(.visible)
         }
         .onChange(of: memoryCoordinator.modelWasUnloadedAutomatically) { _, newValue in
             if newValue {
@@ -171,10 +128,80 @@ struct RootView: View {
             Text(memoryCoordinator.lastUnloadReason?.message ?? "Model was unloaded automatically.")
         }
         .task {
-            // Auto-load the last used model if available
             await container.autoLoadLastModelIfNeeded()
             await container.agentSession.bootstrapIfNeeded()
         }
+    }
+    
+    // MARK: - Compact Layout (iPhone)
+    
+    private var compactLayout: some View {
+        TabView(selection: $selectedTab) {
+            // Chat Tab
+            NavigationStack {
+                AgentView(session: container.agentSession, workspaceInfo: container.workspaceInfo)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button {
+                                showingModelManagement = true
+                            } label: {
+                                ModelStatusView(modelManager: container.modelManager)
+                            }
+                        }
+                    }
+            }
+            .tabItem {
+                VStack {
+                    Image(systemName: selectedTab == .chat ? "bubble.left.and.bubble.right.fill" : "bubble.left.and.bubble.right")
+                    Text("Chat")
+                }
+            }
+            .tag(Tab.chat)
+
+            // Files Tab
+            NavigationStack {
+                FileBrowserView(projectStore: container.projectStore)
+                    .navigationTitle(container.workspaceInfo.displayName)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button {
+                                showingModelManagement = true
+                            } label: {
+                                ModelStatusView(modelManager: container.modelManager)
+                            }
+                        }
+                    }
+            }
+            .tabItem {
+                VStack {
+                    Image(systemName: selectedTab == .files ? "folder.fill" : "folder")
+                    Text("Files")
+                }
+            }
+            .tag(Tab.files)
+        }
+        .tint(Color.escherInk)
+    }
+    
+    // MARK: - Regular Layout (iPad)
+    
+    private var regularLayout: some View {
+        NavigationSplitView {
+            FileBrowserView(projectStore: container.projectStore)
+                .navigationTitle(container.workspaceInfo.displayName)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            showingModelManagement = true
+                        } label: {
+                            ModelStatusView(modelManager: container.modelManager)
+                        }
+                    }
+                }
+        } detail: {
+            AgentView(session: container.agentSession, workspaceInfo: container.workspaceInfo)
+        }
+        .tint(Color.escherInk)
     }
 }
 
