@@ -1,0 +1,52 @@
+{
+  "platform": "ios",
+  "theme": {
+    "accentColor": "#4A4A4A",
+    "font": "JetBrains Mono",
+    "fontUrl": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap",
+    "backgroundColor": "#0A0A0A",
+    "textColor": "#f5f5f7",
+    "subtitleColor": "#86868b",
+    "frameColor": "dark"
+  },
+  "output": {
+    "width": 2048,
+    "height": 2732,
+    "prefix": "appstore-ipad-slide"
+  },
+  "slides": [
+    {
+      "layout": "text-top",
+      "headline": "{AI} Coding\nAssistant",
+      "subtitle": "Your personal JavaScript playground\nwith autonomous AI — fully offline",
+      "screenshot": "../raw/ipad/01-home.png",
+      "headlineSize": 120,
+      "phoneWidth": 1800,
+      "phoneTop": 520
+    },
+    {
+      "layout": "text-bottom",
+      "headline": "Local {LLM}\nPowered",
+      "subtitle": "Download and run coding models\ndirectly on your device",
+      "screenshot": "../raw/ipad/03-model.png",
+      "phoneWidth": 1700,
+      "phoneTop": -100
+    },
+    {
+      "layout": "text-top",
+      "headline": "Your\n{Preferences}",
+      "subtitle": "Light, dark, or system theme\nMake it yours",
+      "screenshot": "../raw/ipad/02-settings.png",
+      "phoneWidth": 1800,
+      "phoneTop": 520
+    },
+    {
+      "layout": "text-bottom",
+      "headline": "Split View\n{Workspace}",
+      "subtitle": "Files and chat side by side\nBuilt for iPad",
+      "screenshot": "../raw/ipad/01-home.png",
+      "phoneWidth": 1700,
+      "phoneTop": -100
+    }
+  ]
+}

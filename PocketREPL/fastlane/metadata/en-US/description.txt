@@ -1,0 +1,40 @@
+Your pocket-sized JavaScript playground with an autonomous AI coding assistant — completely offline.
+
+PocketREPL transforms your iPhone into a powerful coding environment. Give it a prompt, and watch as the AI writes JavaScript code, runs it in a sandboxed runtime, observes any errors, and iterates until it works. All of this happens locally on your device — no internet required.
+
+HOW IT WORKS
+
+• Type a natural language prompt describing what you want to build
+• The AI generates JavaScript code and executes it instantly
+• If something fails, it automatically debugs and retries
+• Watch your code come to life in real-time
+
+LOCAL AI MODELS
+
+Choose from multiple Qwen coding models optimized for on-device inference:
+
+• Qwen2.5-Coder-0.5B — Tiny but capable, fast inference
+• Qwen2.5-Coder-1.5B — Best balance of quality and speed
+• Qwen2.5-Coder-3B — More capable for complex tasks
+• Add your own custom GGUF models
+
+DEVELOPER FEATURES
+
+• Sandboxed JavaScriptCore runtime with CommonJS require() support
+• File system workspace for organizing your projects
+• Built-in console.log, assert, and test helpers
+• Real-time execution with detailed error traces
+• Context-aware AI that remembers your conversation
+
+PRIVACY FIRST
+
+Everything runs on your device. Your code, your prompts, your data — none of it leaves your iPhone. No accounts, no cloud sync, no telemetry.
+
+PERFECT FOR
+
+• Learning JavaScript with AI-guided assistance
+• Quick prototyping and experimentation
+• Running code snippets on the go
+• Exploring AI coding capabilities offline
+
+Download a model, give it a prompt, and start coding — anywhere.
