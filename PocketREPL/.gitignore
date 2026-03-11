@@ -1,0 +1,7 @@
+
+# Build artifacts
+build/
+DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+vendor/

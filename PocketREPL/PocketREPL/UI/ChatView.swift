@@ -23,9 +23,14 @@ struct ChatView: View {
                     }
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }
-                messageList
-                ContextCounter(session: session)
-                inputBar
+                
+                // Chat content with floating bottom controls
+                ZStack(alignment: .bottom) {
+                    messageList
+                    
+                    // Floating bottom controls
+                    floatingBottomControls
+                }
             }
         }
         .alert(String(localized: "Apple Intelligence Required"), isPresented: $showingAIAlert) {
@@ -68,7 +73,9 @@ struct ChatView: View {
                         .id(bottomID)
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 16)
+                .padding(.top, 16)
+                // Extra bottom padding to account for floating input bar + context counter
+                .padding(.bottom, 110)
             }
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: session.messages.count) { _, _ in
@@ -181,6 +188,15 @@ struct ChatView: View {
         )
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+    }
+    
+    // MARK: - Floating Bottom Controls
+    
+    private var floatingBottomControls: some View {
+        VStack(spacing: 0) {
+            ContextCounter(session: session)
+            inputBar
+        }
     }
     
     private func toggleKeyboard() {
@@ -716,9 +732,20 @@ struct ContextCounter: View {
     @ObservedObject var session: AgentSession
     @State private var showingSettings = false
     
-    private var tokens: Int { session.estimatedContextTokens }
-    private var limit: Int { AgentSession.estimatedContextLimit }
-    private var fraction: Double { session.contextUsageFraction }
+    // Foundation Models (primary - agent conversation)
+    private var fmTokens: Int { session.estimatedContextTokens }
+    private var fmLimit: Int { session.effectiveContextLimit }
+    private var fmFraction: Double { session.contextUsageFraction }
+    private var fmIsRealTracking: Bool { session.isUsingRealContextTracking }
+    
+    // Local Model (secondary - code generation)
+    private var localTokens: Int? { session.localModelTokens }
+    private var localLimit: Int? { session.localModelLimit }
+    private var localFraction: Double? {
+        guard let tokens = localTokens, let limit = localLimit, limit > 0 else { return nil }
+        return Double(tokens) / Double(limit)
+    }
+    private var showLocalModel: Bool { session.isLocalModelActive && session.isLocalModelContextActive }
     
     private var statusColor: Color {
         if session.isContextOverLimit {
@@ -730,10 +757,17 @@ struct ContextCounter: View {
         }
     }
     
+    private var localStatusColor: Color {
+        guard let fraction = localFraction else { return .escherSecondaryText }
+        if fraction > 1.0 { return .escherError }
+        if fraction > 0.7 { return .escherWarning }
+        return .blue.opacity(0.7)
+    }
+    
     var body: some View {
         Button(action: { showingSettings = true }) {
             HStack(spacing: 6) {
-                // Mini progress bar
+                // Foundation Models progress bar
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         Capsule()
@@ -741,15 +775,39 @@ struct ContextCounter: View {
                         
                         Capsule()
                             .fill(statusColor)
-                            .frame(width: geo.size.width * min(fraction, 1.0))
+                            .frame(width: geo.size.width * min(fmFraction, 1.0))
                     }
                 }
                 .frame(width: 32, height: 4)
                 
-                // Token count
-                Text("\(tokens)/\(limit)")
-                    .font(.escherMonoMini)
-                    .foregroundStyle(statusColor)
+                // Foundation Models token count with live indicator
+                HStack(spacing: 2) {
+                    // Live tracking indicator (filled circle when using real session data)
+                    Circle()
+                        .fill(fmIsRealTracking ? statusColor : statusColor.opacity(0.3))
+                        .frame(width: 4, height: 4)
+                    
+                    Text("\(fmTokens)/\(fmLimit)")
+                        .font(.escherMonoMini)
+                        .foregroundStyle(statusColor)
+                }
+                
+                // Local model indicator (when active)
+                if showLocalModel, let localTok = localTokens, let localLim = localLimit {
+                    Text("•")
+                        .font(.escherMonoMini)
+                        .foregroundStyle(Color.escherSecondaryText.opacity(0.5))
+                    
+                    HStack(spacing: 2) {
+                        Circle()
+                            .fill(localStatusColor)
+                            .frame(width: 4, height: 4)
+                        
+                        Text("\(localTok)/\(localLim)")
+                            .font(.escherMonoMini)
+                            .foregroundStyle(localStatusColor)
+                    }
+                }
                 
                 // Settings indicator
                 Image(systemName: "slider.horizontal.3")
@@ -781,7 +839,7 @@ struct ContextCounter: View {
     }
     
     private var contextAccessibilityLabel: String {
-        let percentage = Int(fraction * 100)
+        let percentage = Int(fmFraction * 100)
         let statusDescription: String
         if session.isContextOverLimit {
             statusDescription = String(localized: "over limit")
@@ -790,7 +848,17 @@ struct ContextCounter: View {
         } else {
             statusDescription = String(localized: "OK")
         }
-        return String(localized: "Context usage: \(tokens) of \(limit) tokens, \(percentage) percent, status \(statusDescription)")
+        let trackingType = fmIsRealTracking ? String(localized: "live") : String(localized: "estimated")
+        
+        var label = String(localized: "Agent context: \(fmTokens) of \(fmLimit) tokens, \(percentage) percent, status \(statusDescription), \(trackingType) tracking")
+        
+        // Add local model info if active
+        if showLocalModel, let localTok = localTokens, let localLim = localLimit {
+            let localPct = Int((localFraction ?? 0) * 100)
+            label += String(localized: ". Local model: \(localTok) of \(localLim) tokens, \(localPct) percent")
+        }
+        
+        return label
     }
 }
 
