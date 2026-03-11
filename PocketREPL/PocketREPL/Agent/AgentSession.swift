@@ -54,7 +54,7 @@ final class AgentSession: ObservableObject {
         self.messages = [
             AgentMessage(
                 role: .assistant,
-                text: "PocketREPL is ready. Tools are wired to ProjectStore and JSRuntime."
+                text: String(localized: "Ready to code.")
             )
         ]
         self.toolTrace = []
@@ -171,7 +171,7 @@ final class AgentSession: ObservableObject {
             messages.append(
                 AgentMessage(
                     role: .assistant,
-                    text: "Error: \(error.localizedDescription)"
+                    text: String(localized: "Error: \(error.localizedDescription)")
                 )
             )
             toolTrace.append(
@@ -325,7 +325,7 @@ final class AgentSession: ObservableObject {
             ToolTraceEvent(
                 kind: .note,
                 toolName: "runtime",
-                summary: "JavaScript runtime reset. Module cache cleared.",
+                summary: String(localized: "JavaScript runtime reset. Module cache cleared."),
                 status: .succeeded
             )
         )
@@ -337,7 +337,7 @@ final class AgentSession: ObservableObject {
         messages = [
             AgentMessage(
                 role: .assistant,
-                text: "New session started. Tools are ready."
+                text: String(localized: "New session started.")
             )
         ]
         toolTrace = []

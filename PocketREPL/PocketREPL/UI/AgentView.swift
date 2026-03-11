@@ -59,18 +59,18 @@ struct AgentView: View {
                     .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
             }
         }
-        .accessibilityLabel("Tool Trace")
+        .accessibilityLabel(String(localized: "Tool Trace"))
     }
 
     private var sessionMenuButton: some View {
         Menu {
-            Section("Workspace: \(workspaceInfo.displayName)") {
+            Section(String(localized: "Workspace: \(workspaceInfo.displayName)")) {
                 Button(role: .destructive) {
                     Task {
                         await session.resetRuntime()
                     }
                 } label: {
-                    Label("Reset Runtime", systemImage: "arrow.counterclockwise")
+                    Label(String(localized: "Reset Runtime"), systemImage: "arrow.counterclockwise")
                 }
 
                 Button(role: .destructive) {
@@ -78,7 +78,7 @@ struct AgentView: View {
                         await session.newSession()
                     }
                 } label: {
-                    Label("New Session", systemImage: "trash")
+                    Label(String(localized: "New Session"), systemImage: "trash")
                 }
             }
         } label: {
@@ -124,7 +124,7 @@ struct ToolTraceSheet: View {
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(Color.escherPrism)
                         
-                        Text("Tool Trace")
+                        Text("Tool Trace", comment: "Navigation title for tool trace view")
                             .font(.system(size: 17, weight: .bold, design: .rounded))
                             .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
                     }
@@ -134,7 +134,7 @@ struct ToolTraceSheet: View {
                     Button {
                         dismiss()
                     } label: {
-                        Text("Done")
+                        Text("Done", comment: "Button to dismiss sheet")
                             .font(.system(size: 15, weight: .semibold, design: .rounded))
                             .foregroundStyle(Color.escherPrism)
                     }
@@ -160,11 +160,11 @@ struct ToolTraceSheet: View {
             }
             
             VStack(spacing: 8) {
-                Text("No Tool Activity")
+                Text("No Tool Activity", comment: "Empty state title for tool trace")
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
                 
-                Text("Tool calls and results will appear here\nas you interact with PocketREPL.")
+                Text("Tool calls and results will appear here\nas you interact with PocketREPL.", comment: "Empty state description")
                     .font(.system(size: 14, weight: .medium, design: .rounded))
                     .foregroundStyle(Color.escherMidtone)
                     .multilineTextAlignment(.center)
@@ -272,9 +272,9 @@ struct ToolTraceRow: View {
 
     private var kindLabel: String {
         switch event.kind {
-        case .call: return "Call"
-        case .result: return "Result"
-        case .note: return "Note"
+        case .call: return String(localized: "Call")
+        case .result: return String(localized: "Result")
+        case .note: return String(localized: "Note")
         }
     }
 }

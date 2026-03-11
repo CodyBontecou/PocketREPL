@@ -57,7 +57,7 @@ struct ModelManagementView: View {
                             .foregroundStyle(Color.escherPrism)
                     }
                     
-                    Text("Models")
+                    Text("Models", comment: "Navigation title for model management")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.escherInk)
                 }
@@ -69,20 +69,20 @@ struct ModelManagementView: View {
         .task {
             await refreshData()
         }
-        .alert("Error", isPresented: .constant(errorMessage != nil)) {
-            Button("OK") { errorMessage = nil }
+        .alert(String(localized: "Error"), isPresented: .constant(errorMessage != nil)) {
+            Button(String(localized: "OK")) { errorMessage = nil }
         } message: {
             Text(errorMessage ?? "")
         }
         .confirmationDialog(
-            "Delete Model",
+            String(localized: "Delete Model"),
             isPresented: $showingDeleteConfirmation,
             presenting: modelToDelete
         ) { model in
-            Button("Delete \(model.name)", role: .destructive) {
+            Button(String(localized: "Delete \(model.name)"), role: .destructive) {
                 Task { await deleteModel(model) }
             }
-            Button("Cancel", role: .cancel) {}
+            Button(String(localized: "Cancel"), role: .cancel) {}
         } message: { model in
             Text("This will remove \(model.formattedSize) from your device. This action cannot be undone.")
         }
@@ -109,7 +109,7 @@ struct ModelManagementView: View {
         VStack(alignment: .leading, spacing: 16) {
             // Header
             HStack {
-                Text("ACTIVE MODEL")
+                Text("ACTIVE MODEL", comment: "Section header for currently loaded model")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .tracking(1)
                     .foregroundStyle(Color.escherMidtone)
@@ -147,8 +147,8 @@ struct ModelManagementView: View {
                 
                 // Stats bar
                 HStack(spacing: 20) {
-                    StatItem(icon: "memorychip", value: formatMemory(info.memoryUsage), label: "Memory")
-                    StatItem(icon: "text.alignleft", value: "\(info.contextSize)", label: "Context")
+                    StatItem(icon: "memorychip", value: formatMemory(info.memoryUsage), label: String(localized: "Memory"))
+                    StatItem(icon: "text.alignleft", value: "\(info.contextSize)", label: String(localized: "Context"))
                 }
                 
                 // Unload button
@@ -157,7 +157,7 @@ struct ModelManagementView: View {
                 } label: {
                     HStack {
                         Image(systemName: "eject.fill")
-                        Text("Unload Model")
+                        Text("Unload Model", comment: "Button to unload the current model")
                     }
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.escherError)
@@ -184,11 +184,11 @@ struct ModelManagementView: View {
                     }
                     
                     VStack(spacing: 4) {
-                        Text("No Model Loaded")
+                        Text("No Model Loaded", comment: "Displayed when no model is loaded")
                             .font(.system(size: 16, weight: .semibold, design: .rounded))
                             .foregroundStyle(Color.escherInk)
                         
-                        Text("Download and load a model to start")
+                        Text("Download and load a model to start", comment: "Instruction")
                             .font(.system(size: 13, weight: .medium, design: .rounded))
                             .foregroundStyle(Color.escherMidtone)
                     }
@@ -209,7 +209,7 @@ struct ModelManagementView: View {
                 Circle()
                     .fill(Color.escherSuccess)
                     .frame(width: 8, height: 8)
-                Text("Ready")
+                Text("Ready", comment: "Model status indicating ready to use")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.escherSuccess)
             }
@@ -217,7 +217,7 @@ struct ModelManagementView: View {
             HStack(spacing: 6) {
                 ProgressView()
                     .scaleEffect(0.6)
-                Text("Generating")
+                Text("Generating", comment: "Model status indicating text generation")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.escherPrism)
             }
@@ -235,7 +235,7 @@ struct ModelManagementView: View {
                 Circle()
                     .fill(Color.escherError)
                     .frame(width: 8, height: 8)
-                Text("Error")
+                Text("Error", comment: "Model status indicating an error")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.escherError)
             }
@@ -248,7 +248,7 @@ struct ModelManagementView: View {
     
     private var storageCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("STORAGE")
+            Text("STORAGE", comment: "Section header for storage information")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .tracking(1)
                 .foregroundStyle(Color.escherMidtone)
@@ -284,7 +284,7 @@ struct ModelManagementView: View {
             
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Models")
+                    Text("Models", comment: "Label for models storage")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(Color.escherMidtone)
                     Text(formatBytes(storageInfo.used))
@@ -295,7 +295,7 @@ struct ModelManagementView: View {
                 Spacer()
                 
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("Available")
+                    Text("Available", comment: "Label for available storage")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(Color.escherMidtone)
                     Text(formatBytes(storageInfo.available))
@@ -313,7 +313,7 @@ struct ModelManagementView: View {
     private var installedModelsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("INSTALLED")
+                Text("INSTALLED", comment: "Section header for installed models")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .tracking(1)
                     .foregroundStyle(Color.escherMidtone)
@@ -334,7 +334,7 @@ struct ModelManagementView: View {
             if installedModels.isEmpty {
                 HStack {
                     Spacer()
-                    Text("No models installed yet")
+                    Text("No models installed yet", comment: "Empty state message")
                         .font(.system(size: 14, weight: .medium, design: .rounded))
                         .foregroundStyle(Color.escherMidtone)
                         .padding(.vertical, 20)
@@ -366,7 +366,7 @@ struct ModelManagementView: View {
     private var availableModelsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("AVAILABLE FOR DOWNLOAD")
+                Text("AVAILABLE FOR DOWNLOAD", comment: "Section header for downloadable models")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .tracking(1)
                     .foregroundStyle(Color.escherMidtone)
@@ -379,7 +379,7 @@ struct ModelManagementView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "plus")
                             .font(.system(size: 10, weight: .bold))
-                        Text("Custom")
+                        Text("Custom", comment: "Button to add custom model")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                     }
                     .foregroundStyle(Color.escherPrism)
@@ -428,7 +428,7 @@ struct ModelManagementView: View {
             HStack(spacing: 8) {
                 Image(systemName: "info.circle")
                     .font(.system(size: 12, weight: .medium))
-                Text("Models are downloaded from Hugging Face and stored locally.")
+                Text("Models are downloaded from Hugging Face and stored locally.", comment: "Footer text")
                     .font(.system(size: 12, weight: .medium, design: .rounded))
             }
             .foregroundStyle(Color.escherMidtone)
@@ -469,7 +469,7 @@ struct ModelManagementView: View {
             VStack(spacing: 24) {
                 InfiniteStairs(size: 56)
                 
-                Text("Loading model...")
+                Text("Loading model...", comment: "Loading overlay text")
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.escherPaper)
             }
@@ -492,7 +492,7 @@ struct ModelManagementView: View {
     
     private func loadModel(_ model: InstalledModel) async {
         guard let entry = model.registryEntry else {
-            errorMessage = "Cannot load unknown model format"
+            errorMessage = String(localized: "Cannot load unknown model format")
             return
         }
         
@@ -512,7 +512,7 @@ struct ModelManagementView: View {
             try await modelManager.load(configuration: config, modelId: model.id, persistSelection: true)
             
         } catch {
-            errorMessage = "Failed to load model: \(error.localizedDescription)"
+            errorMessage = String(localized: "Failed to load model: \(error.localizedDescription)")
         }
     }
     
@@ -537,7 +537,7 @@ struct ModelManagementView: View {
             
         } catch {
             if (error as? ModelError) != .cancelled {
-                errorMessage = "Download failed: \(error.localizedDescription)"
+                errorMessage = String(localized: "Download failed: \(error.localizedDescription)")
             }
         }
         
@@ -560,14 +560,14 @@ struct ModelManagementView: View {
             try await downloadManager.deleteModel(id: model.id)
             await refreshData()
         } catch {
-            errorMessage = "Failed to delete model: \(error.localizedDescription)"
+            errorMessage = String(localized: "Failed to delete model: \(error.localizedDescription)")
         }
     }
     
     private func downloadCustomModel(url: String, contextSize: Int) async {
         // Create a temporary ID for progress tracking
         guard let model = ModelRegistryEntry.fromHuggingFaceURL(url, contextSize: contextSize) else {
-            errorMessage = "Invalid Hugging Face URL. Expected format:\nhttps://huggingface.co/{org}/{repo}/resolve/main/{filename}.gguf"
+            errorMessage = String(localized: "Invalid Hugging Face URL. Expected format:\nhttps://huggingface.co/{org}/{repo}/resolve/main/{filename}.gguf")
             return
         }
         
@@ -598,7 +598,7 @@ struct ModelManagementView: View {
             
         } catch {
             if (error as? ModelError) != .cancelled {
-                errorMessage = "Download failed: \(error.localizedDescription)"
+                errorMessage = String(localized: "Download failed: \(error.localizedDescription)")
             }
         }
         
@@ -873,7 +873,7 @@ struct InstalledModelRow: View {
                             .lineLimit(1)
                         
                         if isActive {
-                            Text("ACTIVE")
+                            Text("ACTIVE", comment: "Badge indicating model is active")
                                 .font(.system(size: 9, weight: .bold, design: .rounded))
                                 .foregroundStyle(Color.escherSuccess)
                                 .padding(.horizontal, 6)
@@ -885,7 +885,7 @@ struct InstalledModelRow: View {
                         }
                         
                         if model.isCustom {
-                            Text("CUSTOM")
+                            Text("CUSTOM", comment: "Badge indicating custom model")
                                 .font(.system(size: 9, weight: .bold, design: .rounded))
                                 .foregroundStyle(Color.escherPrism)
                                 .padding(.horizontal, 6)
@@ -945,7 +945,7 @@ struct InstalledModelRow: View {
             Button(role: .destructive) {
                 onDelete()
             } label: {
-                Label("Delete", systemImage: "trash")
+                Label(String(localized: "Delete"), systemImage: "trash")
             }
         }
         .sheet(isPresented: $showingDetail) {
@@ -1003,7 +1003,7 @@ struct DownloadableModelRow: View {
                         }
                         
                         if isCustom {
-                            Text("CUSTOM")
+                            Text("CUSTOM", comment: "Badge for custom model")
                                 .font(.system(size: 9, weight: .bold, design: .rounded))
                                 .foregroundStyle(Color.escherPrism)
                                 .padding(.horizontal, 6)
@@ -1091,7 +1091,7 @@ struct DownloadProgressRow: View {
                 
                 Spacer()
                 
-                Button("Cancel", role: .destructive) {
+                Button(String(localized: "Cancel"), role: .destructive) {
                     onCancel()
                 }
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
@@ -1128,7 +1128,7 @@ struct DownloadProgressRow: View {
                 Spacer()
                 
                 if let eta = progress.estimatedTimeRemaining {
-                    Text("~\(formatDuration(eta)) remaining")
+                    Text("~\(formatDuration(eta)) remaining", comment: "Estimated time remaining")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(Color.escherMidtone)
                 } else {
@@ -1202,12 +1202,12 @@ struct ModelDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("Model Details")
+                    Text("Model Details", comment: "Navigation title for model detail view")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.escherInk)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
+                    Button(String(localized: "Done")) {
                         dismiss()
                     }
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
@@ -1240,7 +1240,7 @@ struct ModelDetailView: View {
                         Circle()
                             .fill(Color.escherSuccess)
                             .frame(width: 8, height: 8)
-                        Text("Currently Active")
+                        Text("Currently Active", comment: "Badge for active model")
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
                             .foregroundStyle(Color.escherSuccess)
                     }
@@ -1265,7 +1265,7 @@ struct ModelDetailView: View {
     
     private var quickStatsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("RUNTIME STATS")
+            Text("RUNTIME STATS", comment: "Section header for runtime statistics")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .tracking(1)
                 .foregroundStyle(Color.escherMidtone)
@@ -1274,7 +1274,7 @@ struct ModelDetailView: View {
                 // Memory Usage
                 QuickStatCard(
                     icon: "memorychip",
-                    title: "Memory",
+                    title: String(localized: "Memory"),
                     value: memoryValue,
                     color: .escherPrism
                 )
@@ -1286,7 +1286,7 @@ struct ModelDetailView: View {
                 // Context Size
                 QuickStatCard(
                     icon: "text.alignleft",
-                    title: "Context",
+                    title: String(localized: "Context"),
                     value: contextValue,
                     color: .escherSuccess
                 )
@@ -1298,7 +1298,7 @@ struct ModelDetailView: View {
                 // File Size
                 QuickStatCard(
                     icon: "internaldrive",
-                    title: "Disk",
+                    title: String(localized: "Disk"),
                     value: model.formattedSize,
                     color: .escherWarning
                 )
@@ -1337,28 +1337,28 @@ struct ModelDetailView: View {
     
     private var specsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("SPECIFICATIONS")
+            Text("SPECIFICATIONS", comment: "Section header for model specifications")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .tracking(1)
                 .foregroundStyle(Color.escherMidtone)
             
             VStack(spacing: 0) {
                 if let entry = model.registryEntry {
-                    SpecRow(label: "Parameters", value: entry.parameterCount)
+                    SpecRow(label: String(localized: "Parameters"), value: entry.parameterCount)
                     SpecDivider()
-                    SpecRow(label: "Quantization", value: entry.quantization)
+                    SpecRow(label: String(localized: "Quantization"), value: entry.quantization)
                     SpecDivider()
-                    SpecRow(label: "Model Family", value: entry.family.rawValue)
+                    SpecRow(label: String(localized: "Model Family"), value: entry.family.rawValue)
                     SpecDivider()
-                    SpecRow(label: "Context Window", value: "\(formatNumber(entry.recommendedContextSize)) tokens")
+                    SpecRow(label: String(localized: "Context Window"), value: "\(formatNumber(entry.recommendedContextSize)) \(String(localized: "tokens"))")
                     if !entry.isCustom {
                         SpecDivider()
-                        SpecRow(label: "Source", value: "Hugging Face")
+                        SpecRow(label: String(localized: "Source"), value: String(localized: "Hugging Face"))
                     }
                 } else {
-                    SpecRow(label: "Format", value: "GGUF")
+                    SpecRow(label: String(localized: "Format"), value: "GGUF")
                     SpecDivider()
-                    SpecRow(label: "Source", value: "Custom Import")
+                    SpecRow(label: String(localized: "Source"), value: String(localized: "Custom Import"))
                 }
             }
             .background(
@@ -1374,19 +1374,19 @@ struct ModelDetailView: View {
     
     private var fileInfoSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("FILE INFORMATION")
+            Text("FILE INFORMATION", comment: "Section header for file information")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .tracking(1)
                 .foregroundStyle(Color.escherMidtone)
             
             VStack(spacing: 0) {
-                SpecRow(label: "File Size", value: model.formattedSize)
+                SpecRow(label: String(localized: "File Size"), value: model.formattedSize)
                 SpecDivider()
-                SpecRow(label: "Downloaded", value: formatDate(model.downloadedAt))
+                SpecRow(label: String(localized: "Downloaded"), value: formatDate(model.downloadedAt))
                 SpecDivider()
-                SpecRow(label: "Model ID", value: model.id, isMonospace: true)
+                SpecRow(label: String(localized: "Model ID"), value: model.id, isMonospace: true)
                 SpecDivider()
-                SpecRow(label: "Location", value: model.path.lastPathComponent, isMonospace: true)
+                SpecRow(label: String(localized: "Location"), value: model.path.lastPathComponent, isMonospace: true)
             }
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -1408,7 +1408,7 @@ struct ModelDetailView: View {
                 } label: {
                     HStack {
                         Image(systemName: "play.fill")
-                        Text("Load Model")
+                        Text("Load Model", comment: "Button to load a model")
                     }
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.escherPaper)
@@ -1428,7 +1428,7 @@ struct ModelDetailView: View {
             } label: {
                 HStack {
                     Image(systemName: "trash")
-                    Text("Delete Model")
+                    Text("Delete Model", comment: "Button to delete a model")
                 }
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
                 .foregroundStyle(Color.escherError)
@@ -1503,12 +1503,12 @@ struct RegistryModelDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("Model Details")
+                    Text("Model Details", comment: "Navigation title")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.escherInk)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
+                    Button(String(localized: "Done")) {
                         dismiss()
                     }
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
@@ -1532,7 +1532,7 @@ struct RegistryModelDetailView: View {
                     .foregroundStyle(Color.escherInk)
                     .multilineTextAlignment(.center)
                 
-                Text("Available for Download")
+                Text("Available for Download", comment: "Badge for downloadable model")
                     .font(.system(size: 14, weight: .medium, design: .rounded))
                     .foregroundStyle(Color.escherMidtone)
             }
@@ -1553,7 +1553,7 @@ struct RegistryModelDetailView: View {
     
     private var descriptionSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("ABOUT")
+            Text("ABOUT", comment: "Section header for model description")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .tracking(1)
                 .foregroundStyle(Color.escherMidtone)
@@ -1578,17 +1578,17 @@ struct RegistryModelDetailView: View {
                 .foregroundStyle(Color.escherMidtone)
             
             VStack(spacing: 0) {
-                SpecRow(label: "Parameters", value: model.parameterCount)
+                SpecRow(label: String(localized: "Parameters"), value: model.parameterCount)
                 SpecDivider()
-                SpecRow(label: "Quantization", value: model.quantization)
+                SpecRow(label: String(localized: "Quantization"), value: model.quantization)
                 SpecDivider()
-                SpecRow(label: "Model Family", value: model.family.rawValue)
+                SpecRow(label: String(localized: "Model Family"), value: model.family.rawValue)
                 SpecDivider()
-                SpecRow(label: "Recommended Context", value: "\(formatNumber(model.recommendedContextSize)) tokens")
+                SpecRow(label: String(localized: "Recommended Context"), value: "\(formatNumber(model.recommendedContextSize)) \(String(localized: "tokens"))")
                 SpecDivider()
-                SpecRow(label: "Download Size", value: model.formattedSize)
+                SpecRow(label: String(localized: "Download Size"), value: model.formattedSize)
                 SpecDivider()
-                SpecRow(label: "Source", value: "Hugging Face", icon: "link")
+                SpecRow(label: String(localized: "Source"), value: String(localized: "Hugging Face"), icon: "link")
             }
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -1603,7 +1603,7 @@ struct RegistryModelDetailView: View {
     
     private var estimatedUsageSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("ESTIMATED USAGE")
+            Text("ESTIMATED USAGE", comment: "Section header for usage estimates")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .tracking(1)
                 .foregroundStyle(Color.escherMidtone)
@@ -1612,7 +1612,7 @@ struct RegistryModelDetailView: View {
                 // Memory Estimate
                 QuickStatCard(
                     icon: "memorychip",
-                    title: "RAM Required",
+                    title: String(localized: "RAM Required"),
                     value: estimatedMemory,
                     color: .escherPrism
                 )
@@ -1624,7 +1624,7 @@ struct RegistryModelDetailView: View {
                 // Disk Space
                 QuickStatCard(
                     icon: "internaldrive",
-                    title: "Disk Space",
+                    title: String(localized: "Disk Space"),
                     value: model.formattedSize,
                     color: .escherWarning
                 )
@@ -1638,7 +1638,7 @@ struct RegistryModelDetailView: View {
             HStack(spacing: 8) {
                 Image(systemName: "info.circle")
                     .font(.system(size: 12, weight: .medium))
-                Text("Memory estimate is approximate. Actual usage depends on context length.")
+                Text("Memory estimate is approximate. Actual usage depends on context length.", comment: "Disclaimer")
                     .font(.system(size: 12, weight: .medium, design: .rounded))
             }
             .foregroundStyle(Color.escherMidtone)
@@ -1663,7 +1663,7 @@ struct RegistryModelDetailView: View {
             } label: {
                 HStack {
                     Image(systemName: "arrow.down.circle.fill")
-                    Text("Download Model")
+                    Text("Download Model", comment: "Button to download a model")
                     Text("(\(model.formattedSize))")
                         .foregroundStyle(Color.escherPaper.opacity(0.7))
                 }
@@ -1781,18 +1781,18 @@ struct CustomModelInputSheet: View {
                     VStack(alignment: .leading, spacing: 24) {
                         // Header
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Add Custom Model")
+                            Text("Add Custom Model", comment: "Title for custom model sheet")
                                 .font(.system(size: 24, weight: .bold, design: .rounded))
                                 .foregroundStyle(Color.escherInk)
                             
-                            Text("Enter a Hugging Face URL to download any GGUF model.")
+                            Text("Enter a Hugging Face URL to download any GGUF model.", comment: "Instruction")
                                 .font(.system(size: 14, weight: .medium, design: .rounded))
                                 .foregroundStyle(Color.escherMidtone)
                         }
                         
                         // URL Input
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("HUGGING FACE URL")
+                            Text("HUGGING FACE URL", comment: "Label for URL input field")
                                 .font(.system(size: 11, weight: .bold, design: .rounded))
                                 .tracking(1)
                                 .foregroundStyle(Color.escherMidtone)
@@ -1821,7 +1821,7 @@ struct CustomModelInputSheet: View {
                             
                             // Example URLs
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("Example:")
+                                Text("Example:", comment: "Label for example URL")
                                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                                     .foregroundStyle(Color.escherMidtone)
                                 
@@ -1834,7 +1834,7 @@ struct CustomModelInputSheet: View {
                         
                         // Context Size
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("CONTEXT SIZE (TOKENS)")
+                            Text("CONTEXT SIZE (TOKENS)", comment: "Label for context size selector")
                                 .font(.system(size: 11, weight: .bold, design: .rounded))
                                 .tracking(1)
                                 .foregroundStyle(Color.escherMidtone)
@@ -1864,7 +1864,7 @@ struct CustomModelInputSheet: View {
                                 Spacer()
                             }
                             
-                            Text("Larger context uses more memory. Start with 4096 if unsure.")
+                            Text("Larger context uses more memory. Start with 4096 if unsure.", comment: "Help text")
                                 .font(.system(size: 11, weight: .medium, design: .rounded))
                                 .foregroundStyle(Color.escherMidtone)
                         }
@@ -1872,7 +1872,7 @@ struct CustomModelInputSheet: View {
                         // Parsed model info preview
                         if let info = parsedModelInfo {
                             VStack(alignment: .leading, spacing: 12) {
-                                Text("DETECTED MODEL")
+                                Text("DETECTED MODEL", comment: "Section header for detected model info")
                                     .font(.system(size: 11, weight: .bold, design: .rounded))
                                     .tracking(1)
                                     .foregroundStyle(Color.escherMidtone)
@@ -1917,14 +1917,14 @@ struct CustomModelInputSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button(String(localized: "Cancel")) {
                         dismiss()
                     }
                     .foregroundStyle(Color.escherMidtone)
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Download") {
+                    Button(String(localized: "Download")) {
                         let ctx = Int(contextSize) ?? 4096
                         onSubmit(url, ctx)
                         dismiss()
@@ -1962,7 +1962,7 @@ struct ModelStatusView: View {
                         .foregroundStyle(Color.escherInk)
                         .lineLimit(1)
                 } else {
-                    Text("No model")
+                    Text("No model", comment: "Status when no model is loaded")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(Color.escherMidtone)
                 }
@@ -2012,6 +2012,50 @@ struct ModelStatusView: View {
     }
 }
 
+// MARK: - Model Status Compact View (for toolbar)
+
+struct ModelStatusCompactView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @ObservedObject var modelManager: ModelBackendManager
+    
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(colorScheme == .dark ? Color(white: 0.18) : Color.escherPaper)
+                .frame(width: 32, height: 32)
+                .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 4, x: 0, y: 2)
+            
+            statusIndicator
+        }
+    }
+    
+    @ViewBuilder
+    private var statusIndicator: some View {
+        switch modelManager.state {
+        case .ready:
+            ZStack {
+                PenroseTriangle()
+                    .stroke(Color.escherSuccess, lineWidth: 1.5)
+                    .frame(width: 12, height: 12)
+            }
+        case .generating:
+            ProgressView()
+                .scaleEffect(0.5)
+        case .loading:
+            ProgressView()
+                .scaleEffect(0.5)
+        case .error:
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color.escherError)
+        case .unloaded:
+            Image(systemName: "cpu")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Color.escherMidtone)
+        }
+    }
+}
+
 // MARK: - Preview
 
 #Preview("Model Management") {
@@ -2023,6 +2067,14 @@ struct ModelStatusView: View {
 #Preview("Model Status") {
     VStack {
         ModelStatusView(modelManager: ModelBackendManager())
+    }
+    .padding()
+    .background(EscherBackground())
+}
+
+#Preview("Model Status Compact") {
+    VStack(spacing: 20) {
+        ModelStatusCompactView(modelManager: ModelBackendManager())
     }
     .padding()
     .background(EscherBackground())

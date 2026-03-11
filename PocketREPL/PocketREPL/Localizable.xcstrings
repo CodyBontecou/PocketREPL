@@ -1,0 +1,493 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Apple Intelligence Required" : {
+      "comment" : "Alert title when AI features are unavailable"
+    },
+    "Open Settings" : {
+      "comment" : "Button to open device settings"
+    },
+    "Continue Without AI" : {
+      "comment" : "Button to dismiss AI unavailable alert"
+    },
+    "Enter your message..." : {
+      "comment" : "Placeholder text in chat input field"
+    },
+    "Thinking..." : {
+      "comment" : "Shown while AI is processing"
+    },
+    "Executing..." : {
+      "comment" : "Shown while a tool is executing"
+    },
+    "Completed" : {
+      "comment" : "Status label for successful tool execution"
+    },
+    "Failed" : {
+      "comment" : "Status label for failed tool execution"
+    },
+    "Processing" : {
+      "comment" : "Status label for in-progress tool execution"
+    },
+    "Skipped" : {
+      "comment" : "Status label for skipped tool execution"
+    },
+    "Result" : {
+      "comment" : "Generic result label"
+    },
+    "Collapse" : {
+      "comment" : "Button to collapse expanded content"
+    },
+    "Expand" : {
+      "comment" : "Button to expand collapsed content"
+    },
+    "Apple Intelligence Unavailable" : {
+      "comment" : "Banner title when AI is not available"
+    },
+    "Tap for details and options" : {
+      "comment" : "Banner subtitle prompting user to tap for more info"
+    },
+    "%lld characters" : {
+      "comment" : "Shows character count",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld character"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld characters"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "System" : {
+      "comment" : "Role label for system messages"
+    },
+    "Tool Call" : {
+      "comment" : "Role label for tool call messages"
+    },
+    "Tool Result" : {
+      "comment" : "Role label for tool result messages"
+    },
+    "Models" : {
+      "comment" : "Navigation title for model management"
+    },
+    "ACTIVE MODEL" : {
+      "comment" : "Section header for currently loaded model"
+    },
+    "STORAGE" : {
+      "comment" : "Section header for storage information"
+    },
+    "INSTALLED" : {
+      "comment" : "Section header for installed models"
+    },
+    "AVAILABLE FOR DOWNLOAD" : {
+      "comment" : "Section header for downloadable models"
+    },
+    "Ready" : {
+      "comment" : "Model status indicating ready to use"
+    },
+    "Generating" : {
+      "comment" : "Model status indicating text generation in progress"
+    },
+    "Error" : {
+      "comment" : "Model status indicating an error occurred"
+    },
+    "No Model Loaded" : {
+      "comment" : "Displayed when no model is currently loaded"
+    },
+    "Download and load a model to start" : {
+      "comment" : "Instruction when no model is loaded"
+    },
+    "Unload Model" : {
+      "comment" : "Button to unload the current model"
+    },
+    "Load Model" : {
+      "comment" : "Button to load a model"
+    },
+    "Delete Model" : {
+      "comment" : "Button to delete a model"
+    },
+    "Download" : {
+      "comment" : "Button to download a model"
+    },
+    "Cancel" : {
+      "comment" : "Button to cancel an action"
+    },
+    "Done" : {
+      "comment" : "Button to dismiss a sheet or complete an action"
+    },
+    "OK" : {
+      "comment" : "Button to acknowledge an alert"
+    },
+    "Memory" : {
+      "comment" : "Label for memory usage statistic"
+    },
+    "Context" : {
+      "comment" : "Label for context size statistic"
+    },
+    "Disk" : {
+      "comment" : "Label for disk usage statistic"
+    },
+    "Models" : {
+      "comment" : "Label for models storage"
+    },
+    "Available" : {
+      "comment" : "Label for available storage"
+    },
+    "No models installed yet" : {
+      "comment" : "Empty state message for installed models section"
+    },
+    "ACTIVE" : {
+      "comment" : "Badge indicating model is currently active"
+    },
+    "CUSTOM" : {
+      "comment" : "Badge indicating model is custom imported"
+    },
+    "Custom" : {
+      "comment" : "Button to add custom model"
+    },
+    "Models are downloaded from Hugging Face and stored locally." : {
+      "comment" : "Footer text explaining model storage"
+    },
+    "Loading model..." : {
+      "comment" : "Loading overlay text"
+    },
+    "Delete %@" : {
+      "comment" : "Confirmation dialog delete button with model name"
+    },
+    "This will remove %@ from your device. This action cannot be undone." : {
+      "comment" : "Confirmation dialog message for model deletion"
+    },
+    "Cannot load unknown model format" : {
+      "comment" : "Error when model format is unrecognized"
+    },
+    "Failed to load model: %@" : {
+      "comment" : "Error message when model loading fails"
+    },
+    "Download failed: %@" : {
+      "comment" : "Error message when download fails"
+    },
+    "Failed to delete model: %@" : {
+      "comment" : "Error message when deletion fails"
+    },
+    "Tool Trace" : {
+      "comment" : "Navigation title for tool trace view"
+    },
+    "No Tool Activity" : {
+      "comment" : "Empty state title for tool trace"
+    },
+    "Tool calls and results will appear here\nas you interact with PocketREPL." : {
+      "comment" : "Empty state description for tool trace"
+    },
+    "Call" : {
+      "comment" : "Badge label for tool call event"
+    },
+    "Note" : {
+      "comment" : "Badge label for note event"
+    },
+    "Reset Runtime" : {
+      "comment" : "Menu option to reset JavaScript runtime"
+    },
+    "New Session" : {
+      "comment" : "Menu option to start a new session"
+    },
+    "Workspace: %@" : {
+      "comment" : "Menu section header showing workspace name"
+    },
+    "Files" : {
+      "comment" : "Navigation title for file browser"
+    },
+    "Root" : {
+      "comment" : "Button to navigate to root directory"
+    },
+    "Back" : {
+      "comment" : "Button to navigate to parent directory"
+    },
+    "Folder" : {
+      "comment" : "Label indicating an item is a folder"
+    },
+    "Loading files..." : {
+      "comment" : "Loading state message for file browser"
+    },
+    "Loading..." : {
+      "comment" : "Generic loading message"
+    },
+    "Couldn't Load Files" : {
+      "comment" : "Error title when files fail to load"
+    },
+    "Try Again" : {
+      "comment" : "Button to retry a failed action"
+    },
+    "Workspace is Empty" : {
+      "comment" : "Empty state title for root workspace"
+    },
+    "Folder is Empty" : {
+      "comment" : "Empty state title for empty folder"
+    },
+    "Files will appear here as you create them\nthrough the AI assistant." : {
+      "comment" : "Empty state description for file browser"
+    },
+    "Chat" : {
+      "comment" : "Tab label for chat view"
+    },
+    "Settings" : {
+      "comment" : "Tab label for settings view"
+    },
+    "Model Unloaded" : {
+      "comment" : "Alert title when model is automatically unloaded"
+    },
+    "Reload Model" : {
+      "comment" : "Button to reload the unloaded model"
+    },
+    "Model was unloaded automatically." : {
+      "comment" : "Default message when model is unloaded"
+    },
+    "Ready to code." : {
+      "comment" : "Initial assistant message when session starts"
+    },
+    "New session started." : {
+      "comment" : "Message when a new session begins"
+    },
+    "JavaScript runtime reset. Module cache cleared." : {
+      "comment" : "Message when runtime is reset"
+    },
+    "Error: %@" : {
+      "comment" : "Generic error message format"
+    },
+    "I can't help with that request." : {
+      "comment" : "Response when request is refused"
+    },
+    "⚠️ Context limit reached. Starting fresh session. Please try again." : {
+      "comment" : "Warning when context window is exceeded"
+    },
+    "⚠️ Apple Intelligence model is not available.\n\nTo use AI features:\n1. Go to Settings > Apple Intelligence & Siri\n2. Enable Apple Intelligence\n3. Wait for the model to finish downloading (~4GB)" : {
+      "comment" : "Instructions when Apple Intelligence is not available"
+    },
+    "⚠️ Your device language/locale is not supported by Apple Intelligence." : {
+      "comment" : "Warning when locale is unsupported"
+    },
+    "⚠️ Too many requests. Please wait a moment and try again." : {
+      "comment" : "Warning when rate limited"
+    },
+    "⚠️ Another request is in progress. Please wait for it to complete." : {
+      "comment" : "Warning when concurrent request attempted"
+    },
+    "⚠️ Failed to process the response. Please try again." : {
+      "comment" : "Warning when response decoding fails"
+    },
+    "⚠️ Unsupported model configuration." : {
+      "comment" : "Warning when model configuration is invalid"
+    },
+    "⚠️ Retry limit reached after %lld consecutive failures on the same error. Please review and provide guidance." : {
+      "comment" : "Warning when retry limit is hit",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "⚠️ Retry limit reached after %lld consecutive failure on the same error. Please review and provide guidance."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "⚠️ Retry limit reached after %lld consecutive failures on the same error. Please review and provide guidance."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "⚠️ This device doesn't support Apple Intelligence. Using fallback mode." : {
+      "comment" : "Warning when device is not eligible"
+    },
+    "⚠️ Apple Intelligence is not enabled.\n\nGo to Settings > Apple Intelligence & Siri to enable it." : {
+      "comment" : "Warning when Apple Intelligence is disabled"
+    },
+    "⚠️ Apple Intelligence model is still downloading.\n\nPlease wait for it to finish in Settings > Apple Intelligence & Siri." : {
+      "comment" : "Warning when model is still downloading"
+    },
+    "⚠️ AI model unavailable: %@" : {
+      "comment" : "Generic warning when AI model is unavailable"
+    },
+    "Model is ready" : {
+      "comment" : "Status message when model is available"
+    },
+    "This device doesn't support Apple Intelligence" : {
+      "comment" : "Status message for ineligible device"
+    },
+    "Apple Intelligence is not enabled. Go to Settings > Apple Intelligence & Siri to enable it." : {
+      "comment" : "Status message when AI is disabled"
+    },
+    "Model is downloading. Please wait for Apple Intelligence to finish setup." : {
+      "comment" : "Status message when model is downloading"
+    },
+    "Model unavailable: %@" : {
+      "comment" : "Status message for generic unavailability"
+    },
+    "Unknown availability status" : {
+      "comment" : "Status message for unknown state"
+    },
+    "Foundation Models not supported on this OS version" : {
+      "comment" : "Status message for unsupported OS"
+    },
+    "Reached maximum tool iterations (%lld). Stopping." : {
+      "comment" : "Message when max iterations reached"
+    },
+    "RUNTIME STATS" : {
+      "comment" : "Section header for runtime statistics"
+    },
+    "SPECIFICATIONS" : {
+      "comment" : "Section header for model specifications"
+    },
+    "FILE INFORMATION" : {
+      "comment" : "Section header for file information"
+    },
+    "Parameters" : {
+      "comment" : "Label for parameter count"
+    },
+    "Quantization" : {
+      "comment" : "Label for quantization type"
+    },
+    "Model Family" : {
+      "comment" : "Label for model family"
+    },
+    "Context Window" : {
+      "comment" : "Label for context window size"
+    },
+    "Source" : {
+      "comment" : "Label for model source"
+    },
+    "Hugging Face" : {
+      "comment" : "Model source name"
+    },
+    "Format" : {
+      "comment" : "Label for model format"
+    },
+    "Custom Import" : {
+      "comment" : "Source name for custom imported models"
+    },
+    "File Size" : {
+      "comment" : "Label for file size"
+    },
+    "Downloaded" : {
+      "comment" : "Label for download date"
+    },
+    "Model ID" : {
+      "comment" : "Label for model identifier"
+    },
+    "Location" : {
+      "comment" : "Label for file location"
+    },
+    "Model Details" : {
+      "comment" : "Navigation title for model detail view"
+    },
+    "Currently Active" : {
+      "comment" : "Badge text for active model"
+    },
+    "%lld tokens" : {
+      "comment" : "Token count format"
+    },
+    "ABOUT" : {
+      "comment" : "Section header for model description"
+    },
+    "ESTIMATED USAGE" : {
+      "comment" : "Section header for usage estimates"
+    },
+    "RAM Required" : {
+      "comment" : "Label for RAM requirement"
+    },
+    "Disk Space" : {
+      "comment" : "Label for disk space requirement"
+    },
+    "Memory estimate is approximate. Actual usage depends on context length." : {
+      "comment" : "Disclaimer about memory estimates"
+    },
+    "Available for Download" : {
+      "comment" : "Badge text for downloadable model"
+    },
+    "Recommended Context" : {
+      "comment" : "Label for recommended context size"
+    },
+    "Download Size" : {
+      "comment" : "Label for download size"
+    },
+    "Download Model" : {
+      "comment" : "Button to download a model"
+    },
+    "Add Custom Model" : {
+      "comment" : "Title for custom model sheet"
+    },
+    "Enter a Hugging Face URL to download any GGUF model." : {
+      "comment" : "Instruction for custom model input"
+    },
+    "HUGGING FACE URL" : {
+      "comment" : "Label for URL input field"
+    },
+    "Example:" : {
+      "comment" : "Label for example URL"
+    },
+    "CONTEXT SIZE (TOKENS)" : {
+      "comment" : "Label for context size selector"
+    },
+    "Larger context uses more memory. Start with 4096 if unsure." : {
+      "comment" : "Help text for context size"
+    },
+    "DETECTED MODEL" : {
+      "comment" : "Section header for detected model info"
+    },
+    "~%@ remaining" : {
+      "comment" : "Estimated time remaining format"
+    },
+    "No model" : {
+      "comment" : "Status text when no model is loaded"
+    },
+    "Invalid Hugging Face URL. Expected format:\nhttps://huggingface.co/{org}/{repo}/resolve/main/{filename}.gguf" : {
+      "comment" : "Error message for invalid URL format"
+    },
+    "(empty file)" : {
+      "comment" : "Placeholder for empty file content"
+    },
+    "(no output)" : {
+      "comment" : "Placeholder when execution produces no output"
+    },
+    "APPEARANCE" : {
+      "comment" : "Section header for appearance settings"
+    },
+    "Preview" : {
+      "comment" : "Label for appearance preview"
+    },
+    "Hello!" : {
+      "comment" : "Sample user message in preview"
+    },
+    "Hi there! 👋" : {
+      "comment" : "Sample assistant message in preview"
+    },
+    "Version" : {
+      "comment" : "Label for app version"
+    },
+    "Build" : {
+      "comment" : "Label for build number"
+    },
+    "tokens" : {
+      "comment" : "Unit label for token count"
+    },
+    "Delete" : {
+      "comment" : "Button to delete an item"
+    }
+  },
+  "version" : "1.0"
+}

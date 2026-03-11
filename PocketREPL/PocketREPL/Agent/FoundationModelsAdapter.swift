@@ -70,24 +70,24 @@ final class AgentOrchestrator: ObservableObject {
             let availability = SystemLanguageModel.default.availability
             switch availability {
             case .available:
-                return "Model is ready"
+                return String(localized: "Model is ready")
             case .unavailable(let reason):
                 switch reason {
                 case .deviceNotEligible:
-                    return "This device doesn't support Apple Intelligence"
+                    return String(localized: "This device doesn't support Apple Intelligence")
                 case .appleIntelligenceNotEnabled:
-                    return "Apple Intelligence is not enabled. Go to Settings > Apple Intelligence & Siri to enable it."
+                    return String(localized: "Apple Intelligence is not enabled. Go to Settings > Apple Intelligence & Siri to enable it.")
                 case .modelNotReady:
-                    return "Model is downloading. Please wait for Apple Intelligence to finish setup."
+                    return String(localized: "Model is downloading. Please wait for Apple Intelligence to finish setup.")
                 @unknown default:
-                    return "Model unavailable: \(reason)"
+                    return String(localized: "Model unavailable: \(String(describing: reason))")
                 }
             @unknown default:
-                return "Unknown availability status"
+                return String(localized: "Unknown availability status")
             }
         }
         #endif
-        return "Foundation Models not supported on this OS version"
+        return String(localized: "Foundation Models not supported on this OS version")
     }
 
     /// Process a user prompt, executing tools as needed.
@@ -141,13 +141,13 @@ final class AgentOrchestrator: ObservableObject {
             let msg: String
             switch reason {
             case .deviceNotEligible:
-                msg = "⚠️ This device doesn't support Apple Intelligence. Using fallback mode."
+                msg = String(localized: "⚠️ This device doesn't support Apple Intelligence. Using fallback mode.")
             case .appleIntelligenceNotEnabled:
-                msg = "⚠️ Apple Intelligence is not enabled.\n\nGo to Settings > Apple Intelligence & Siri to enable it."
+                msg = String(localized: "⚠️ Apple Intelligence is not enabled.\n\nGo to Settings > Apple Intelligence & Siri to enable it.")
             case .modelNotReady:
-                msg = "⚠️ Apple Intelligence model is still downloading.\n\nPlease wait for it to finish in Settings > Apple Intelligence & Siri."
+                msg = String(localized: "⚠️ Apple Intelligence model is still downloading.\n\nPlease wait for it to finish in Settings > Apple Intelligence & Siri.")
             @unknown default:
-                msg = "⚠️ AI model unavailable: \(reason)"
+                msg = String(localized: "⚠️ AI model unavailable: \(String(describing: reason))")
             }
             await onAssistantMessage(msg)
             mode = .fallback
@@ -197,42 +197,35 @@ final class AgentOrchestrator: ObservableObject {
                 let msg: String
                 switch error {
                 case .guardrailViolation(_):
-                    msg = "I can't help with that request."
+                    msg = String(localized: "I can't help with that request.")
                     
                 case .exceededContextWindowSize:
                     // Auto-reset the session and retry with a fresh context
                     self.session = nil
-                    msg = "⚠️ Context limit reached. Starting fresh session. Please try again."
+                    msg = String(localized: "⚠️ Context limit reached. Starting fresh session. Please try again.")
                     
                 case .assetsUnavailable(_):
-                    msg = """
-                        ⚠️ Apple Intelligence model is not available.
-                        
-                        To use AI features:
-                        1. Go to Settings > Apple Intelligence & Siri
-                        2. Enable Apple Intelligence
-                        3. Wait for the model to finish downloading (~4GB)
-                        """
+                    msg = String(localized: "⚠️ Apple Intelligence model is not available.\n\nTo use AI features:\n1. Go to Settings > Apple Intelligence & Siri\n2. Enable Apple Intelligence\n3. Wait for the model to finish downloading (~4GB)")
                     mode = .fallback
                     
                 case .unsupportedLanguageOrLocale(_):
-                    msg = "⚠️ Your device language/locale is not supported by Apple Intelligence."
+                    msg = String(localized: "⚠️ Your device language/locale is not supported by Apple Intelligence.")
                     mode = .fallback
                     
                 case .rateLimited(_):
-                    msg = "⚠️ Too many requests. Please wait a moment and try again."
+                    msg = String(localized: "⚠️ Too many requests. Please wait a moment and try again.")
                     
                 case .concurrentRequests(_):
-                    msg = "⚠️ Another request is in progress. Please wait for it to complete."
+                    msg = String(localized: "⚠️ Another request is in progress. Please wait for it to complete.")
                     
                 case .refusal(_, _):
-                    msg = "I can't help with that request."
+                    msg = String(localized: "I can't help with that request.")
                     
                 case .decodingFailure(_):
-                    msg = "⚠️ Failed to process the response. Please try again."
+                    msg = String(localized: "⚠️ Failed to process the response. Please try again.")
                     
                 case .unsupportedGuide(_):
-                    msg = "⚠️ Unsupported model configuration."
+                    msg = String(localized: "⚠️ Unsupported model configuration.")
                     
                 @unknown default:
                     throw error
@@ -290,7 +283,7 @@ final class AgentOrchestrator: ObservableObject {
                 stoppedDueToRetryLimit = recordToolResult(toolResult, toolName: "run_snippet")
                 
                 if stoppedDueToRetryLimit {
-                    let msg = "⚠️ Retry limit reached after \(retryState.consecutiveFailures) consecutive failures on the same error. Please review and provide guidance."
+                    let msg = String(localized: "⚠️ Retry limit reached after \(retryState.consecutiveFailures) consecutive failures on the same error. Please review and provide guidance.")
                     await onAssistantMessage(msg)
                     return OrchestrationResult(
                         response: msg,
@@ -311,7 +304,7 @@ final class AgentOrchestrator: ObservableObject {
                 stoppedDueToRetryLimit = recordToolResult(toolResult, toolName: "run_file")
                 
                 if stoppedDueToRetryLimit {
-                    let msg = "⚠️ Retry limit reached after \(retryState.consecutiveFailures) consecutive failures on the same error. Please review and provide guidance."
+                    let msg = String(localized: "⚠️ Retry limit reached after \(retryState.consecutiveFailures) consecutive failures on the same error. Please review and provide guidance.")
                     await onAssistantMessage(msg)
                     return OrchestrationResult(
                         response: msg,
@@ -325,7 +318,7 @@ final class AgentOrchestrator: ObservableObject {
         }
 
         // Hit max iterations
-        let msg = "Reached maximum tool iterations (\(maxToolIterations)). Stopping."
+        let msg = String(localized: "Reached maximum tool iterations (\(maxToolIterations)). Stopping.")
         await onAssistantMessage(msg)
         return OrchestrationResult(
             response: msg,
@@ -437,13 +430,7 @@ final class AgentOrchestrator: ObservableObject {
 
         if let (toolName, params) = parseDirectToolCall(prompt) {
             if retryState.isAtLimit && (toolName == "run_snippet" || toolName == "run_file") {
-                let response = """
-                    ⚠️ Retry limit reached (\(maxConsecutiveFailures) consecutive failures on the same error).
-                    
-                    Last error: \(retryState.lastFailureSignature ?? "Unknown")
-                    
-                    Please review the error and provide guidance, or use a different approach.
-                    """
+                let response = String(localized: "⚠️ Retry limit reached (\(maxConsecutiveFailures) consecutive failures on the same error).\n\nLast error: \(retryState.lastFailureSignature ?? "Unknown")\n\nPlease review the error and provide guidance, or use a different approach.")
                 await onAssistantMessage(response)
                 return OrchestrationResult(response: response, toolCalls: [], iterations: 0, stoppedDueToRetryLimit: true)
             }
@@ -459,7 +446,7 @@ final class AgentOrchestrator: ObservableObject {
             var response = formatToolResponse(toolName: toolName, result: result)
 
             if shouldStop {
-                response += "\n\n⚠️ Retry limit reached. \(retryState.consecutiveFailures) consecutive failures on the same error. Please review and provide guidance."
+                response += String(localized: "\n\n⚠️ Retry limit reached. \(retryState.consecutiveFailures) consecutive failures on the same error. Please review and provide guidance.")
             }
 
             await onAssistantMessage(response)

@@ -27,11 +27,11 @@ struct ChatView: View {
                 inputBar
             }
         }
-        .alert("Apple Intelligence Required", isPresented: $showingAIAlert) {
-            Button("Open Settings") {
+        .alert(String(localized: "Apple Intelligence Required"), isPresented: $showingAIAlert) {
+            Button(String(localized: "Open Settings")) {
                 openAppleIntelligenceSettings()
             }
-            Button("Continue Without AI", role: .cancel) {}
+            Button(String(localized: "Continue Without AI"), role: .cancel) {}
         } message: {
             Text(session.aiAvailabilityStatus + "\n\nWithout Apple Intelligence, you can still use tools manually by typing commands like:\n\nlist_files\nrun_snippet {\"code\": \"console.log('hi')\"}")
         }
@@ -91,7 +91,7 @@ struct ChatView: View {
         let isDark = colorScheme == .dark
         
         return HStack(alignment: .bottom, spacing: 8) {
-            TextField("Enter your message...", text: $draft, axis: .vertical)
+            TextField(String(localized: "Enter your message..."), text: $draft, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.escherBody)
                 .foregroundStyle(isDark ? Color.escherPaper : Color.escherInk)
@@ -288,9 +288,9 @@ struct MessageBubble: View {
     private var roleLabel: String {
         switch message.role {
         case .assistant: return "PocketREPL"
-        case .system: return "System"
-        case .toolCall: return "Tool Call"
-        case .toolResult: return "Tool Result"
+        case .system: return String(localized: "System")
+        case .toolCall: return String(localized: "Tool Call")
+        case .toolResult: return String(localized: "Tool Result")
         case .user: return ""
         }
     }
@@ -336,7 +336,7 @@ struct ToolCallBubble: View {
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
                             .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
                         
-                        Text("Executing...")
+                        Text("Executing...", comment: "Shown while a tool is executing")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundStyle(Color.escherMidtone)
                     }
@@ -436,7 +436,7 @@ struct ToolResultBubble: View {
                         .foregroundStyle(statusColor)
                     
                     if isLongOutput {
-                        Text("\(message.text.count) characters")
+                        Text("\(message.text.count) characters", comment: "Shows character count")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundStyle(Color.escherMidtone)
                     }
@@ -446,7 +446,7 @@ struct ToolResultBubble: View {
                 
                 if isLongOutput {
                     Button(action: { withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) { isExpanded.toggle() } }) {
-                        Text(isExpanded ? "Collapse" : "Expand")
+                        Text(isExpanded ? String(localized: "Collapse") : String(localized: "Expand"))
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .foregroundStyle(Color.escherPrism)
                             .padding(.horizontal, 10)
@@ -511,11 +511,11 @@ struct ToolResultBubble: View {
     
     private var statusLabel: String {
         switch message.toolStatus {
-        case .succeeded: return "Completed"
-        case .failed: return "Failed"
-        case .pending: return "Processing"
-        case .skipped: return "Skipped"
-        case .none: return "Result"
+        case .succeeded: return String(localized: "Completed")
+        case .failed: return String(localized: "Failed")
+        case .pending: return String(localized: "Processing")
+        case .skipped: return String(localized: "Skipped")
+        case .none: return String(localized: "Result")
         }
     }
     
@@ -550,7 +550,7 @@ struct EscherTypingIndicator: View {
         HStack(spacing: 12) {
             InfiniteStairs(size: 32)
             
-            Text("Thinking...")
+            Text("Thinking...", comment: "Shown while AI is processing")
                 .font(.system(size: 13, weight: .medium, design: .rounded))
                 .foregroundStyle(Color.escherMidtone)
         }
@@ -592,11 +592,11 @@ struct AIUnavailableBanner: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Apple Intelligence Unavailable")
+                    Text("Apple Intelligence Unavailable", comment: "Banner title when AI is not available")
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
                     
-                    Text("Tap for details and options")
+                    Text("Tap for details and options", comment: "Banner subtitle prompting user to tap")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(Color.escherMidtone)
                 }

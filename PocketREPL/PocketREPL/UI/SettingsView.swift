@@ -32,7 +32,7 @@ struct SettingsView: View {
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(Color.escherPrism)
                         
-                        Text("Settings")
+                        Text("Settings", comment: "Navigation title for settings")
                             .font(.system(size: 17, weight: .bold, design: .rounded))
                             .foregroundStyle(Color.escherForeground)
                     }
@@ -42,7 +42,7 @@ struct SettingsView: View {
                     Button {
                         dismiss()
                     } label: {
-                        Text("Done")
+                        Text("Done", comment: "Button to dismiss settings")
                             .font(.system(size: 15, weight: .semibold, design: .rounded))
                             .foregroundStyle(Color.escherPrism)
                     }
@@ -57,7 +57,7 @@ struct SettingsView: View {
     
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("APPEARANCE")
+            Text("APPEARANCE", comment: "Section header for appearance settings")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .tracking(1)
                 .foregroundStyle(Color.escherMidtone)
@@ -89,15 +89,15 @@ struct SettingsView: View {
     
     private var aboutSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("ABOUT")
+            Text("ABOUT", comment: "Section header for about information")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .tracking(1)
                 .foregroundStyle(Color.escherMidtone)
             
             VStack(spacing: 0) {
-                AboutRow(label: "Version", value: appVersion)
+                AboutRow(label: String(localized: "Version"), value: appVersion)
                 AboutDivider()
-                AboutRow(label: "Build", value: buildNumber)
+                AboutRow(label: String(localized: "Build"), value: buildNumber)
             }
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -163,7 +163,7 @@ struct AppearancePreview: View {
     
     var body: some View {
         VStack(spacing: 12) {
-            Text("Preview")
+            Text("Preview", comment: "Label for appearance preview")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .tracking(1)
                 .foregroundStyle(Color.escherMidtone)
@@ -173,7 +173,7 @@ struct AppearancePreview: View {
                 // Mock chat bubbles
                 VStack(alignment: .leading, spacing: 8) {
                     // User message
-                    Text("Hello!")
+                    Text("Hello!", comment: "Sample user message in preview")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(Color.escherBackground)
                         .padding(.horizontal, 12)
@@ -185,7 +185,7 @@ struct AppearancePreview: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     
                     // Assistant message
-                    Text("Hi there! 👋")
+                    Text("Hi there! 👋", comment: "Sample assistant message in preview")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(Color.escherForeground)
                         .padding(.horizontal, 12)
@@ -262,7 +262,7 @@ struct SettingsContentView: View {
                 .padding(16)
             }
         }
-        .navigationTitle("Settings")
+        .navigationTitle(String(localized: "Settings"))
         .navigationBarTitleDisplayMode(.large)
         .escherNavigationStyle()
     }
@@ -271,7 +271,7 @@ struct SettingsContentView: View {
     
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("APPEARANCE")
+            Text("APPEARANCE", comment: "Section header")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .tracking(1)
                 .foregroundStyle(Color.escherMidtone)
@@ -303,15 +303,15 @@ struct SettingsContentView: View {
     
     private var aboutSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("ABOUT")
+            Text("ABOUT", comment: "Section header")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .tracking(1)
                 .foregroundStyle(Color.escherMidtone)
             
             VStack(spacing: 0) {
-                AboutRow(label: "Version", value: appVersion)
+                AboutRow(label: String(localized: "Version"), value: appVersion)
                 AboutDivider()
-                AboutRow(label: "Build", value: buildNumber)
+                AboutRow(label: String(localized: "Build"), value: buildNumber)
             }
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)

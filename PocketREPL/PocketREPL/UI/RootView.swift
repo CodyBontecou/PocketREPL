@@ -105,7 +105,7 @@ struct RootView: View {
                             Button {
                                 showingModelManagement = false
                             } label: {
-                                Text("Done")
+                                Text("Done", comment: "Button to dismiss sheet")
                                     .font(.system(size: 15, weight: .semibold, design: .rounded))
                                     .foregroundStyle(Color.escherPrism)
                             }
@@ -122,16 +122,16 @@ struct RootView: View {
                 showingUnloadAlert = true
             }
         }
-        .alert("Model Unloaded", isPresented: $showingUnloadAlert) {
-            Button("Reload Model") {
+        .alert(String(localized: "Model Unloaded"), isPresented: $showingUnloadAlert) {
+            Button(String(localized: "Reload Model")) {
                 memoryCoordinator.clearUnloadState()
                 showingModelManagement = true
             }
-            Button("OK", role: .cancel) {
+            Button(String(localized: "OK"), role: .cancel) {
                 memoryCoordinator.clearUnloadState()
             }
         } message: {
-            Text(memoryCoordinator.lastUnloadReason?.message ?? "Model was unloaded automatically.")
+            Text(memoryCoordinator.lastUnloadReason?.message ?? String(localized: "Model was unloaded automatically."))
         }
         .task {
             await container.autoLoadLastModelIfNeeded()
@@ -155,7 +155,7 @@ struct RootView: View {
             .tabItem {
                 VStack {
                     Image(systemName: selectedTab == .chat ? "bubble.left.and.bubble.right.fill" : "bubble.left.and.bubble.right")
-                    Text("Chat")
+                    Text("Chat", comment: "Tab label for chat view")
                 }
             }
             .tag(Tab.chat)
@@ -177,7 +177,7 @@ struct RootView: View {
             .tabItem {
                 VStack {
                     Image(systemName: selectedTab == .files ? "folder.fill" : "folder")
-                    Text("Files")
+                    Text("Files", comment: "Tab label for files view")
                 }
             }
             .tag(Tab.files)
@@ -189,7 +189,7 @@ struct RootView: View {
             .tabItem {
                 VStack {
                     Image(systemName: selectedTab == .settings ? "gearshape.fill" : "gearshape")
-                    Text("Settings")
+                    Text("Settings", comment: "Tab label for settings view")
                 }
             }
             .tag(Tab.settings)

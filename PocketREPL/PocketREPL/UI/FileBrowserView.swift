@@ -27,7 +27,7 @@ struct FileBrowserView: View {
                 content
             }
         }
-        .navigationTitle(currentPath.isEmpty ? "Files" : URL(fileURLWithPath: currentPath).lastPathComponent)
+        .navigationTitle(currentPath.isEmpty ? String(localized: "Files") : URL(fileURLWithPath: currentPath).lastPathComponent)
         .navigationBarTitleDisplayMode(.large)
         .sheet(item: $selectedFile) { file in
             FilePreviewSheet(projectStore: projectStore, file: file)
@@ -52,7 +52,7 @@ struct FileBrowserView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "folder.fill")
                             .font(.system(size: 12, weight: .medium))
-                        Text("Root")
+                        Text("Root", comment: "Button to navigate to root directory")
                             .font(.system(size: 13, weight: .medium, design: .rounded))
                     }
                     .foregroundStyle(Color.escherPrism)
@@ -108,7 +108,7 @@ struct FileBrowserView: View {
         VStack(spacing: 20) {
             InfiniteStairs(size: 48)
             
-            Text("Loading files...")
+            Text("Loading files...", comment: "Loading state message for file browser")
                 .font(.system(size: 14, weight: .medium, design: .rounded))
                 .foregroundStyle(Color.escherMidtone)
         }
@@ -128,7 +128,7 @@ struct FileBrowserView: View {
             }
             
             VStack(spacing: 8) {
-                Text("Couldn't Load Files")
+                Text("Couldn't Load Files", comment: "Error title when files fail to load")
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundStyle(Color.escherInk)
                 
@@ -141,7 +141,7 @@ struct FileBrowserView: View {
             Button {
                 Task { await reload() }
             } label: {
-                Text("Try Again")
+                Text("Try Again", comment: "Button to retry a failed action")
             }
             .buttonStyle(ImpossibleButtonStyle())
         }
@@ -163,11 +163,11 @@ struct FileBrowserView: View {
             }
             
             VStack(spacing: 8) {
-                Text(currentPath.isEmpty ? "Workspace is Empty" : "Folder is Empty")
+                Text(currentPath.isEmpty ? String(localized: "Workspace is Empty") : String(localized: "Folder is Empty"))
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundStyle(Color.escherInk)
                 
-                Text("Files will appear here as you create them\nthrough the AI assistant.")
+                Text("Files will appear here as you create them\nthrough the AI assistant.", comment: "Empty state description")
                     .font(.system(size: 14, weight: .medium, design: .rounded))
                     .foregroundStyle(Color.escherMidtone)
                     .multilineTextAlignment(.center)
@@ -209,7 +209,7 @@ struct FileBrowserView: View {
                         .foregroundStyle(Color.escherPrism)
                 }
                 
-                Text("Back")
+                Text("Back", comment: "Button to navigate to parent directory")
                     .font(.system(size: 16, weight: .medium, design: .rounded))
                     .foregroundStyle(Color.escherPrism)
                 
@@ -304,7 +304,7 @@ struct FileRow: View {
 
                     HStack(spacing: 8) {
                         if entry.kind == .directory {
-                            Text("Folder")
+                            Text("Folder", comment: "Label indicating an item is a folder")
                                 .font(.system(size: 12, weight: .medium, design: .rounded))
                                 .foregroundStyle(Color.escherMidtone)
                         } else if let size = entry.sizeBytes {
@@ -433,7 +433,7 @@ struct FilePreviewSheet: View {
                     if isLoading {
                         VStack(spacing: 20) {
                             InfiniteStairs(size: 40)
-                            Text("Loading...")
+                            Text("Loading...", comment: "Generic loading message")
                                 .font(.system(size: 14, weight: .medium, design: .rounded))
                                 .foregroundStyle(Color.escherMidtone)
                         }
@@ -467,7 +467,7 @@ struct FilePreviewSheet: View {
                     Button {
                         dismiss()
                     } label: {
-                        Text("Done")
+                        Text("Done", comment: "Button to dismiss sheet")
                             .font(.system(size: 15, weight: .semibold, design: .rounded))
                             .foregroundStyle(Color.escherPrism)
                     }
