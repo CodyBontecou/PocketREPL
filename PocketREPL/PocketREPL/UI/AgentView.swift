@@ -1,8 +1,11 @@
 import SwiftUI
 
 struct AgentView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var session: AgentSession
+    @ObservedObject var modelManager: ModelBackendManager
     let workspaceInfo: WorkspaceInfo
+    let onModelButtonTapped: () -> Void
 
     @State private var showingToolTrace = false
     @State private var showingSessionMenu = false
@@ -13,20 +16,14 @@ struct AgentView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    // Custom title with Penrose motif
-                    HStack(spacing: 8) {
-                        PenroseTriangle()
-                            .stroke(Color.escherInk, lineWidth: 1.5)
-                            .frame(width: 18, height: 18)
-                        
-                        Text("PocketREPL")
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
-                            .foregroundStyle(Color.escherInk)
-                    }
+                    PenroseTriangle()
+                        .stroke(colorScheme == .dark ? Color.escherPaper : Color.escherInk, lineWidth: 1.5)
+                        .frame(width: 22, height: 22)
                 }
                 
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 12) {
+                        modelButton
                         toolTraceButton
                         sessionMenuButton
                     }
@@ -38,19 +35,28 @@ struct AgentView: View {
             .escherNavigationStyle()
     }
 
+    private var modelButton: some View {
+        Button {
+            onModelButtonTapped()
+        } label: {
+            ModelStatusCompactView(modelManager: modelManager)
+        }
+        .accessibilityLabel("Model Selection")
+    }
+    
     private var toolTraceButton: some View {
         Button {
             showingToolTrace = true
         } label: {
             ZStack {
                 Circle()
-                    .fill(Color.escherPaper)
+                    .fill(colorScheme == .dark ? Color(white: 0.18) : Color.escherPaper)
                     .frame(width: 32, height: 32)
-                    .shadow(color: .escherInk.opacity(0.06), radius: 4, x: 0, y: 2)
+                    .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 4, x: 0, y: 2)
                 
                 Image(systemName: "list.bullet.rectangle")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Color.escherInk)
+                    .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
             }
         }
         .accessibilityLabel("Tool Trace")
@@ -78,13 +84,13 @@ struct AgentView: View {
         } label: {
             ZStack {
                 Circle()
-                    .fill(Color.escherPaper)
+                    .fill(colorScheme == .dark ? Color(white: 0.18) : Color.escherPaper)
                     .frame(width: 32, height: 32)
-                    .shadow(color: .escherInk.opacity(0.06), radius: 4, x: 0, y: 2)
+                    .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 4, x: 0, y: 2)
                 
                 Image(systemName: "ellipsis")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color.escherInk)
+                    .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
             }
         }
     }
@@ -93,6 +99,7 @@ struct AgentView: View {
 // MARK: - Tool Trace Sheet
 
 struct ToolTraceSheet: View {
+    @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var session: AgentSession
     @Environment(\.dismiss) private var dismiss
 
@@ -119,7 +126,7 @@ struct ToolTraceSheet: View {
                         
                         Text("Tool Trace")
                             .font(.system(size: 17, weight: .bold, design: .rounded))
-                            .foregroundStyle(Color.escherInk)
+                            .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
                     }
                 }
                 
@@ -155,7 +162,7 @@ struct ToolTraceSheet: View {
             VStack(spacing: 8) {
                 Text("No Tool Activity")
                     .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.escherInk)
+                    .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
                 
                 Text("Tool calls and results will appear here\nas you interact with PocketREPL.")
                     .font(.system(size: 14, weight: .medium, design: .rounded))
@@ -181,6 +188,7 @@ struct ToolTraceSheet: View {
 // MARK: - Tool Trace Row
 
 struct ToolTraceRow: View {
+    @Environment(\.colorScheme) private var colorScheme
     let event: ToolTraceEvent
     @State private var appeared = false
 
@@ -201,7 +209,7 @@ struct ToolTraceRow: View {
                 HStack {
                     Text(event.toolName)
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Color.escherInk)
+                        .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
 
                     Spacer()
 
@@ -228,13 +236,13 @@ struct ToolTraceRow: View {
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.escherPaper)
+                    .fill(colorScheme == .dark ? Color(red: 0.14, green: 0.12, blue: 0.16) : Color.escherPaper)
                 
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(Color.escherMidtone.opacity(0.1), lineWidth: 0.5)
+                    .strokeBorder(Color.escherMidtone.opacity(colorScheme == .dark ? 0.2 : 0.1), lineWidth: 0.5)
             }
         )
-        .shadow(color: .escherInk.opacity(0.04), radius: 8, x: 0, y: 4)
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.04), radius: 8, x: 0, y: 4)
         .opacity(appeared ? 1 : 0)
         .offset(x: appeared ? 0 : -10)
         .onAppear {
@@ -275,6 +283,11 @@ struct ToolTraceRow: View {
 
 #Preview {
     NavigationStack {
-        AgentView(session: AppContainer.preview.agentSession, workspaceInfo: AppContainer.preview.workspaceInfo)
+        AgentView(
+            session: AppContainer.preview.agentSession,
+            modelManager: AppContainer.preview.modelManager,
+            workspaceInfo: AppContainer.preview.workspaceInfo,
+            onModelButtonTapped: {}
+        )
     }
 }

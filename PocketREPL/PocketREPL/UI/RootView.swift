@@ -72,13 +72,16 @@ struct RootView: View {
     let container: AppContainer
     @ObservedObject private var memoryCoordinator: ModelMemoryCoordinator
     @State private var showingModelManagement = false
+    @State private var showingSettings = false
     @State private var showingUnloadAlert = false
     @State private var selectedTab: Tab = .chat
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.colorScheme) private var colorScheme
 
     enum Tab {
         case files
         case chat
+        case settings
     }
 
     init(container: AppContainer) {
@@ -111,6 +114,9 @@ struct RootView: View {
             }
             .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
+        }
         .onChange(of: memoryCoordinator.modelWasUnloadedAutomatically) { _, newValue in
             if newValue {
                 showingUnloadAlert = true
@@ -139,16 +145,12 @@ struct RootView: View {
         TabView(selection: $selectedTab) {
             // Chat Tab
             NavigationStack {
-                AgentView(session: container.agentSession, workspaceInfo: container.workspaceInfo)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            Button {
-                                showingModelManagement = true
-                            } label: {
-                                ModelStatusView(modelManager: container.modelManager)
-                            }
-                        }
-                    }
+                AgentView(
+                    session: container.agentSession,
+                    modelManager: container.modelManager,
+                    workspaceInfo: container.workspaceInfo,
+                    onModelButtonTapped: { showingModelManagement = true }
+                )
             }
             .tabItem {
                 VStack {
@@ -179,8 +181,20 @@ struct RootView: View {
                 }
             }
             .tag(Tab.files)
+            
+            // Settings Tab
+            NavigationStack {
+                SettingsContentView()
+            }
+            .tabItem {
+                VStack {
+                    Image(systemName: selectedTab == .settings ? "gearshape.fill" : "gearshape")
+                    Text("Settings")
+                }
+            }
+            .tag(Tab.settings)
         }
-        .tint(Color.escherInk)
+        .tint(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
     }
     
     // MARK: - Regular Layout (iPad)
@@ -190,6 +204,23 @@ struct RootView: View {
             FileBrowserView(projectStore: container.projectStore)
                 .navigationTitle(container.workspaceInfo.displayName)
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            showingSettings = true
+                        } label: {
+                            ZStack {
+                                Circle()
+                                    .fill(colorScheme == .dark ? Color(white: 0.2) : Color.escherPaper)
+                                    .frame(width: 32, height: 32)
+                                    .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 4, x: 0, y: 2)
+                                
+                                Image(systemName: "gearshape.fill")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
+                            }
+                        }
+                    }
+                    
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             showingModelManagement = true
@@ -199,9 +230,14 @@ struct RootView: View {
                     }
                 }
         } detail: {
-            AgentView(session: container.agentSession, workspaceInfo: container.workspaceInfo)
+            AgentView(
+                session: container.agentSession,
+                modelManager: container.modelManager,
+                workspaceInfo: container.workspaceInfo,
+                onModelButtonTapped: { showingModelManagement = true }
+            )
         }
-        .tint(Color.escherInk)
+        .tint(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
     }
 }
 

@@ -2,10 +2,13 @@ import SwiftUI
 
 // MARK: - Escher Design System
 // Combining M.C. Escher's impossible geometry with Apple's liquid design
+// Now with full light/dark mode support
 
 // MARK: - Color Palette
 
 extension Color {
+    // MARK: - Base Colors (Non-Adaptive)
+    
     // Primary - Deep lithographic blacks and paper whites
     static let escherInk = Color(red: 0.08, green: 0.06, blue: 0.10)
     static let escherPaper = Color(red: 0.98, green: 0.97, blue: 0.95)
@@ -20,6 +23,27 @@ extension Color {
     static let escherSuccess = Color(red: 0.42, green: 0.60, blue: 0.48)
     static let escherWarning = Color(red: 0.78, green: 0.62, blue: 0.38)
     static let escherError = Color(red: 0.72, green: 0.38, blue: 0.38)
+    
+    // MARK: - Adaptive Semantic Colors
+    // Note: escherForeground, escherBackground, escherSurface, escherSurfaceSecondary
+    // are auto-generated from Assets.xcassets color sets via GeneratedAssetSymbols.swift
+    
+    // MARK: - Fallback Adaptive Colors (when Assets not available)
+    
+    /// Foreground that adapts to color scheme (fallback)
+    static func adaptiveForeground(_ scheme: ColorScheme) -> Color {
+        scheme == .dark ? escherPaper : escherInk
+    }
+    
+    /// Background that adapts to color scheme (fallback)
+    static func adaptiveBackground(_ scheme: ColorScheme) -> Color {
+        scheme == .dark ? Color(red: 0.10, green: 0.08, blue: 0.12) : Color(red: 0.96, green: 0.95, blue: 0.93)
+    }
+    
+    /// Surface that adapts to color scheme (fallback)
+    static func adaptiveSurface(_ scheme: ColorScheme) -> Color {
+        scheme == .dark ? Color(red: 0.14, green: 0.12, blue: 0.16) : escherPaper
+    }
     
     // Gradients
     static let escherGradientLight = LinearGradient(
@@ -63,6 +87,7 @@ struct PenroseTriangle: Shape {
 
 /// Tessellation pattern inspired by Escher's reptiles
 struct TessellationPattern: View {
+    @Environment(\.colorScheme) private var colorScheme
     let density: Int
     let opacity: Double
     
@@ -74,6 +99,8 @@ struct TessellationPattern: View {
     var body: some View {
         Canvas { context, size in
             let cellSize = size.width / CGFloat(density)
+            // Use appropriate color based on color scheme
+            let strokeColor = colorScheme == .dark ? Color.escherPaper : Color.escherInk
             
             for row in 0..<(Int(size.height / cellSize) + 2) {
                 for col in 0..<(density + 1) {
@@ -99,7 +126,7 @@ struct TessellationPattern: View {
                     
                     context.stroke(
                         path,
-                        with: .color(.escherInk.opacity(opacity)),
+                        with: .color(strokeColor.opacity(opacity)),
                         lineWidth: 0.5
                     )
                 }
@@ -146,6 +173,7 @@ struct MetamorphosisWave: View {
 
 /// Infinite staircase indicator (for loading states)
 struct InfiniteStairs: View {
+    @Environment(\.colorScheme) private var colorScheme
     @State private var step: Int = 0
     let size: CGFloat
     
@@ -158,6 +186,7 @@ struct InfiniteStairs: View {
             let stairCount = 8
             let stairHeight = size / CGFloat(stairCount)
             let stairWidth = size / CGFloat(stairCount)
+            let strokeColor = colorScheme == .dark ? Color.escherPaper : Color.escherInk
             
             for i in 0..<stairCount {
                 let index = (i + step) % stairCount
@@ -175,7 +204,7 @@ struct InfiniteStairs: View {
                 
                 context.stroke(
                     path,
-                    with: .color(.escherInk.opacity(opacity)),
+                    with: .color(strokeColor.opacity(opacity)),
                     lineWidth: 2
                 )
             }
@@ -340,13 +369,17 @@ struct EscherBubble: Shape {
 // MARK: - Animated Background
 
 struct EscherBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
     @State private var animationPhase: CGFloat = 0
     
     var body: some View {
         ZStack {
-            // Base gradient
+            // Base gradient - adapts to color scheme
             LinearGradient(
-                colors: [
+                colors: colorScheme == .dark ? [
+                    Color(red: 0.08, green: 0.06, blue: 0.10),
+                    Color(red: 0.10, green: 0.08, blue: 0.12)
+                ] : [
                     Color(red: 0.96, green: 0.95, blue: 0.93),
                     Color(red: 0.94, green: 0.93, blue: 0.90)
                 ],
@@ -354,12 +387,15 @@ struct EscherBackground: View {
                 endPoint: .bottom
             )
             
-            // Tessellation layer
-            TessellationPattern(density: 10, opacity: 0.025)
+            // Tessellation layer - adapts opacity for dark mode
+            TessellationPattern(
+                density: 10, 
+                opacity: colorScheme == .dark ? 0.04 : 0.025
+            )
             
             // Subtle metamorphosis waves
             MetamorphosisWave()
-                .opacity(0.5)
+                .opacity(colorScheme == .dark ? 0.3 : 0.5)
         }
         .ignoresSafeArea()
     }
@@ -383,6 +419,8 @@ extension View {
 // MARK: - Input Field Style
 
 struct EscherTextField: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    
     func body(content: Content) -> some View {
         content
             .font(.escherBody)
@@ -391,12 +429,18 @@ struct EscherTextField: ViewModifier {
             .background(
                 ZStack {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.escherPaper)
+                        .fill(fieldBackground)
                     
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(Color.escherMidtone.opacity(0.2), lineWidth: 1)
+                        .strokeBorder(Color.escherMidtone.opacity(colorScheme == .dark ? 0.3 : 0.2), lineWidth: 1)
                 }
             )
+    }
+    
+    private var fieldBackground: Color {
+        colorScheme == .dark
+            ? Color(red: 0.14, green: 0.12, blue: 0.16)
+            : Color.escherPaper
     }
 }
 
@@ -409,6 +453,7 @@ extension View {
 // MARK: - Card Style
 
 struct EscherCard: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
     let isElevated: Bool
     
     init(elevated: Bool = true) {
@@ -420,10 +465,10 @@ struct EscherCard: ViewModifier {
             .background(
                 ZStack {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.escherPaper)
+                        .fill(cardBackground)
                     
                     // Subtle pattern overlay
-                    TessellationPattern(density: 20, opacity: 0.01)
+                    TessellationPattern(density: 20, opacity: colorScheme == .dark ? 0.02 : 0.01)
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     
                     // Border
@@ -431,8 +476,8 @@ struct EscherCard: ViewModifier {
                         .strokeBorder(
                             LinearGradient(
                                 colors: [
-                                    Color.escherMidtone.opacity(0.15),
-                                    Color.escherMidtone.opacity(0.05)
+                                    Color.escherMidtone.opacity(colorScheme == .dark ? 0.25 : 0.15),
+                                    Color.escherMidtone.opacity(colorScheme == .dark ? 0.10 : 0.05)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -442,11 +487,17 @@ struct EscherCard: ViewModifier {
                 }
             )
             .shadow(
-                color: .escherInk.opacity(isElevated ? 0.06 : 0),
+                color: .black.opacity(isElevated ? (colorScheme == .dark ? 0.3 : 0.06) : 0),
                 radius: isElevated ? 12 : 0,
                 x: 0,
                 y: isElevated ? 4 : 0
             )
+    }
+    
+    private var cardBackground: Color {
+        colorScheme == .dark 
+            ? Color(red: 0.14, green: 0.12, blue: 0.16)
+            : Color.escherPaper
     }
 }
 

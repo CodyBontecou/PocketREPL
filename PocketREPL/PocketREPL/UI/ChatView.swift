@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - Chat View
 
 struct ChatView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var session: AgentSession
     @State private var draft = ""
     @State private var showingAIAlert = false
@@ -87,58 +88,68 @@ struct ChatView: View {
     // MARK: - Input Bar
 
     private var inputBar: some View {
-        HStack(alignment: .bottom, spacing: 12) {
-            // Keyboard toggle
-            Button(action: toggleKeyboard) {
-                ZStack {
-                    Circle()
-                        .fill(Color.escherPaper)
-                        .frame(width: 36, height: 36)
-                    
-                    Image(systemName: inputFocused ? "keyboard.chevron.compact.down" : "keyboard")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(Color.escherMidtone)
-                }
-                .shadow(color: .escherInk.opacity(0.05), radius: 4, x: 0, y: 2)
-            }
-            
-            // Text input with Escher styling
+        let isDark = colorScheme == .dark
+        
+        return HStack(alignment: .bottom, spacing: 8) {
             TextField("Enter your message...", text: $draft, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.escherBody)
-                .escherTextField()
-                .shadow(color: .escherInk.opacity(0.15), radius: 12, x: 0, y: -4)
+                .foregroundStyle(isDark ? Color.escherPaper : Color.escherInk)
                 .focused($inputFocused)
                 .lineLimit(1...6)
                 .submitLabel(.send)
                 .onSubmit(sendMessage)
                 .disabled(session.isRunning)
-
-            // Send button - Penrose inspired
-            Button(action: sendMessage) {
-                ZStack {
-                    // Outer ring
-                    Circle()
-                        .fill(canSend ? Color.escherInk : Color.escherMidtone.opacity(0.3))
-                        .frame(width: 40, height: 40)
-                    
-                    // Inner impossible triangle hint
-                    if canSend {
-                        PenroseTriangle()
-                            .stroke(Color.escherPaper, lineWidth: 1.5)
-                            .frame(width: 16, height: 16)
-                            .rotationEffect(.degrees(90))
-                    } else {
-                        Image(systemName: "arrow.up")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(Color.escherPaper.opacity(0.5))
+            
+            // Inline buttons
+            HStack(spacing: 6) {
+                // Keyboard toggle
+                Button(action: toggleKeyboard) {
+                    Image(systemName: inputFocused ? "keyboard.chevron.compact.down" : "keyboard")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Color.escherMidtone)
+                        .frame(width: 28, height: 28)
+                        .background(
+                            Circle()
+                                .fill(isDark ? Color(white: 0.22) : Color.escherMidtone.opacity(0.1))
+                        )
+                }
+                
+                // Send button
+                Button(action: sendMessage) {
+                    ZStack {
+                        Circle()
+                            .fill(canSend ? (isDark ? Color.escherPrism : Color.escherInk) : Color.escherMidtone.opacity(0.3))
+                            .frame(width: 28, height: 28)
+                        
+                        if canSend {
+                            PenroseTriangle()
+                                .stroke(Color.escherPaper, lineWidth: 1.2)
+                                .frame(width: 11, height: 11)
+                                .rotationEffect(.degrees(90))
+                        } else {
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(Color.escherPaper.opacity(0.5))
+                        }
                     }
                 }
-                .shadow(color: canSend ? .escherInk.opacity(0.2) : .clear, radius: 8, x: 0, y: 4)
+                .disabled(!canSend || session.isRunning)
+                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: canSend)
             }
-            .disabled(!canSend || session.isRunning)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: canSend)
         }
+        .padding(.leading, 14)
+        .padding(.trailing, 8)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(isDark ? Color(white: 0.14) : Color.escherPaper)
+                .shadow(color: .black.opacity(isDark ? 0.4 : 0.12), radius: 12, x: 0, y: -4)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(Color.escherMidtone.opacity(isDark ? 0.2 : 0.1), lineWidth: 0.5)
+        )
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
     }
@@ -165,6 +176,7 @@ struct ChatView: View {
 // MARK: - Message Bubble
 
 struct MessageBubble: View {
+    @Environment(\.colorScheme) private var colorScheme
     let message: AgentMessage
     @State private var appeared = false
 
@@ -196,12 +208,12 @@ struct MessageBubble: View {
                 // Assistant avatar - small Penrose triangle
                 ZStack {
                     Circle()
-                        .fill(Color.escherPaper)
+                        .fill(colorScheme == .dark ? Color(white: 0.18) : Color.escherPaper)
                         .frame(width: 28, height: 28)
-                        .shadow(color: .escherInk.opacity(0.08), radius: 4, x: 0, y: 2)
+                        .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.08), radius: 4, x: 0, y: 2)
                     
                     PenroseTriangle()
-                        .stroke(Color.escherInk, lineWidth: 1)
+                        .stroke(colorScheme == .dark ? Color.escherPaper : Color.escherInk, lineWidth: 1)
                         .frame(width: 12, height: 12)
                 }
             }
@@ -235,29 +247,29 @@ struct MessageBubble: View {
     private var bubbleBackground: some View {
         switch message.role {
         case .user:
-            // User bubble - dark with geometric pattern hint
+            // User bubble - adapts to color scheme
             ZStack {
                 EscherBubble(isUser: true)
-                    .fill(Color.escherInk)
+                    .fill(colorScheme == .dark ? Color.escherPrism : Color.escherInk)
                 
                 // Subtle tessellation overlay
                 TessellationPattern(density: 16, opacity: 0.08)
                     .clipShape(EscherBubble(isUser: true))
             }
-            .shadow(color: .escherInk.opacity(0.15), radius: 8, x: 0, y: 4)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.4 : 0.15), radius: 8, x: 0, y: 4)
             
         case .assistant:
-            // Assistant bubble - light paper texture
+            // Assistant bubble - adapts to color scheme
             ZStack {
                 EscherBubble(isUser: false)
-                    .fill(Color.escherPaper)
+                    .fill(colorScheme == .dark ? Color(red: 0.18, green: 0.16, blue: 0.20) : Color.escherPaper)
                 
                 EscherBubble(isUser: false)
                     .stroke(
                         LinearGradient(
                             colors: [
-                                Color.escherMidtone.opacity(0.15),
-                                Color.escherMidtone.opacity(0.05)
+                                Color.escherMidtone.opacity(colorScheme == .dark ? 0.25 : 0.15),
+                                Color.escherMidtone.opacity(colorScheme == .dark ? 0.10 : 0.05)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -265,7 +277,7 @@ struct MessageBubble: View {
                         lineWidth: 0.5
                     )
             }
-            .shadow(color: Color.escherInk.opacity(0.06), radius: 8, x: 0, y: 4)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 8, x: 0, y: 4)
             
         default:
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -292,13 +304,14 @@ struct MessageBubble: View {
     }
 
     private var textColor: Color {
-        message.role == .user ? .escherPaper : .escherInk
+        message.role == .user ? .escherPaper : (colorScheme == .dark ? .escherPaper : .escherInk)
     }
 }
 
 // MARK: - Tool Call Bubble
 
 struct ToolCallBubble: View {
+    @Environment(\.colorScheme) private var colorScheme
     let message: AgentMessage
     @State private var isExpanded = false
     
@@ -321,7 +334,7 @@ struct ToolCallBubble: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(message.toolName ?? "Tool")
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Color.escherInk)
+                            .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
                         
                         Text("Executing...")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
@@ -357,13 +370,13 @@ struct ToolCallBubble: View {
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.escherPaper)
+                    .fill(colorScheme == .dark ? Color(red: 0.14, green: 0.12, blue: 0.16) : Color.escherPaper)
                 
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(Color.escherWarning.opacity(0.3), lineWidth: 1)
             }
         )
-        .shadow(color: .escherWarning.opacity(0.1), radius: 8, x: 0, y: 4)
+        .shadow(color: .escherWarning.opacity(colorScheme == .dark ? 0.2 : 0.1), radius: 8, x: 0, y: 4)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
     
@@ -383,6 +396,7 @@ struct ToolCallBubble: View {
 // MARK: - Tool Result Bubble
 
 struct ToolResultBubble: View {
+    @Environment(\.colorScheme) private var colorScheme
     let message: AgentMessage
     @State private var isExpanded = false
     
@@ -456,7 +470,7 @@ struct ToolResultBubble: View {
                 
                 Text(truncatedText)
                     .font(.escherMonoSmall)
-                    .foregroundStyle(Color.escherInk)
+                    .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
                     .textSelection(.enabled)
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -471,7 +485,7 @@ struct ToolResultBubble: View {
                     .strokeBorder(statusColor.opacity(0.25), lineWidth: 1)
             }
         )
-        .shadow(color: statusColor.opacity(0.08), radius: 8, x: 0, y: 4)
+        .shadow(color: statusColor.opacity(colorScheme == .dark ? 0.15 : 0.08), radius: 8, x: 0, y: 4)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
     
@@ -506,13 +520,22 @@ struct ToolResultBubble: View {
     }
     
     private var resultBackground: Color {
+        let baseColor: Color = {
+            switch message.toolStatus {
+            case .succeeded:
+                return Color.escherSuccess
+            case .failed:
+                return Color.escherError
+            default:
+                return colorScheme == .dark ? Color(red: 0.14, green: 0.12, blue: 0.16) : Color.escherPaper
+            }
+        }()
+        
         switch message.toolStatus {
-        case .succeeded:
-            return Color.escherSuccess.opacity(0.05)
-        case .failed:
-            return Color.escherError.opacity(0.05)
+        case .succeeded, .failed:
+            return baseColor.opacity(colorScheme == .dark ? 0.15 : 0.05)
         default:
-            return Color.escherPaper
+            return baseColor
         }
     }
 }
@@ -520,6 +543,7 @@ struct ToolResultBubble: View {
 // MARK: - Escher Typing Indicator (Infinite Stairs)
 
 struct EscherTypingIndicator: View {
+    @Environment(\.colorScheme) private var colorScheme
     @State private var phase: Int = 0
     
     var body: some View {
@@ -535,13 +559,13 @@ struct EscherTypingIndicator: View {
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.escherPaper)
+                    .fill(colorScheme == .dark ? Color(red: 0.14, green: 0.12, blue: 0.16) : Color.escherPaper)
                 
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(Color.escherMidtone.opacity(0.15), lineWidth: 0.5)
+                    .strokeBorder(Color.escherMidtone.opacity(colorScheme == .dark ? 0.25 : 0.15), lineWidth: 0.5)
             }
         )
-        .shadow(color: .escherInk.opacity(0.05), radius: 8, x: 0, y: 4)
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 8, x: 0, y: 4)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -549,6 +573,7 @@ struct EscherTypingIndicator: View {
 // MARK: - AI Unavailable Banner
 
 struct AIUnavailableBanner: View {
+    @Environment(\.colorScheme) private var colorScheme
     let status: String
     let onTap: () -> Void
     
@@ -569,7 +594,7 @@ struct AIUnavailableBanner: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Apple Intelligence Unavailable")
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Color.escherInk)
+                        .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
                     
                     Text("Tap for details and options")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
