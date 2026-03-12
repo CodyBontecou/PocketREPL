@@ -1,0 +1,23 @@
+{
+  "/Users/codybontecou/projects/PocketREPL/PocketREPL/PocketREPL/ContentView.swift" : {
+    "const-values" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ContentView.swiftconstvalues",
+    "dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ContentView.d",
+    "diagnostics" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ContentView.dia",
+    "object" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ContentView.o",
+    "swift-dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ContentView.swiftdeps"
+  },
+  "/Users/codybontecou/projects/PocketREPL/PocketREPL/PocketREPL/UI/SettingsView.swift" : {
+    "const-values" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/SettingsView.swiftconstvalues",
+    "dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/SettingsView.d",
+    "diagnostics" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/SettingsView.dia",
+    "object" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/SettingsView.o",
+    "swift-dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/SettingsView.swiftdeps"
+  },
+  "/Users/codybontecou/projects/PocketREPL/PocketREPL/PocketREPL/Utilities/FeedbackHelper.swift" : {
+    "const-values" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/FeedbackHelper.swiftconstvalues",
+    "dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/FeedbackHelper.d",
+    "diagnostics" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/FeedbackHelper.dia",
+    "object" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/FeedbackHelper.o",
+    "swift-dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/FeedbackHelper.swiftdeps"
+  }
+}

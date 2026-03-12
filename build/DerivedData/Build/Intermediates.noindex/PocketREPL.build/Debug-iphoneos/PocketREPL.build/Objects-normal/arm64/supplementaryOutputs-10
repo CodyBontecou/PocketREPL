@@ -1,0 +1,23 @@
+{
+  "/Users/codybontecou/projects/PocketREPL/PocketREPL/PocketREPL/PocketREPLApp.swift" : {
+    "const-values" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/PocketREPLApp.swiftconstvalues",
+    "dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/PocketREPLApp.d",
+    "diagnostics" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/PocketREPLApp.dia",
+    "object" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/PocketREPLApp.o",
+    "swift-dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/PocketREPLApp.swiftdeps"
+  },
+  "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "object" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps"
+  },
+  "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/DerivedSources/GeneratedStringSymbols_Localizable.swift" : {
+    "const-values" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.swiftconstvalues",
+    "dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.d",
+    "diagnostics" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.dia",
+    "object" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.o",
+    "swift-dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.swiftdeps"
+  }
+}

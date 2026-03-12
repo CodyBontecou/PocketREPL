@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>%lld tokens</key>
+	<string>%lld jetons</string>
+	<key>(empty file)</key>
+	<string>(fichier vide)</string>
+	<key>(no output)</key>
+	<string>(pas de sortie)</string>
+	<key>ABOUT</key>
+	<string>À PROPOS</string>
+	<key>ACTIVE</key>
+	<string>ACTIF</string>
+	<key>ACTIVE MODEL</key>
+	<string>MODÈLE ACTIF</string>
+	<key>APPEARANCE</key>
+	<string>APPARENCE</string>
+	<key>AVAILABLE FOR DOWNLOAD</key>
+	<string>DISPONIBLE AU TÉLÉCHARGEMENT</string>
+	<key>Add Custom Model</key>
+	<string>Ajouter un modèle personnalisé</string>
+	<key>Apple Intelligence Required</key>
+	<string>Apple Intelligence requis</string>
+	<key>Apple Intelligence Unavailable</key>
+	<string>Apple Intelligence non disponible</string>
+	<key>Apple Intelligence is not enabled. Go to Settings &gt; Apple Intelligence &amp; Siri to enable it.</key>
+	<string>Apple Intelligence n'est pas activé. Allez dans Réglages &gt; Apple Intelligence et Siri pour l'activer.</string>
+	<key>Available</key>
+	<string>Disponible</string>
+	<key>Available for Download</key>
+	<string>Disponible au téléchargement</string>
+	<key>Back</key>
+	<string>Retour</string>
+	<key>Build</key>
+	<string>Build</string>
+	<key>CONTEXT SIZE (TOKENS)</key>
+	<string>TAILLE DU CONTEXTE (JETONS)</string>
+	<key>CUSTOM</key>
+	<string>PERSONNALISÉ</string>
+	<key>Call</key>
+	<string>Appel</string>
+	<key>Cancel</key>
+	<string>Annuler</string>
+	<key>Cannot load unknown model format</key>
+	<string>Impossible de charger un format de modèle inconnu</string>
+	<key>Chat</key>
+	<string>Discussion</string>
+	<key>Collapse</key>
+	<string>Réduire</string>
+	<key>Completed</key>
+	<string>Terminé</string>
+	<key>Context</key>
+	<string>Contexte</string>
+	<key>Context Window</key>
+	<string>Fenêtre de contexte</string>
+	<key>Continue Without AI</key>
+	<string>Continuer sans IA</string>
+	<key>Couldn't Load Files</key>
+	<string>Impossible de charger les fichiers</string>
+	<key>Currently Active</key>
+	<string>Actuellement actif</string>
+	<key>Custom</key>
+	<string>Personnalisé</string>
+	<key>Custom Import</key>
+	<string>Import personnalisé</string>
+	<key>DETECTED MODEL</key>
+	<string>MODÈLE DÉTECTÉ</string>
+	<key>Delete</key>
+	<string>Supprimer</string>
+	<key>Delete %@</key>
+	<string>Supprimer %@</string>
+	<key>Delete Model</key>
+	<string>Supprimer le modèle</string>
+	<key>Disk</key>
+	<string>Disque</string>
+	<key>Disk Space</key>
+	<string>Espace disque</string>
+	<key>Done</key>
+	<string>Terminé</string>
+	<key>Download</key>
+	<string>Télécharger</string>
+	<key>Download Model</key>
+	<string>Télécharger le modèle</string>
+	<key>Download Size</key>
+	<string>Taille du téléchargement</string>
+	<key>Download and load a model to start</key>
+	<string>Téléchargez et chargez un modèle pour commencer</string>
+	<key>Download failed: %@</key>
+	<string>Échec du téléchargement : %@</string>
+	<key>Downloaded</key>
+	<string>Téléchargé</string>
+	<key>ESTIMATED USAGE</key>
+	<string>UTILISATION ESTIMÉE</string>
+	<key>Enter a Hugging Face URL to download any GGUF model.</key>
+	<string>Entrez une URL Hugging Face pour télécharger n'importe quel modèle GGUF.</string>
+	<key>Enter your message...</key>
+	<string>Entrez votre message...</string>
+	<key>Error</key>
+	<string>Erreur</string>
+	<key>Error: %@</key>
+	<string>Erreur : %@</string>
+	<key>Example:</key>
+	<string>Exemple :</string>
+	<key>Executing...</key>
+	<string>Exécution...</string>
+	<key>Expand</key>
+	<string>Développer</string>
+	<key>FILE INFORMATION</key>
+	<string>INFORMATIONS SUR LE FICHIER</string>
+	<key>Failed</key>
+	<string>Échoué</string>
+	<key>Failed to delete model: %@</key>
+	<string>Échec de la suppression du modèle : %@</string>
+	<key>Failed to load model: %@</key>
+	<string>Échec du chargement du modèle : %@</string>
+	<key>File Size</key>
+	<string>Taille du fichier</string>
+	<key>Files</key>
+	<string>Fichiers</string>
+	<key>Files will appear here as you create them
+through the AI assistant.</key>
+	<string>Les fichiers apparaîtront ici lorsque vous les créerez
+via l'assistant IA.</string>
+	<key>Folder</key>
+	<string>Dossier</string>
+	<key>Folder is Empty</key>
+	<string>Le dossier est vide</string>
+	<key>Format</key>
+	<string>Format</string>
+	<key>Foundation Models not supported on this OS version</key>
+	<string>Foundation Models n'est pas pris en charge sur cette version du système</string>
+	<key>Generating</key>
+	<string>Génération</string>
+	<key>HUGGING FACE URL</key>
+	<string>URL HUGGING FACE</string>
+	<key>Hello!</key>
+	<string>Bonjour !</string>
+	<key>Hi there! 👋</key>
+	<string>Salut ! 👋</string>
+	<key>Hugging Face</key>
+	<string>Hugging Face</string>
+	<key>I can't help with that request.</key>
+	<string>Je ne peux pas aider avec cette demande.</string>
+	<key>INSTALLED</key>
+	<string>INSTALLÉ</string>
+	<key>Invalid Hugging Face URL. Expected format:
+https://huggingface.co/{org}/{repo}/resolve/main/{filename}.gguf</key>
+	<string>URL Hugging Face non valide. Format attendu :
+https://huggingface.co/{org}/{repo}/resolve/main/{filename}.gguf</string>
+	<key>JavaScript runtime reset. Module cache cleared.</key>
+	<string>Environnement JavaScript réinitialisé. Cache des modules vidé.</string>
+	<key>Larger context uses more memory. Start with 4096 if unsure.</key>
+	<string>Un contexte plus grand utilise plus de mémoire. Commencez par 4096 en cas de doute.</string>
+	<key>Load Model</key>
+	<string>Charger le modèle</string>
+	<key>Loading files...</key>
+	<string>Chargement des fichiers...</string>
+	<key>Loading model...</key>
+	<string>Chargement du modèle...</string>
+	<key>Loading...</key>
+	<string>Chargement...</string>
+	<key>Location</key>
+	<string>Emplacement</string>
+	<key>Memory</key>
+	<string>Mémoire</string>
+	<key>Memory estimate is approximate. Actual usage depends on context length.</key>
+	<string>L'estimation de la mémoire est approximative. L'utilisation réelle dépend de la longueur du contexte.</string>
+	<key>Model Details</key>
+	<string>Détails du modèle</string>
+	<key>Model Family</key>
+	<string>Famille de modèle</string>
+	<key>Model ID</key>
+	<string>ID du modèle</string>
+	<key>Model Unloaded</key>
+	<string>Modèle déchargé</string>
+	<key>Model is downloading. Please wait for Apple Intelligence to finish setup.</key>
+	<string>Le modèle est en cours de téléchargement. Veuillez attendre qu'Apple Intelligence termine la configuration.</string>
+	<key>Model is ready</key>
+	<string>Le modèle est prêt</string>
+	<key>Model unavailable: %@</key>
+	<string>Modèle non disponible : %@</string>
+	<key>Model was unloaded automatically.</key>
+	<string>Le modèle a été déchargé automatiquement.</string>
+	<key>Models</key>
+	<string>Modèles</string>
+	<key>Models are downloaded from Hugging Face and stored locally.</key>
+	<string>Les modèles sont téléchargés depuis Hugging Face et stockés localement.</string>
+	<key>New Session</key>
+	<string>Nouvelle session</string>
+	<key>New session started.</key>
+	<string>Nouvelle session démarrée.</string>
+	<key>No Model Loaded</key>
+	<string>Aucun modèle chargé</string>
+	<key>No Tool Activity</key>
+	<string>Aucune activité d'outil</string>
+	<key>No model</key>
+	<string>Aucun modèle</string>
+	<key>No models installed yet</key>
+	<string>Aucun modèle installé</string>
+	<key>Note</key>
+	<string>Note</string>
+	<key>OK</key>
+	<string>OK</string>
+	<key>Open Settings</key>
+	<string>Ouvrir les réglages</string>
+	<key>Parameters</key>
+	<string>Paramètres</string>
+	<key>Preview</key>
+	<string>Aperçu</string>
+	<key>Processing</key>
+	<string>Traitement</string>
+	<key>Quantization</key>
+	<string>Quantification</string>
+	<key>RAM Required</key>
+	<string>RAM requise</string>
+	<key>RUNTIME STATS</key>
+	<string>STATISTIQUES D'EXÉCUTION</string>
+	<key>Reached maximum tool iterations (%lld). Stopping.</key>
+	<string>Nombre maximum d'itérations d'outil atteint (%lld). Arrêt.</string>
+	<key>Ready</key>
+	<string>Prêt</string>
+	<key>Ready to code.</key>
+	<string>Prêt à coder.</string>
+	<key>Recommended Context</key>
+	<string>Contexte recommandé</string>
+	<key>Reload Model</key>
+	<string>Recharger le modèle</string>
+	<key>Reset Runtime</key>
+	<string>Réinitialiser l'environnement</string>
+	<key>Result</key>
+	<string>Résultat</string>
+	<key>Root</key>
+	<string>Racine</string>
+	<key>SPECIFICATIONS</key>
+	<string>SPÉCIFICATIONS</string>
+	<key>STORAGE</key>
+	<string>STOCKAGE</string>
+	<key>Settings</key>
+	<string>Réglages</string>
+	<key>Skipped</key>
+	<string>Ignoré</string>
+	<key>Source</key>
+	<string>Source</string>
+	<key>System</key>
+	<string>Système</string>
+	<key>Tap for details and options</key>
+	<string>Touchez pour plus de détails</string>
+	<key>Thinking...</key>
+	<string>Réflexion...</string>
+	<key>This device doesn't support Apple Intelligence</key>
+	<string>Cet appareil ne prend pas en charge Apple Intelligence</string>
+	<key>This will remove %@ from your device. This action cannot be undone.</key>
+	<string>Cela supprimera %@ de votre appareil. Cette action est irréversible.</string>
+	<key>Tool Call</key>
+	<string>Appel d'outil</string>
+	<key>Tool Result</key>
+	<string>Résultat d'outil</string>
+	<key>Tool Trace</key>
+	<string>Trace des outils</string>
+	<key>Tool calls and results will appear here
+as you interact with PocketREPL.</key>
+	<string>Les appels d'outils et résultats apparaîtront ici
+lorsque vous interagissez avec PocketREPL.</string>
+	<key>Try Again</key>
+	<string>Réessayer</string>
+	<key>Unknown availability status</key>
+	<string>État de disponibilité inconnu</string>
+	<key>Unload Model</key>
+	<string>Décharger le modèle</string>
+	<key>Version</key>
+	<string>Version</string>
+	<key>Workspace is Empty</key>
+	<string>L'espace de travail est vide</string>
+	<key>Workspace: %@</key>
+	<string>Espace de travail : %@</string>
+	<key>tokens</key>
+	<string>jetons</string>
+	<key>~%@ remaining</key>
+	<string>~%@ restant</string>
+	<key>⚠️ AI model unavailable: %@</key>
+	<string>⚠️ Modèle IA non disponible : %@</string>
+	<key>⚠️ Another request is in progress. Please wait for it to complete.</key>
+	<string>⚠️ Une autre requête est en cours. Veuillez attendre qu'elle se termine.</string>
+	<key>⚠️ Apple Intelligence is not enabled.
+
+Go to Settings &gt; Apple Intelligence &amp; Siri to enable it.</key>
+	<string>⚠️ Apple Intelligence n'est pas activé.
+
+Allez dans Réglages &gt; Apple Intelligence et Siri pour l'activer.</string>
+	<key>⚠️ Apple Intelligence model is not available.
+
+To use AI features:
+1. Go to Settings &gt; Apple Intelligence &amp; Siri
+2. Enable Apple Intelligence
+3. Wait for the model to finish downloading (~4GB)</key>
+	<string>⚠️ Le modèle Apple Intelligence n'est pas disponible.
+
+Pour utiliser les fonctionnalités IA :
+1. Allez dans Réglages &gt; Apple Intelligence et Siri
+2. Activez Apple Intelligence
+3. Attendez la fin du téléchargement (~4 Go)</string>
+	<key>⚠️ Apple Intelligence model is still downloading.
+
+Please wait for it to finish in Settings &gt; Apple Intelligence &amp; Siri.</key>
+	<string>⚠️ Le modèle Apple Intelligence est en cours de téléchargement.
+
+Veuillez attendre qu'il se termine dans Réglages &gt; Apple Intelligence et Siri.</string>
+	<key>⚠️ Context limit reached. Starting fresh session. Please try again.</key>
+	<string>⚠️ Limite de contexte atteinte. Nouvelle session démarrée. Veuillez réessayer.</string>
+	<key>⚠️ Failed to process the response. Please try again.</key>
+	<string>⚠️ Échec du traitement de la réponse. Veuillez réessayer.</string>
+	<key>⚠️ This device doesn't support Apple Intelligence. Using fallback mode.</key>
+	<string>⚠️ Cet appareil ne prend pas en charge Apple Intelligence. Utilisation du mode de secours.</string>
+	<key>⚠️ Too many requests. Please wait a moment and try again.</key>
+	<string>⚠️ Trop de requêtes. Veuillez patienter un moment et réessayer.</string>
+	<key>⚠️ Unsupported model configuration.</key>
+	<string>⚠️ Configuration de modèle non prise en charge.</string>
+	<key>⚠️ Your device language/locale is not supported by Apple Intelligence.</key>
+	<string>⚠️ La langue/région de votre appareil n'est pas prise en charge par Apple Intelligence.</string>
+</dict>
+</plist>

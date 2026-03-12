@@ -1,0 +1,40 @@
+{
+  "source": "/Users/codybontecou/projects/PocketREPL/PocketREPL/PocketREPL/Agent/AgentSession.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Ready to code.",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 197
+        }
+      },
+      {
+        "comment": "",
+        "key": "Error: %@",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 314
+        }
+      },
+      {
+        "comment": "",
+        "key": "JavaScript runtime reset. Module cache cleared.",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 468
+        }
+      },
+      {
+        "comment": "",
+        "key": "New session started.",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 480
+        }
+      }
+    ]
+  },
+  "version": 1
+}

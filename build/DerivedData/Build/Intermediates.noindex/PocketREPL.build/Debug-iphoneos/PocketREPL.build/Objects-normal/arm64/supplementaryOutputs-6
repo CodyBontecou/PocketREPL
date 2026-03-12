@@ -1,0 +1,23 @@
+{
+  "/Users/codybontecou/projects/PocketREPL/PocketREPL/PocketREPL/Tools/ToolExecutor.swift" : {
+    "const-values" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ToolExecutor.swiftconstvalues",
+    "dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ToolExecutor.d",
+    "diagnostics" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ToolExecutor.dia",
+    "object" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ToolExecutor.o",
+    "swift-dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ToolExecutor.swiftdeps"
+  },
+  "/Users/codybontecou/projects/PocketREPL/PocketREPL/PocketREPL/UI/AgentView.swift" : {
+    "const-values" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/AgentView.swiftconstvalues",
+    "dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/AgentView.d",
+    "diagnostics" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/AgentView.dia",
+    "object" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/AgentView.o",
+    "swift-dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/AgentView.swiftdeps"
+  },
+  "/Users/codybontecou/projects/PocketREPL/PocketREPL/PocketREPL/UI/ChatView.swift" : {
+    "const-values" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ChatView.swiftconstvalues",
+    "dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ChatView.d",
+    "diagnostics" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ChatView.dia",
+    "object" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ChatView.o",
+    "swift-dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ChatView.swiftdeps"
+  }
+}

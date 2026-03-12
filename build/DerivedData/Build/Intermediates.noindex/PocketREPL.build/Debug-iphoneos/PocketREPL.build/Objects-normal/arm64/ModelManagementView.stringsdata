@@ -1,0 +1,1120 @@
+{
+  "source": "/Users/codybontecou/projects/PocketREPL/PocketREPL/PocketREPL/UI/ModelManagementView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Error",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 74
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete Model",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 59
+        }
+      },
+      {
+        "comment": "Navigation title for model management",
+        "key": "Models",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 63
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 75
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 84
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 87
+        }
+      },
+      {
+        "comment": "",
+        "key": "Model deleted: %@",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 647
+        }
+      },
+      {
+        "comment": "",
+        "key": "Failed to delete model: %@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 650
+        }
+      },
+      {
+        "comment": "",
+        "key": "This will remove %@ from your device. This action cannot be undone.",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 89
+        }
+      },
+      {
+        "comment": "",
+        "key": "Custom model download complete",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 689
+        }
+      },
+      {
+        "comment": "",
+        "key": "Invalid Hugging Face URL. Expected format:\nhttps://huggingface.co/{org}/{repo}/resolve/main/{filename}.gguf",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 657
+        }
+      },
+      {
+        "comment": "",
+        "key": "Download failed: %@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 694
+        }
+      },
+      {
+        "comment": "",
+        "key": "Custom model download failed",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 698
+        }
+      },
+      {
+        "comment": "",
+        "key": "Model loaded successfully",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 111
+        }
+      },
+      {
+        "comment": "",
+        "key": "Model unloaded",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 117
+        }
+      },
+      {
+        "comment": "",
+        "key": "Model failed to load",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 122
+        }
+      },
+      {
+        "comment": "",
+        "key": "Unload model",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 209
+        }
+      },
+      {
+        "comment": "",
+        "key": "Removes the current model from memory",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 210
+        }
+      },
+      {
+        "comment": "Section header for currently loaded model",
+        "key": "ACTIVE MODEL",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 138
+        }
+      },
+      {
+        "comment": "",
+        "key": "Memory",
+        "location": {
+          "startingColumn": 123,
+          "startingLine": 177
+        }
+      },
+      {
+        "comment": "",
+        "key": "Context",
+        "location": {
+          "startingColumn": 118,
+          "startingLine": 178
+        }
+      },
+      {
+        "comment": "Badge showing llama.cpp is used",
+        "key": "Code generation powered by llama.cpp",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 185
+        }
+      },
+      {
+        "comment": "Button to unload the current model",
+        "key": "Unload Model",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 197
+        }
+      },
+      {
+        "comment": "Displayed when no model is loaded",
+        "key": "No Model Loaded",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 226
+        }
+      },
+      {
+        "comment": "Instruction",
+        "key": "Download and load a model to generate code",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 230
+        }
+      },
+      {
+        "comment": "Model status indicating ready to use",
+        "key": "Ready",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 251
+        }
+      },
+      {
+        "comment": "Model status indicating text generation",
+        "key": "Generating",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 259
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld%%",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 268
+        }
+      },
+      {
+        "comment": "Model status indicating an error",
+        "key": "Error",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 277
+        }
+      },
+      {
+        "comment": "Section header for storage information",
+        "key": "STORAGE",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 290
+        }
+      },
+      {
+        "comment": "Label for models storage",
+        "key": "Models",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 320
+        }
+      },
+      {
+        "comment": "Label for available storage",
+        "key": "Available",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 331
+        }
+      },
+      {
+        "comment": "Section header for installed models",
+        "key": "INSTALLED",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 349
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 356
+        }
+      },
+      {
+        "comment": "Empty state message",
+        "key": "No models installed yet",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 370
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cannot load unknown model format",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 566
+        }
+      },
+      {
+        "comment": "",
+        "key": "Failed to load model: %@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 586
+        }
+      },
+      {
+        "comment": "Section header for downloadable models",
+        "key": "AVAILABLE FOR DOWNLOAD",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 402
+        }
+      },
+      {
+        "comment": "Button to add custom model",
+        "key": "Custom",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 415
+        }
+      },
+      {
+        "comment": "",
+        "key": "Download complete: %@",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 612
+        }
+      },
+      {
+        "comment": "",
+        "key": "Download failed: %@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 617
+        }
+      },
+      {
+        "comment": "",
+        "key": "Download failed for %@",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 621
+        }
+      },
+      {
+        "comment": "Footer text",
+        "key": "Models are downloaded from Hugging Face and stored locally.",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 486
+        }
+      },
+      {
+        "comment": "Footer text about llama.cpp",
+        "key": "Code is generated on-device using llama.cpp.",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 493
+        }
+      },
+      {
+        "comment": "Loading overlay text",
+        "key": "Loading model...",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 543
+        }
+      },
+      {
+        "comment": "",
+        "key": "Double-tap to view details",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 1061
+        }
+      },
+      {
+        "comment": "",
+        "key": "Load model",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 1063
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete model",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 1064
+        }
+      },
+      {
+        "comment": "Badge indicating model is active",
+        "key": "ACTIVE",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 990
+        }
+      },
+      {
+        "comment": "Badge indicating custom model",
+        "key": "CUSTOM",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1002
+        }
+      },
+      {
+        "comment": "",
+        "key": "•",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1017
+        }
+      },
+      {
+        "comment": "",
+        "key": "•",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1019
+        }
+      },
+      {
+        "comment": "",
+        "key": "currently active",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 1087
+        }
+      },
+      {
+        "comment": "",
+        "key": "custom model",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 1091
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 1069
+        }
+      },
+      {
+        "comment": "",
+        "key": "Double-tap to view details",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 1212
+        }
+      },
+      {
+        "comment": "",
+        "key": "Download %@",
+        "location": {
+          "startingColumn": 66,
+          "startingLine": 1213
+        }
+      },
+      {
+        "comment": "",
+        "key": "Download model",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 1214
+        }
+      },
+      {
+        "comment": "",
+        "key": "★",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1142
+        }
+      },
+      {
+        "comment": "Badge for custom model",
+        "key": "CUSTOM",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1154
+        }
+      },
+      {
+        "comment": "",
+        "key": "recommended",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 1224
+        }
+      },
+      {
+        "comment": "",
+        "key": "custom model",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 1228
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel download",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 1333
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld percent",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 1331
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 1278
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld%%",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1313
+        }
+      },
+      {
+        "comment": "Estimated time remaining",
+        "key": "~%@ remaining",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1309
+        }
+      },
+      {
+        "comment": "",
+        "key": "Downloading %@",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 1337
+        }
+      },
+      {
+        "comment": "",
+        "key": "about %@ remaining",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 1339
+        }
+      },
+      {
+        "comment": "",
+        "key": "Double-tap to collapse",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 1433
+        }
+      },
+      {
+        "comment": "",
+        "key": "Double-tap to expand",
+        "location": {
+          "startingColumn": 109,
+          "startingLine": 1433
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@, %lld models",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1432
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1409
+        }
+      },
+      {
+        "comment": "",
+        "key": "★",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1496
+        }
+      },
+      {
+        "comment": "",
+        "key": "•",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1505
+        }
+      },
+      {
+        "comment": "",
+        "key": "•",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1509
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 1573
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld%%",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1600
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1660
+        }
+      },
+      {
+        "comment": "Navigation title for model detail view",
+        "key": "Model Details",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1664
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 1669
+        }
+      },
+      {
+        "comment": "Badge for active model",
+        "key": "Currently Active",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1703
+        }
+      },
+      {
+        "comment": "Section header for runtime statistics",
+        "key": "RUNTIME STATS",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1728
+        }
+      },
+      {
+        "comment": "",
+        "key": "Memory",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 1737
+        }
+      },
+      {
+        "comment": "",
+        "key": "Context",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 1749
+        }
+      },
+      {
+        "comment": "",
+        "key": "Disk",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 1761
+        }
+      },
+      {
+        "comment": "Section header for model specifications",
+        "key": "SPECIFICATIONS",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1800
+        }
+      },
+      {
+        "comment": "",
+        "key": "Format",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 1819
+        }
+      },
+      {
+        "comment": "",
+        "key": "Source",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 1821
+        }
+      },
+      {
+        "comment": "",
+        "key": "Custom Import",
+        "location": {
+          "startingColumn": 99,
+          "startingLine": 1821
+        }
+      },
+      {
+        "comment": "",
+        "key": "Parameters",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 1807
+        }
+      },
+      {
+        "comment": "",
+        "key": "Quantization",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 1809
+        }
+      },
+      {
+        "comment": "",
+        "key": "Model Family",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 1811
+        }
+      },
+      {
+        "comment": "",
+        "key": "Context Window",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 1813
+        }
+      },
+      {
+        "comment": "",
+        "key": "tokens",
+        "location": {
+          "startingColumn": 156,
+          "startingLine": 1813
+        }
+      },
+      {
+        "comment": "",
+        "key": "Source",
+        "location": {
+          "startingColumn": 71,
+          "startingLine": 1816
+        }
+      },
+      {
+        "comment": "",
+        "key": "Hugging Face",
+        "location": {
+          "startingColumn": 107,
+          "startingLine": 1816
+        }
+      },
+      {
+        "comment": "Section header for file information",
+        "key": "FILE INFORMATION",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1837
+        }
+      },
+      {
+        "comment": "",
+        "key": "File Size",
+        "location": {
+          "startingColumn": 59,
+          "startingLine": 1843
+        }
+      },
+      {
+        "comment": "",
+        "key": "Downloaded",
+        "location": {
+          "startingColumn": 59,
+          "startingLine": 1845
+        }
+      },
+      {
+        "comment": "",
+        "key": "Model ID",
+        "location": {
+          "startingColumn": 59,
+          "startingLine": 1847
+        }
+      },
+      {
+        "comment": "",
+        "key": "Location",
+        "location": {
+          "startingColumn": 59,
+          "startingLine": 1849
+        }
+      },
+      {
+        "comment": "Button to load a model",
+        "key": "Load Model",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1871
+        }
+      },
+      {
+        "comment": "Button to delete a model",
+        "key": "Delete Model",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1891
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1967
+        }
+      },
+      {
+        "comment": "Navigation title",
+        "key": "Model Details",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1971
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 1976
+        }
+      },
+      {
+        "comment": "Badge for downloadable model",
+        "key": "Available for Download",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 2000
+        }
+      },
+      {
+        "comment": "Section header for model description",
+        "key": "ABOUT",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 2021
+        }
+      },
+      {
+        "comment": "",
+        "key": "SPECIFICATIONS",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 2040
+        }
+      },
+      {
+        "comment": "",
+        "key": "Parameters",
+        "location": {
+          "startingColumn": 59,
+          "startingLine": 2046
+        }
+      },
+      {
+        "comment": "",
+        "key": "Quantization",
+        "location": {
+          "startingColumn": 59,
+          "startingLine": 2048
+        }
+      },
+      {
+        "comment": "",
+        "key": "Model Family",
+        "location": {
+          "startingColumn": 59,
+          "startingLine": 2050
+        }
+      },
+      {
+        "comment": "",
+        "key": "Recommended Context",
+        "location": {
+          "startingColumn": 59,
+          "startingLine": 2052
+        }
+      },
+      {
+        "comment": "",
+        "key": "tokens",
+        "location": {
+          "startingColumn": 157,
+          "startingLine": 2052
+        }
+      },
+      {
+        "comment": "",
+        "key": "Download Size",
+        "location": {
+          "startingColumn": 59,
+          "startingLine": 2054
+        }
+      },
+      {
+        "comment": "",
+        "key": "Source",
+        "location": {
+          "startingColumn": 67,
+          "startingLine": 2057
+        }
+      },
+      {
+        "comment": "",
+        "key": "Hugging Face",
+        "location": {
+          "startingColumn": 103,
+          "startingLine": 2057
+        }
+      },
+      {
+        "comment": "Section header for usage estimates",
+        "key": "ESTIMATED USAGE",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 2073
+        }
+      },
+      {
+        "comment": "",
+        "key": "RAM Required",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 2082
+        }
+      },
+      {
+        "comment": "",
+        "key": "Disk Space",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 2094
+        }
+      },
+      {
+        "comment": "Disclaimer",
+        "key": "Memory estimate is approximate. Actual usage depends on context length.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 2108
+        }
+      },
+      {
+        "comment": "Button to download a model",
+        "key": "Download Model",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2133
+        }
+      },
+      {
+        "comment": "",
+        "key": "(%@)",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2134
+        }
+      },
+      {
+        "comment": "",
+        "key": "Opens in browser",
+        "location": {
+          "startingColumn": 59,
+          "startingLine": 2279
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@: %@",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 2278
+        }
+      },
+      {
+        "comment": "Title for custom model sheet",
+        "key": "Add Custom Model",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2314
+        }
+      },
+      {
+        "comment": "Instruction",
+        "key": "Enter a Hugging Face URL to download any GGUF model.",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2318
+        }
+      },
+      {
+        "comment": "Label for URL input field",
+        "key": "HUGGING FACE URL",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2325
+        }
+      },
+      {
+        "comment": "",
+        "key": "https://huggingface.co/...",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 2330
+        }
+      },
+      {
+        "comment": "Label for example URL",
+        "key": "Example:",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 2355
+        }
+      },
+      {
+        "comment": "",
+        "key": "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 2359
+        }
+      },
+      {
+        "comment": "Label for context size selector",
+        "key": "CONTEXT SIZE (TOKENS)",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2368
+        }
+      },
+      {
+        "comment": "Help text",
+        "key": "Larger context uses more memory. Start with 4096 if unsure.",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2398
+        }
+      },
+      {
+        "comment": "Section header for detected model info",
+        "key": "DETECTED MODEL",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 2406
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 2451
+        }
+      },
+      {
+        "comment": "",
+        "key": "Download",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 2458
+        }
+      },
+      {
+        "comment": "Status when no model is loaded",
+        "key": "No model",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2505
+        }
+      }
+    ]
+  },
+  "version": 1
+}

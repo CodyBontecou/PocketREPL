@@ -1,40 +1,68 @@
-Your pocket-sized JavaScript playground with an autonomous AI coding assistant — completely offline.
+A cutting-edge experiment in on-device AI coding — completely offline.
 
-PocketREPL transforms your iPhone into a powerful coding environment. Give it a prompt, and watch as the AI writes JavaScript code, runs it in a sandboxed runtime, observes any errors, and iterates until it works. All of this happens locally on your device — no internet required.
+PocketREPL lets you explore what's possible when a local LLM writes and runs code directly on your iPhone. This is early, experimental technology with real limitations — think of it as a glimpse into the future of edge AI, not a production tool.
+
+⚠️ IMPORTANT LIMITATIONS
+
+This app runs local AI models with a 4096 token context window. That's roughly 3,000 words of memory — enough for small scripts, but not complex applications. The AI will forget earlier parts of long conversations, struggle with multi-file projects, and sometimes lose track of what it's building.
+
+Real-world applications are not yet feasible. This is a sandbox for experimentation.
+
+WHAT IT'S FOR
+
+• Curiosity — see how far on-device AI has come
+• Learning — watch an AI iterate through simple coding problems
+• Fun — build small scripts and utilities with conversational prompts
+• Exploration — test the boundaries of local LLMs on mobile hardware
 
 HOW IT WORKS
 
-• Type a natural language prompt describing what you want to build
-• The AI generates JavaScript code and executes it instantly
-• If something fails, it automatically debugs and retries
-• Watch your code come to life in real-time
+• Type a natural language prompt
+• The AI generates JavaScript and runs it instantly
+• If it fails, it tries to debug and fix itself
+• Everything happens locally — no internet, no cloud
 
 LOCAL AI MODELS
 
-Choose from multiple Qwen coding models optimized for on-device inference:
+Choose from Qwen coding models optimized for on-device inference:
 
-• Qwen2.5-Coder-0.5B — Tiny but capable, fast inference
-• Qwen2.5-Coder-1.5B — Best balance of quality and speed
-• Qwen2.5-Coder-3B — More capable for complex tasks
+• Qwen2.5-Coder-0.5B — Smallest and fastest
+• Qwen2.5-Coder-1.5B — Best balance for most prompts
+• Qwen2.5-Coder-3B — More capable, slower inference
 • Add your own custom GGUF models
 
-DEVELOPER FEATURES
+Larger models are smarter but slower. Even the best local models can't match cloud AI — that's the tradeoff for privacy and offline capability.
 
-• Sandboxed JavaScriptCore runtime with CommonJS require() support
-• File system workspace for organizing your projects
-• Built-in console.log, assert, and test helpers
-• Real-time execution with detailed error traces
-• Context-aware AI that remembers your conversation
+WHAT TO EXPECT
+
+Works well:
+• Simple algorithms and utilities
+• Math calculations and conversions
+• Text processing scripts
+• Learning JavaScript concepts
+• One-off automation snippets
+
+Struggles with:
+• Complex multi-step projects
+• Code that builds on earlier conversation context
+• Anything requiring sustained "memory" of prior work
+• Production-quality applications
 
 PRIVACY FIRST
 
 Everything runs on your device. Your code, your prompts, your data — none of it leaves your iPhone. No accounts, no cloud sync, no telemetry.
 
-PERFECT FOR
+WHO SHOULD DOWNLOAD THIS
 
-• Learning JavaScript with AI-guided assistance
-• Quick prototyping and experimentation
-• Running code snippets on the go
-• Exploring AI coding capabilities offline
+• Developers curious about edge AI capabilities
+• Anyone who wants to experiment with local LLMs
+• People interested in the future of on-device AI
+• Learners who want AI help with simple code
 
-Download a model, give it a prompt, and start coding — anywhere.
+WHO SHOULD WAIT
+
+• Anyone expecting production-ready AI coding
+• Users who need complex, multi-file project support
+• Those comparing this to ChatGPT or Claude
+
+PocketREPL is a window into what's coming. The technology will improve. For now, enjoy exploring the frontier.

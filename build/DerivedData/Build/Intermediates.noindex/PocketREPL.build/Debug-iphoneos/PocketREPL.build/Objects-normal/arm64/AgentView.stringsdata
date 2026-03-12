@@ -1,0 +1,144 @@
+{
+  "source": "/Users/codybontecou/projects/PocketREPL/PocketREPL/PocketREPL/UI/AgentView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 15
+        }
+      },
+      {
+        "comment": "",
+        "key": "Model Selection",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 54
+        }
+      },
+      {
+        "comment": "",
+        "key": "Files",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 72
+        }
+      },
+      {
+        "comment": "",
+        "key": "Browse project files and folders",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 73
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tool Trace",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 91
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset Conversation",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 111
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 134
+        }
+      },
+      {
+        "comment": "Navigation title for tool trace view",
+        "key": "Tool Trace",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 143
+        }
+      },
+      {
+        "comment": "Button to dismiss sheet",
+        "key": "Done",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 153
+        }
+      },
+      {
+        "comment": "Empty state title for tool trace",
+        "key": "No Tool Activity",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 179
+        }
+      },
+      {
+        "comment": "Empty state description",
+        "key": "Tool calls and results will appear here\nas you interact with PocketREPL.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 183
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 214
+        }
+      },
+      {
+        "comment": "Navigation title for files view",
+        "key": "Files",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 223
+        }
+      },
+      {
+        "comment": "Button to dismiss sheet",
+        "key": "Done",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 233
+        }
+      },
+      {
+        "comment": "",
+        "key": "Call",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 334
+        }
+      },
+      {
+        "comment": "",
+        "key": "Result",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 335
+        }
+      },
+      {
+        "comment": "",
+        "key": "Note",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 336
+        }
+      }
+    ]
+  },
+  "version": 1
+}

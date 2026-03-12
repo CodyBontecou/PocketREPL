@@ -1,0 +1,30 @@
+{
+  "/Users/codybontecou/projects/PocketREPL/PocketREPL/PocketREPL/LLM/MockModelBackend.swift" : {
+    "const-values" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/MockModelBackend.swiftconstvalues",
+    "dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/MockModelBackend.d",
+    "diagnostics" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/MockModelBackend.dia",
+    "object" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/MockModelBackend.o",
+    "swift-dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/MockModelBackend.swiftdeps"
+  },
+  "/Users/codybontecou/projects/PocketREPL/PocketREPL/PocketREPL/LLM/ModelBackend.swift" : {
+    "const-values" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ModelBackend.swiftconstvalues",
+    "dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ModelBackend.d",
+    "diagnostics" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ModelBackend.dia",
+    "object" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ModelBackend.o",
+    "swift-dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ModelBackend.swiftdeps"
+  },
+  "/Users/codybontecou/projects/PocketREPL/PocketREPL/PocketREPL/LLM/ModelDownloadManager.swift" : {
+    "const-values" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ModelDownloadManager.swiftconstvalues",
+    "dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ModelDownloadManager.d",
+    "diagnostics" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ModelDownloadManager.dia",
+    "object" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ModelDownloadManager.o",
+    "swift-dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/ModelDownloadManager.swiftdeps"
+  },
+  "/Users/codybontecou/projects/PocketREPL/PocketREPL/PocketREPL/LLM/PromptTemplates.swift" : {
+    "const-values" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/PromptTemplates.swiftconstvalues",
+    "dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/PromptTemplates.d",
+    "diagnostics" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/PromptTemplates.dia",
+    "object" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/PromptTemplates.o",
+    "swift-dependencies" : "/Users/codybontecou/projects/PocketREPL/build/DerivedData/Build/Intermediates.noindex/PocketREPL.build/Debug-iphoneos/PocketREPL.build/Objects-normal/arm64/PromptTemplates.swiftdeps"
+  }
+}

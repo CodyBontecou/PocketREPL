@@ -1,0 +1,576 @@
+{
+  "source": "/Users/codybontecou/projects/PocketREPL/PocketREPL/PocketREPL/UI/ChatView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Apple Intelligence Required",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 36
+        }
+      },
+      {
+        "comment": "",
+        "key": "Open Settings",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 37
+        }
+      },
+      {
+        "comment": "",
+        "key": "Continue Without AI",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 40
+        }
+      },
+      {
+        "comment": "",
+        "key": "Processing your request",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 95
+        }
+      },
+      {
+        "comment": "",
+        "key": "Response received",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 96
+        }
+      },
+      {
+        "comment": "",
+        "key": "Enter your message...",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 109
+        }
+      },
+      {
+        "comment": "",
+        "key": "Message input",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 119
+        }
+      },
+      {
+        "comment": "",
+        "key": "Type your message to the AI assistant",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 120
+        }
+      },
+      {
+        "comment": "",
+        "key": "Hide keyboard",
+        "location": {
+          "startingColumn": 70,
+          "startingLine": 136
+        }
+      },
+      {
+        "comment": "",
+        "key": "Show keyboard",
+        "location": {
+          "startingColumn": 107,
+          "startingLine": 136
+        }
+      },
+      {
+        "comment": "",
+        "key": "Double-tap to toggle the keyboard",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 137
+        }
+      },
+      {
+        "comment": "",
+        "key": "Keyboard",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 139
+        }
+      },
+      {
+        "comment": "",
+        "key": "Toggle keyboard",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 140
+        }
+      },
+      {
+        "comment": "",
+        "key": "Hide keyboard",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 141
+        }
+      },
+      {
+        "comment": "",
+        "key": "Show keyboard",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 142
+        }
+      },
+      {
+        "comment": "",
+        "key": "Send message",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 168
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sends your message to the AI assistant",
+        "location": {
+          "startingColumn": 64,
+          "startingLine": 169
+        }
+      },
+      {
+        "comment": "",
+        "key": "Type a message first",
+        "location": {
+          "startingColumn": 126,
+          "startingLine": 169
+        }
+      },
+      {
+        "comment": "",
+        "key": "Send",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 171
+        }
+      },
+      {
+        "comment": "",
+        "key": "Send message",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 172
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 173
+        }
+      },
+      {
+        "comment": "",
+        "key": "You said",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 259
+        }
+      },
+      {
+        "comment": "",
+        "key": "PocketREPL said",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 261
+        }
+      },
+      {
+        "comment": "",
+        "key": "System message",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 263
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tool call",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 265
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tool result",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 267
+        }
+      },
+      {
+        "comment": "",
+        "key": "Double tap and hold to select text",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 302
+        }
+      },
+      {
+        "comment": "",
+        "key": "System",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 361
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tool Call",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 362
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tool Result",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 363
+        }
+      },
+      {
+        "comment": "",
+        "key": "Double-tap to %@ parameters",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 454
+        }
+      },
+      {
+        "comment": "",
+        "key": "Double tap and hold to select text",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 436
+        }
+      },
+      {
+        "comment": "",
+        "key": "Generating code with llama.cpp...",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 482
+        }
+      },
+      {
+        "comment": "",
+        "key": "Fixing code with llama.cpp...",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 484
+        }
+      },
+      {
+        "comment": "",
+        "key": "Executing...",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 486
+        }
+      },
+      {
+        "comment": "",
+        "key": "Executing %@ with parameters: %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 460
+        }
+      },
+      {
+        "comment": "",
+        "key": "Executing %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 462
+        }
+      },
+      {
+        "comment": "",
+        "key": "Unknown tool",
+        "location": {
+          "startingColumn": 62,
+          "startingLine": 458
+        }
+      },
+      {
+        "comment": "",
+        "key": "Double-tap to %@ full output",
+        "location": {
+          "startingColumn": 61,
+          "startingLine": 603
+        }
+      },
+      {
+        "comment": "",
+        "key": "Double tap and hold to select text",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 585
+        }
+      },
+      {
+        "comment": "Shows character count",
+        "key": "%lld characters",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 549
+        }
+      },
+      {
+        "comment": "",
+        "key": "llama.cpp",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 536
+        }
+      },
+      {
+        "comment": "",
+        "key": "Code Generated",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 639
+        }
+      },
+      {
+        "comment": "",
+        "key": "Generation Failed",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 640
+        }
+      },
+      {
+        "comment": "",
+        "key": "Generating...",
+        "location": {
+          "startingColumn": 53,
+          "startingLine": 641
+        }
+      },
+      {
+        "comment": "",
+        "key": "Completed",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 647
+        }
+      },
+      {
+        "comment": "",
+        "key": "Failed",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 648
+        }
+      },
+      {
+        "comment": "",
+        "key": "Processing",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 649
+        }
+      },
+      {
+        "comment": "",
+        "key": "Skipped",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 650
+        }
+      },
+      {
+        "comment": "",
+        "key": "Result",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 651
+        }
+      },
+      {
+        "comment": "",
+        "key": "Collapse",
+        "location": {
+          "startingColumn": 61,
+          "startingLine": 559
+        }
+      },
+      {
+        "comment": "",
+        "key": "Expand",
+        "location": {
+          "startingColumn": 93,
+          "startingLine": 559
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tool result: %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 609
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tool result: %@. Output: %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 612
+        }
+      },
+      {
+        "comment": "",
+        "key": "AI is thinking",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 709
+        }
+      },
+      {
+        "comment": "Shown while AI is processing",
+        "key": "Thinking...",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 691
+        }
+      },
+      {
+        "comment": "",
+        "key": "Apple Intelligence Unavailable",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 766
+        }
+      },
+      {
+        "comment": "",
+        "key": "Double-tap to see details and options for enabling AI features",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 767
+        }
+      },
+      {
+        "comment": "Banner title when AI is not available",
+        "key": "Apple Intelligence Unavailable",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 736
+        }
+      },
+      {
+        "comment": "Banner subtitle prompting user to tap",
+        "key": "Tap for details and options",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 740
+        }
+      },
+      {
+        "comment": "",
+        "key": "Double-tap to customize context settings, system prompt, and tools",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 878
+        }
+      },
+      {
+        "comment": "",
+        "key": "•",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 840
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld/%lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 833
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld/%lld",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 849
+        }
+      },
+      {
+        "comment": "",
+        "key": "over limit",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 888
+        }
+      },
+      {
+        "comment": "",
+        "key": "near limit",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 890
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 892
+        }
+      },
+      {
+        "comment": "",
+        "key": "live",
+        "location": {
+          "startingColumn": 65,
+          "startingLine": 894
+        }
+      },
+      {
+        "comment": "",
+        "key": "estimated",
+        "location": {
+          "startingColumn": 93,
+          "startingLine": 894
+        }
+      },
+      {
+        "comment": "",
+        "key": "Agent context: %lld of %lld tokens, %lld percent, status %@, %@ tracking",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 896
+        }
+      },
+      {
+        "comment": "",
+        "key": ". Code generation model (llama.cpp): %lld of %lld tokens, %lld percent",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 901
+        }
+      }
+    ]
+  },
+  "version": 1
+}

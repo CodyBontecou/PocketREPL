@@ -1,0 +1,40 @@
+{
+  "source": "/Users/codybontecou/projects/PocketREPL/PocketREPL/PocketREPL/UI/DocsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Documentation header",
+        "key": "Documentation",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 83
+        }
+      },
+      {
+        "comment": "Documentation subtitle",
+        "key": "Learn how PocketREPL works",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 87
+        }
+      },
+      {
+        "comment": "Footer text",
+        "key": "PocketREPL",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 99
+        }
+      },
+      {
+        "comment": "",
+        "key": "•",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 540
+        }
+      }
+    ]
+  },
+  "version": 1
+}
