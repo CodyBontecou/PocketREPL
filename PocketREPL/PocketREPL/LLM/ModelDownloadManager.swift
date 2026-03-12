@@ -19,11 +19,61 @@ struct ModelRegistryEntry: Codable, Identifiable, Sendable {
     var isCustom: Bool = false
     
     enum ModelFamily: String, Codable, Sendable {
-        case qwen = "Qwen"
+        case qwen25Coder = "Qwen 2.5 Coder"
+        case qwen3 = "Qwen 3"
+        case qwen35 = "Qwen 3.5"
+        case gemma3n = "Gemma 3n"
         case codegemma = "CodeGemma"
         case starcoder = "StarCoder"
         case deepseek = "DeepSeek"
         case other = "Other"
+        
+        // Legacy support - map old "qwen" to qwen25Coder
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            let rawValue = try container.decode(String.self)
+            switch rawValue {
+            case "Qwen", "Qwen 2.5 Coder": self = .qwen25Coder
+            case "Qwen 3": self = .qwen3
+            case "Qwen 3.5": self = .qwen35
+            case "Gemma 3n": self = .gemma3n
+            case "CodeGemma": self = .codegemma
+            case "StarCoder": self = .starcoder
+            case "DeepSeek": self = .deepseek
+            default: self = .other
+            }
+        }
+        
+        /// Display name for the model family
+        var displayName: String { rawValue }
+        
+        /// Short description for each family
+        var familyDescription: String {
+            switch self {
+            case .qwen25Coder: return "Alibaba's code generation models"
+            case .qwen3: return "Next-gen Qwen with improved reasoning"
+            case .qwen35: return "Latest Qwen with vision capabilities"
+            case .gemma3n: return "Google's efficient on-device models"
+            case .codegemma: return "Google's code-focused Gemma"
+            case .starcoder: return "BigCode/HuggingFace code models"
+            case .deepseek: return "DeepSeek AI code specialists"
+            case .other: return "Custom and other models"
+            }
+        }
+        
+        /// Sort order for displaying families
+        var sortOrder: Int {
+            switch self {
+            case .qwen25Coder: return 0
+            case .qwen3: return 1
+            case .qwen35: return 2
+            case .gemma3n: return 3
+            case .deepseek: return 4
+            case .codegemma: return 5
+            case .starcoder: return 6
+            case .other: return 99
+            }
+        }
     }
     
     var formattedSize: String {
@@ -215,7 +265,7 @@ nonisolated enum CustomModelStorage {
 enum ModelRegistry {
     /// Recommended models for PocketREPL, sorted by size (smallest first).
     static let models: [ModelRegistryEntry] = [
-        // Qwen2.5-Coder family - excellent code generation
+        // MARK: - Qwen 2.5 Coder Family
         ModelRegistryEntry(
             id: "qwen2.5-coder-0.5b-q4km",
             name: "Qwen2.5-Coder-0.5B",
@@ -226,7 +276,7 @@ enum ModelRegistry {
             quantization: "Q4_K_M",
             parameterCount: "0.5B",
             recommendedContextSize: 4096,
-            family: .qwen
+            family: .qwen25Coder
         ),
         ModelRegistryEntry(
             id: "qwen2.5-coder-1.5b-q4km",
@@ -238,7 +288,7 @@ enum ModelRegistry {
             quantization: "Q4_K_M",
             parameterCount: "1.5B",
             recommendedContextSize: 4096,
-            family: .qwen
+            family: .qwen25Coder
         ),
         ModelRegistryEntry(
             id: "qwen2.5-coder-3b-q4km",
@@ -250,9 +300,136 @@ enum ModelRegistry {
             quantization: "Q4_K_M",
             parameterCount: "3B",
             recommendedContextSize: 4096,
-            family: .qwen
+            family: .qwen25Coder
         ),
-        // DeepSeek Coder - alternative family
+        ModelRegistryEntry(
+            id: "qwen2.5-coder-7b-q4km",
+            name: "Qwen2.5-Coder-7B",
+            description: "Large model for complex tasks. Requires significant memory.",
+            sizeBytes: 4_700_000_000,
+            downloadURL: URL(string: "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/main/qwen2.5-coder-7b-instruct-q4_k_m.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "7B",
+            recommendedContextSize: 8192,
+            family: .qwen25Coder
+        ),
+        
+        // MARK: - Qwen 3 Family
+        ModelRegistryEntry(
+            id: "qwen3-0.6b-q4km",
+            name: "Qwen3-0.6B",
+            description: "Ultra-compact next-gen Qwen. Great for quick tasks.",
+            sizeBytes: 500_000_000,
+            downloadURL: URL(string: "https://huggingface.co/unsloth/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "0.6B",
+            recommendedContextSize: 4096,
+            family: .qwen3
+        ),
+        ModelRegistryEntry(
+            id: "qwen3-1.7b-q4km",
+            name: "Qwen3-1.7B",
+            description: "Improved reasoning over Qwen 2.5. Balanced performance.",
+            sizeBytes: 1_100_000_000,
+            downloadURL: URL(string: "https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "1.7B",
+            recommendedContextSize: 4096,
+            family: .qwen3
+        ),
+        ModelRegistryEntry(
+            id: "qwen3-4b-q4km",
+            name: "Qwen3-4B",
+            description: "Strong general-purpose model with great reasoning.",
+            sizeBytes: 2_600_000_000,
+            downloadURL: URL(string: "https://huggingface.co/unsloth/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "4B",
+            recommendedContextSize: 8192,
+            family: .qwen3
+        ),
+        ModelRegistryEntry(
+            id: "qwen3-8b-q4km",
+            name: "Qwen3-8B",
+            description: "High-quality reasoning. Excellent for complex coding.",
+            sizeBytes: 5_000_000_000,
+            downloadURL: URL(string: "https://huggingface.co/unsloth/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "8B",
+            recommendedContextSize: 8192,
+            family: .qwen3
+        ),
+        
+        // MARK: - Qwen 3.5 Family (Latest with vision capabilities)
+        ModelRegistryEntry(
+            id: "qwen35-0.8b-q4km",
+            name: "Qwen3.5-0.8B",
+            description: "Ultra-compact latest Qwen. Fast and efficient.",
+            sizeBytes: 600_000_000,
+            downloadURL: URL(string: "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/main/Qwen3.5-0.8B-Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "0.8B",
+            recommendedContextSize: 4096,
+            family: .qwen35
+        ),
+        ModelRegistryEntry(
+            id: "qwen35-2b-q4km",
+            name: "Qwen3.5-2B",
+            description: "Balanced performance with latest improvements.",
+            sizeBytes: 1_400_000_000,
+            downloadURL: URL(string: "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "2B",
+            recommendedContextSize: 4096,
+            family: .qwen35
+        ),
+        ModelRegistryEntry(
+            id: "qwen35-4b-q4km",
+            name: "Qwen3.5-4B",
+            description: "Strong general-purpose model. Great reasoning.",
+            sizeBytes: 2_740_000_000,
+            downloadURL: URL(string: "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "4B",
+            recommendedContextSize: 8192,
+            family: .qwen35
+        ),
+        
+        // MARK: - Gemma 3n Family (Google's efficient on-device models)
+        ModelRegistryEntry(
+            id: "gemma-3n-e2b-q4km",
+            name: "Gemma 3n E2B",
+            description: "Google's tiniest efficient model. Lightning fast.",
+            sizeBytes: 1_400_000_000,
+            downloadURL: URL(string: "https://huggingface.co/google/gemma-3n-E2B-it-GGUF/resolve/main/gemma-3n-E2B-it-Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "2B",
+            recommendedContextSize: 4096,
+            family: .gemma3n
+        ),
+        ModelRegistryEntry(
+            id: "gemma-3n-e4b-q4km",
+            name: "Gemma 3n E4B",
+            description: "Balanced Gemma 3n. Good for general tasks.",
+            sizeBytes: 2_700_000_000,
+            downloadURL: URL(string: "https://huggingface.co/google/gemma-3n-E4B-it-GGUF/resolve/main/gemma-3n-E4B-it-Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "4B",
+            recommendedContextSize: 8192,
+            family: .gemma3n
+        ),
+        
+        // MARK: - DeepSeek Coder Family
         ModelRegistryEntry(
             id: "deepseek-coder-1.3b-q4km",
             name: "DeepSeek Coder 1.3B",
@@ -263,6 +440,18 @@ enum ModelRegistry {
             quantization: "Q4_K_M",
             parameterCount: "1.3B",
             recommendedContextSize: 4096,
+            family: .deepseek
+        ),
+        ModelRegistryEntry(
+            id: "deepseek-coder-6.7b-q4km",
+            name: "DeepSeek Coder 6.7B",
+            description: "Powerful code generation. Requires more memory.",
+            sizeBytes: 4_100_000_000,
+            downloadURL: URL(string: "https://huggingface.co/TheBloke/deepseek-coder-6.7B-instruct-GGUF/resolve/main/deepseek-coder-6.7b-instruct.Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "6.7B",
+            recommendedContextSize: 8192,
             family: .deepseek
         ),
     ]

@@ -20,6 +20,7 @@ struct ModelManagementView: View {
     @State private var showingCustomModelSheet = false
     @State private var customModelURL = ""
     @State private var customModelContextSize = "4096"
+    @State private var expandedFamilies: Set<ModelRegistryEntry.ModelFamily> = []
     
     // Adaptive colors
     private var foregroundColor: Color {
@@ -425,34 +426,55 @@ struct ModelManagementView: View {
                 .buttonStyle(.plain)
             }
             
+            // Grouped by family with accordions
             VStack(spacing: 10) {
-                ForEach(availableModels) { model in
-                    if let progress = downloadProgress[model.id] {
-                        DownloadProgressRow(
-                            model: model,
-                            progress: progress,
-                            onCancel: { Task { await cancelDownload(model.id) } }
-                        )
-                    } else {
-                        DownloadableModelRow(model: model) {
+                ForEach(groupedAvailableModels, id: \.family) { group in
+                    ModelFamilyAccordion(
+                        family: group.family,
+                        models: group.models,
+                        isExpanded: expandedFamilies.contains(group.family),
+                        downloadProgress: downloadProgress,
+                        onToggle: {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                if expandedFamilies.contains(group.family) {
+                                    expandedFamilies.remove(group.family)
+                                } else {
+                                    expandedFamilies.insert(group.family)
+                                }
+                            }
+                        },
+                        onDownload: { model in
                             Task { await downloadModel(model) }
+                        },
+                        onCancelDownload: { modelId in
+                            Task { await cancelDownload(modelId) }
                         }
-                    }
+                    )
                 }
                 
                 // Show pending custom models (not yet downloaded)
-                ForEach(pendingCustomModels) { model in
-                    if let progress = downloadProgress[model.id] {
-                        DownloadProgressRow(
-                            model: model,
-                            progress: progress,
-                            onCancel: { Task { await cancelDownload(model.id) } }
-                        )
-                    } else {
-                        DownloadableModelRow(model: model) {
+                if !pendingCustomModels.isEmpty {
+                    ModelFamilyAccordion(
+                        family: .other,
+                        models: pendingCustomModels,
+                        isExpanded: expandedFamilies.contains(.other),
+                        downloadProgress: downloadProgress,
+                        onToggle: {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                if expandedFamilies.contains(.other) {
+                                    expandedFamilies.remove(.other)
+                                } else {
+                                    expandedFamilies.insert(.other)
+                                }
+                            }
+                        },
+                        onDownload: { model in
                             Task { await downloadModel(model) }
+                        },
+                        onCancelDownload: { modelId in
+                            Task { await cancelDownload(modelId) }
                         }
-                    }
+                    )
                 }
             }
             
@@ -477,6 +499,14 @@ struct ModelManagementView: View {
         }
         .padding(18)
         .escherCard()
+    }
+    
+    /// Groups available models by family for accordion display
+    private var groupedAvailableModels: [(family: ModelRegistryEntry.ModelFamily, models: [ModelRegistryEntry])] {
+        let grouped = Dictionary(grouping: availableModels) { $0.family }
+        return grouped
+            .map { (family: $0.key, models: $0.value.sorted { $0.sizeBytes < $1.sizeBytes }) }
+            .sorted { $0.family.sortOrder < $1.family.sortOrder }
     }
     
     private var availableModels: [ModelRegistryEntry] {
@@ -796,10 +826,10 @@ struct ModelProviderIcon: View {
     @ViewBuilder
     private var iconContent: some View {
         switch family {
-        case .qwen:
+        case .qwen25Coder, .qwen3, .qwen35:
             QwenIcon()
                 .stroke(foregroundColor.opacity(isActive ? 1.0 : 0.6), lineWidth: size * 0.045)
-        case .codegemma:
+        case .gemma3n, .codegemma:
             GemmaIcon()
                 .fill(foregroundColor.opacity(isActive ? 1.0 : 0.6))
         case .starcoder:
@@ -1319,6 +1349,269 @@ struct DownloadProgressRow: View {
         } else {
             return "\(Int(seconds / 3600))h \(Int((seconds.truncatingRemainder(dividingBy: 3600)) / 60))m"
         }
+    }
+}
+
+// MARK: - Model Family Accordion
+
+/// Expandable accordion for a group of models in the same family.
+struct ModelFamilyAccordion: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let family: ModelRegistryEntry.ModelFamily
+    let models: [ModelRegistryEntry]
+    let isExpanded: Bool
+    let downloadProgress: [String: DownloadProgress]
+    let onToggle: () -> Void
+    let onDownload: (ModelRegistryEntry) -> Void
+    let onCancelDownload: (String) -> Void
+    
+    private var foreground: Color {
+        colorScheme == .dark ? .escherPaper : .escherInk
+    }
+    
+    private var surface: Color {
+        colorScheme == .dark ? Color(white: 0.18) : .escherPaper.opacity(0.6)
+    }
+    
+    private var expandedSurface: Color {
+        colorScheme == .dark ? Color(white: 0.12) : Color(white: 0.96)
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header (always visible, tappable)
+            Button {
+                onToggle()
+            } label: {
+                HStack(spacing: 14) {
+                    // Family Icon
+                    ModelProviderIcon(
+                        family: family,
+                        size: 44,
+                        isActive: false,
+                        colorScheme: colorScheme
+                    )
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(family.displayName)
+                            .font(.escherSubheadline.weight(.semibold))
+                            .foregroundStyle(foreground)
+                        
+                        Text(family.familyDescription)
+                            .font(.escherCaption)
+                            .foregroundStyle(Color.escherSecondaryText)
+                            .lineLimit(1)
+                    }
+                    
+                    Spacer()
+                    
+                    // Model count badge
+                    Text("\(models.count)")
+                        .font(.escherCaption.weight(.bold))
+                        .foregroundStyle(foreground.opacity(0.6))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(foreground.opacity(0.08))
+                        )
+                    
+                    // Chevron
+                    Image(systemName: "chevron.right")
+                        .font(.escherFootnote.weight(.semibold))
+                        .foregroundStyle(foreground.opacity(0.4))
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
+                .padding(14)
+                .background(
+                    RoundedRectangle(cornerRadius: isExpanded ? 12 : 12, style: .continuous)
+                        .fill(surface)
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(family.displayName), \(models.count) models")
+            .accessibilityHint(isExpanded ? String(localized: "Double-tap to collapse") : String(localized: "Double-tap to expand"))
+            .accessibilityAddTraits(.isButton)
+            
+            // Expanded content
+            if isExpanded {
+                VStack(spacing: 8) {
+                    ForEach(models) { model in
+                        if let progress = downloadProgress[model.id] {
+                            AccordionDownloadProgressRow(
+                                model: model,
+                                progress: progress,
+                                onCancel: { onCancelDownload(model.id) }
+                            )
+                        } else {
+                            AccordionModelRow(model: model) {
+                                onDownload(model)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(expandedSurface)
+                        .padding(.top, -8)
+                )
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .clipped()
+    }
+}
+
+/// Compact model row for use inside accordion
+struct AccordionModelRow: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let model: ModelRegistryEntry
+    let onDownload: () -> Void
+    
+    @State private var showingDetail = false
+    
+    private var foreground: Color {
+        colorScheme == .dark ? .escherPaper : .escherInk
+    }
+    
+    private var isRecommended: Bool {
+        model.description.contains("Recommended")
+    }
+    
+    var body: some View {
+        Button {
+            showingDetail = true
+        } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(model.name)
+                            .font(.escherFootnote.weight(.medium))
+                            .foregroundStyle(foreground)
+                            .lineLimit(1)
+                        
+                        if isRecommended {
+                            Text("★")
+                                .font(.escherMini)
+                                .foregroundStyle(foreground.opacity(0.6))
+                        }
+                    }
+                    
+                    HStack(spacing: 6) {
+                        Text(model.parameterCount)
+                            .font(.escherCaption2)
+                        Text("•")
+                            .font(.escherCaption2)
+                        Text(model.quantization)
+                            .font(.escherCaption2)
+                        Text("•")
+                            .font(.escherCaption2)
+                        Text(model.formattedSize)
+                            .font(.escherCaption2)
+                    }
+                    .foregroundStyle(Color.escherSecondaryText)
+                }
+                
+                Spacer()
+                
+                Button {
+                    onDownload()
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(foreground.opacity(0.1))
+                            .frame(width: 32, height: 32)
+                        
+                        Image(systemName: "arrow.down")
+                            .font(.escherCaption.weight(.bold))
+                            .foregroundStyle(foreground.opacity(0.7))
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(colorScheme == .dark ? Color(white: 0.16) : Color.white)
+            )
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showingDetail) {
+            RegistryModelDetailView(model: model, onDownload: onDownload)
+        }
+    }
+}
+
+/// Compact download progress row for use inside accordion
+struct AccordionDownloadProgressRow: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let model: ModelRegistryEntry
+    let progress: DownloadProgress
+    let onCancel: () -> Void
+    
+    private var foreground: Color {
+        colorScheme == .dark ? .escherPaper : .escherInk
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                HStack(spacing: 8) {
+                    InfiniteStairs(size: 16)
+                    
+                    Text(model.name)
+                        .font(.escherFootnote.weight(.medium))
+                        .foregroundStyle(foreground)
+                        .lineLimit(1)
+                }
+                
+                Spacer()
+                
+                Button(String(localized: "Cancel"), role: .destructive) {
+                    onCancel()
+                }
+                .font(.escherCaption.weight(.semibold))
+                .foregroundStyle(Color.escherError)
+            }
+            
+            // Progress bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(foreground.opacity(0.1))
+                    
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(foreground.opacity(0.5))
+                        .frame(width: geo.size.width * progress.progress)
+                }
+            }
+            .frame(height: 6)
+            
+            HStack {
+                Text(progress.formattedProgress)
+                    .font(.escherCaption2)
+                    .foregroundStyle(Color.escherSecondaryText)
+                
+                Spacer()
+                
+                Text("\(progress.percentComplete)%")
+                    .font(.escherCaption2.weight(.bold))
+                    .foregroundStyle(foreground.opacity(0.7))
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(colorScheme == .dark ? Color(white: 0.16) : Color.white)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(foreground.opacity(0.1), lineWidth: 1)
+                )
+        )
     }
 }
 
@@ -2463,4 +2756,44 @@ struct SpecRow: View {
         model: ModelRegistry.models[1],
         onDownload: {}
     )
+}
+
+#Preview("Model Family Accordion") {
+    let qwenModels = ModelRegistry.models.filter { $0.family == .qwen25Coder }
+    
+    return ScrollView {
+        VStack(spacing: 12) {
+            ModelFamilyAccordion(
+                family: .qwen25Coder,
+                models: qwenModels,
+                isExpanded: true,
+                downloadProgress: [:],
+                onToggle: {},
+                onDownload: { _ in },
+                onCancelDownload: { _ in }
+            )
+            
+            ModelFamilyAccordion(
+                family: .qwen3,
+                models: ModelRegistry.models.filter { $0.family == .qwen3 },
+                isExpanded: false,
+                downloadProgress: [:],
+                onToggle: {},
+                onDownload: { _ in },
+                onCancelDownload: { _ in }
+            )
+            
+            ModelFamilyAccordion(
+                family: .gemma3n,
+                models: ModelRegistry.models.filter { $0.family == .gemma3n },
+                isExpanded: false,
+                downloadProgress: [:],
+                onToggle: {},
+                onDownload: { _ in },
+                onCancelDownload: { _ in }
+            )
+        }
+        .padding()
+    }
+    .background(EscherBackground())
 }
