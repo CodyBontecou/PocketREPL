@@ -1,8 +1,3 @@
-Initial release of PocketREPL!
-
-• AI-powered JavaScript coding assistant
-• Local LLM inference with Qwen coding models
-• Sandboxed JavaScriptCore runtime
-• Offline-first — no internet required
-• Built-in documentation
-• Light and dark mode support
+• Fixed model accordion animation overflow - text no longer bleeds through adjacent items during expand/collapse
+• Improved model family grouping with organized accordion UI
+• Enhanced visual polish for model selection

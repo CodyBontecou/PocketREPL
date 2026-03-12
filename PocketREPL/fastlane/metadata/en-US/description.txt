@@ -2,7 +2,7 @@ A cutting-edge experiment in on-device AI coding — completely offline.
 
 PocketREPL lets you explore what's possible when a local LLM writes and runs code directly on your iPhone. This is early, experimental technology with real limitations — think of it as a glimpse into the future of edge AI, not a production tool.
 
-⚠️ IMPORTANT LIMITATIONS
+IMPORTANT LIMITATIONS
 
 This app runs local AI models with a 4096 token context window. That's roughly 3,000 words of memory — enough for small scripts, but not complex applications. The AI will forget earlier parts of long conversations, struggle with multi-file projects, and sometimes lose track of what it's building.
 
