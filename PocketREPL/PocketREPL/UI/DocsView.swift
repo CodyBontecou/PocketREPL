@@ -34,32 +34,46 @@ struct DocsView: View {
         ZStack {
             EscherBackground()
             
-            ScrollView {
-                VStack(spacing: 16) {
-                    // Header
-                    headerSection
-                    
-                    // Documentation Sections
-                    ForEach(DocSection.allCases) { section in
-                        DocSectionCard(
-                            section: section,
-                            isExpanded: expandedSections.contains(section),
-                            onToggle: {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                    if expandedSections.contains(section) {
-                                        expandedSections.remove(section)
-                                    } else {
-                                        expandedSections.insert(section)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 16) {
+                        // Header
+                        headerSection
+                        
+                        // Documentation Sections
+                        ForEach(DocSection.allCases) { section in
+                            DocSectionCard(
+                                section: section,
+                                isExpanded: expandedSections.contains(section),
+                                onToggle: {
+                                    let isExpanding = !expandedSections.contains(section)
+                                    
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                        if expandedSections.contains(section) {
+                                            expandedSections.remove(section)
+                                        } else {
+                                            expandedSections.insert(section)
+                                        }
+                                    }
+                                    
+                                    // Scroll to show the accordion header at top when expanding
+                                    if isExpanding {
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                                proxy.scrollTo(section.id, anchor: .top)
+                                            }
+                                        }
                                     }
                                 }
-                            }
-                        )
+                            )
+                            .id(section.id)
+                        }
+                        
+                        // Footer
+                        footerSection
                     }
-                    
-                    // Footer
-                    footerSection
+                    .padding(16)
                 }
-                .padding(16)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -95,13 +109,8 @@ struct DocsView: View {
     // MARK: - Footer
     
     private var footerSection: some View {
-        VStack(spacing: 8) {
-            Text("PocketREPL", comment: "Footer text")
-                .font(.escherCaption)
-                .foregroundStyle(Color.escherSecondaryText)
-        }
-        .padding(.top, 20)
-        .padding(.bottom, 40)
+        Spacer()
+            .frame(height: 40)
     }
 }
 
@@ -139,6 +148,7 @@ struct DocSectionCard: View {
                         .foregroundStyle(Color.escherSecondaryText)
                 }
                 .padding(16)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             

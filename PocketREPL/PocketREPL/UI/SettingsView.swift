@@ -38,7 +38,7 @@ struct SettingsView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "gearshape.fill")
                             .font(.escherFootnote.weight(.semibold))
-                            .foregroundStyle(Color.escherPrism)
+                            .foregroundStyle(Color.escherSecondaryText)
                         
                         Text("Settings", comment: "Navigation title for settings")
                             .font(.escherHeadline)
@@ -52,7 +52,7 @@ struct SettingsView: View {
                     } label: {
                         Text("Done", comment: "Button to dismiss settings")
                             .font(.escherSubheadline)
-                            .foregroundStyle(Color.escherPrism)
+                            .foregroundStyle(Color.escherForeground)
                     }
                 }
             }
@@ -113,7 +113,7 @@ struct SettingsView: View {
                 HStack {
                     Image(systemName: "slider.horizontal.3")
                         .font(.escherBody)
-                        .foregroundStyle(Color.escherPrism)
+                        .foregroundStyle(Color.escherSecondaryText)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Context Settings", comment: "Row title for context settings")
@@ -247,7 +247,7 @@ struct SettingsView: View {
                 HStack {
                     Image(systemName: "envelope.fill")
                         .font(.escherBody)
-                        .foregroundStyle(Color.escherPrism)
+                        .foregroundStyle(Color.escherSecondaryText)
                     
                     Text("Send Feedback", comment: "Button to send feedback email")
                         .font(.escherCallout)
@@ -316,27 +316,27 @@ struct AppearanceModeButton: View {
             VStack(spacing: 10) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(isSelected ? Color.escherPrism.opacity(0.15) : Color.escherSurface)
+                        .fill(isSelected ? Color.escherForeground.opacity(0.12) : Color.escherSurface)
                         .frame(width: 56, height: 56)
                     
                     Image(systemName: mode.icon)
                         .font(.escherTitle)
-                        .foregroundStyle(isSelected ? Color.escherPrism : Color.escherSecondaryText)
+                        .foregroundStyle(isSelected ? Color.escherForeground : Color.escherSecondaryText)
                 }
                 
                 Text(mode.rawValue)
                     .font(isSelected ? .escherCaption.weight(.semibold) : .escherCaption)
-                    .foregroundStyle(isSelected ? Color.escherPrism : Color.escherSecondaryText)
+                    .foregroundStyle(isSelected ? Color.escherForeground : Color.escherSecondaryText)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isSelected ? Color.escherPrism.opacity(0.08) : Color.clear)
+                    .fill(isSelected ? Color.escherForeground.opacity(0.06) : Color.clear)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(isSelected ? Color.escherPrism.opacity(0.3) : Color.clear, lineWidth: 1.5)
+                    .strokeBorder(isSelected ? Color.escherForeground.opacity(0.2) : Color.clear, lineWidth: 1.5)
             )
         }
         .buttonStyle(.plain)
@@ -443,12 +443,12 @@ struct ModelRoutingModeRow: View {
                 // Icon
                 ZStack {
                     Circle()
-                        .fill(isSelected ? Color.escherPrism.opacity(0.15) : Color.escherSurface)
+                        .fill(isSelected ? Color.escherForeground.opacity(0.12) : Color.escherSurface)
                         .frame(width: 40, height: 40)
 
                     Image(systemName: mode.icon)
                         .font(.escherBody)
-                        .foregroundStyle(isSelected ? Color.escherPrism : Color.escherSecondaryText)
+                        .foregroundStyle(isSelected ? Color.escherForeground : Color.escherSecondaryText)
                 }
 
                 // Text
@@ -478,7 +478,7 @@ struct ModelRoutingModeRow: View {
                 // Selection indicator
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(Color.escherPrism)
+                        .foregroundStyle(Color.escherForeground)
                 }
             }
             .padding(.horizontal, 16)
@@ -573,7 +573,7 @@ struct SettingsContentView: View {
                 HStack {
                     Image(systemName: "envelope.fill")
                         .font(.escherBody)
-                        .foregroundStyle(Color.escherPrism)
+                        .foregroundStyle(Color.escherSecondaryText)
                     
                     Text("Send Feedback", comment: "Button to send feedback email")
                         .font(.escherCallout)
