@@ -361,13 +361,18 @@ struct ContextSettingsView: View {
                     GreyscaleToolRow(
                         tool: tool,
                         isEnabled: tool.isEnabled,
+                        isHybridMode: settingsManager.modelRoutingMode == .hybrid,
                         colorScheme: colorScheme
                     ) {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                             settingsManager.toggleTool(tool.id)
                         }
+                    } onChangeAssignment: { assignment in
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            settingsManager.setModelAssignment(assignment, for: tool.id)
+                        }
                     }
-                    
+
                     if index < settingsManager.toolConfigurations.count - 1 {
                         Rectangle()
                             .fill(borderColor.opacity(0.5))
@@ -385,16 +390,23 @@ struct ContextSettingsView: View {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(borderColor, lineWidth: 0.5)
             )
+            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: settingsManager.modelRoutingMode)
             
             // Tools info note
             HStack(spacing: 8) {
                 Image(systemName: "info.circle")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(tertiaryText)
-                
-                Text("Disabling tools reduces context usage but limits capabilities.")
-                    .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(tertiaryText)
+
+                if settingsManager.modelRoutingMode == .hybrid {
+                    Text("Hybrid mode: assign each tool to Apple Intelligence or local model.")
+                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .foregroundStyle(tertiaryText)
+                } else {
+                    Text("Disabling tools reduces context usage but limits capabilities.")
+                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .foregroundStyle(tertiaryText)
+                }
             }
         }
     }
@@ -614,71 +626,102 @@ private struct GreyscaleToggleRow: View {
 private struct GreyscaleToolRow: View {
     let tool: ToolConfiguration
     let isEnabled: Bool
+    let isHybridMode: Bool
     let colorScheme: ColorScheme
     let onToggle: () -> Void
-    
+    let onChangeAssignment: (ModelAssignment) -> Void
+
     private var primaryText: Color {
         colorScheme == .dark ? Color(white: 0.92) : Color(white: 0.1)
     }
-    
+
     private var secondaryText: Color {
         colorScheme == .dark ? Color(white: 0.55) : Color(white: 0.45)
     }
-    
+
     private var tertiaryText: Color {
         colorScheme == .dark ? Color(white: 0.38) : Color(white: 0.62)
     }
-    
+
     var body: some View {
-        Button(action: onToggle) {
-            HStack(spacing: 14) {
-                // Tool icon
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(isEnabled 
-                              ? (colorScheme == .dark ? Color(white: 0.22) : Color(white: 0.88))
-                              : (colorScheme == .dark ? Color(white: 0.14) : Color(white: 0.94)))
-                        .frame(width: 36, height: 36)
-                    
-                    Image(systemName: tool.icon)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(isEnabled ? primaryText : tertiaryText)
+        VStack(spacing: 0) {
+            Button(action: onToggle) {
+                HStack(spacing: 14) {
+                    // Tool icon
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(isEnabled
+                                  ? (colorScheme == .dark ? Color(white: 0.22) : Color(white: 0.88))
+                                  : (colorScheme == .dark ? Color(white: 0.14) : Color(white: 0.94)))
+                            .frame(width: 36, height: 36)
+
+                        Image(systemName: tool.icon)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(isEnabled ? primaryText : tertiaryText)
+                    }
+
+                    // Tool info
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(tool.name)
+                            .font(.escherCallout)
+                            .foregroundStyle(isEnabled ? primaryText : secondaryText)
+
+                        Text(tool.summary)
+                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                            .foregroundStyle(tertiaryText)
+                            .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    // Minimal toggle
+                    ZStack {
+                        Capsule()
+                            .fill(isEnabled
+                                  ? (colorScheme == .dark ? Color(white: 0.45) : Color(white: 0.25))
+                                  : (colorScheme == .dark ? Color(white: 0.22) : Color(white: 0.82)))
+                            .frame(width: 46, height: 28)
+
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 24, height: 24)
+                            .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
+                            .offset(x: isEnabled ? 9 : -9)
+                    }
                 }
-                
-                // Tool info
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(tool.name)
-                        .font(.escherCallout)
-                        .foregroundStyle(isEnabled ? primaryText : secondaryText)
-                    
-                    Text(tool.summary)
-                        .font(.system(size: 12, weight: .regular, design: .rounded))
-                        .foregroundStyle(tertiaryText)
-                        .lineLimit(1)
-                }
-                
-                Spacer()
-                
-                // Minimal toggle
-                ZStack {
-                    Capsule()
-                        .fill(isEnabled 
-                              ? (colorScheme == .dark ? Color(white: 0.45) : Color(white: 0.25))
-                              : (colorScheme == .dark ? Color(white: 0.22) : Color(white: 0.82)))
-                        .frame(width: 46, height: 28)
-                    
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: 24, height: 24)
-                        .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
-                        .offset(x: isEnabled ? 9 : -9)
-                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+
+            // Model assignment picker (only in hybrid mode and if tool is enabled)
+            if isHybridMode && isEnabled {
+                HStack(spacing: 8) {
+                    Text("Handled by:")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(tertiaryText)
+
+                    Picker("Model", selection: Binding(
+                        get: { tool.modelAssignment },
+                        set: { onChangeAssignment($0) }
+                    )) {
+                        ForEach(ModelAssignment.allCases) { assignment in
+                            Text(assignment.displayName)
+                                .tag(assignment)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 200)
+
+                    Spacer()
+                }
+                .padding(.leading, 64)
+                .padding(.trailing, 14)
+                .padding(.bottom, 12)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
-        .buttonStyle(.plain)
     }
 }
 

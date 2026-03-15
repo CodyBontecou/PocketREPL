@@ -59,7 +59,26 @@ final class AgentOrchestrator: ObservableObject {
         case fallback
     }
 
+    /// The resolved mode based on user preferences and availability.
+    enum ResolvedMode {
+        /// Using Foundation Models for the current operation.
+        case foundationModels
+
+        /// Using local llama.cpp model for the current operation.
+        case localModel
+
+        /// No model available, using basic fallback (direct tool invocation).
+        case fallback
+
+        /// Foundation Models required but unavailable - show error.
+        case foundationModelsRequired(unavailabilityReason: String)
+
+        /// Local model required but not loaded - show error.
+        case localModelRequired
+    }
+
     @Published private(set) var mode: Mode = .fallback
+    @Published private(set) var resolvedMode: ResolvedMode = .fallback
     @Published private(set) var isProcessing = false
     @Published private(set) var retryState: RetryState
     
@@ -159,6 +178,48 @@ final class AgentOrchestrator: ObservableObject {
         #endif
         return .fallback
     }
+
+    /// Resolve which mode to use based on user preferences and availability.
+    /// - Parameter toolName: Optional tool name for hybrid mode routing.
+    /// - Returns: The resolved mode to use.
+    private func resolveMode(for toolName: String? = nil) -> ResolvedMode {
+        guard let settings = contextSettings else {
+            // No settings available, use detected mode
+            return Self.detectMode() == .foundationModels ? .foundationModels : .fallback
+        }
+
+        switch settings.modelRoutingMode {
+        case .foundationModelOnly:
+            // User wants FM only - check availability
+            if settings.isFoundationModelsAvailable {
+                return .foundationModels
+            } else {
+                return .foundationModelsRequired(
+                    unavailabilityReason: settings.foundationModelsUnavailabilityReason ?? String(localized: "Unknown")
+                )
+            }
+
+        case .localModelOnly:
+            // User wants local only - always use fallback for now
+            // In future, this could check if a local model is loaded
+            return .localModel
+
+        case .hybrid:
+            // Route based on per-tool assignment
+            guard let tool = toolName else {
+                // Default to FM for the orchestration itself if available
+                return settings.isFoundationModelsAvailable ? .foundationModels : .fallback
+            }
+
+            let assignment = settings.modelAssignment(for: tool)
+            switch assignment {
+            case .foundationModel:
+                return settings.isFoundationModelsAvailable ? .foundationModels : .fallback
+            case .localModel:
+                return .localModel
+            }
+        }
+    }
     
     /// Check current model availability status
     var modelAvailabilityStatus: String {
@@ -198,7 +259,11 @@ final class AgentOrchestrator: ObservableObject {
         isProcessing = true
         defer { isProcessing = false }
 
-        switch mode {
+        // Resolve mode based on user preferences
+        let resolved = resolveMode()
+        resolvedMode = resolved
+
+        switch resolved {
         case .foundationModels:
             #if canImport(FoundationModels)
             if #available(iOS 26.0, macOS 26.0, *) {
@@ -211,7 +276,26 @@ final class AgentOrchestrator: ObservableObject {
                 )
             }
             #endif
-            fallthrough
+            // Fall through to fallback if Foundation Models not available at compile time
+            return await processWithFallback(
+                prompt: prompt,
+                projectContext: projectContext,
+                onAssistantMessage: onAssistantMessage,
+                onToolCall: onToolCall,
+                onToolResult: onToolResult
+            )
+
+        case .localModel:
+            // For now, local model mode uses the fallback flow
+            // This can be enhanced to use LocalModelOrchestrator in the future
+            return await processWithFallback(
+                prompt: prompt,
+                projectContext: projectContext,
+                onAssistantMessage: onAssistantMessage,
+                onToolCall: onToolCall,
+                onToolResult: onToolResult
+            )
+
         case .fallback:
             return await processWithFallback(
                 prompt: prompt,
@@ -219,6 +303,36 @@ final class AgentOrchestrator: ObservableObject {
                 onAssistantMessage: onAssistantMessage,
                 onToolCall: onToolCall,
                 onToolResult: onToolResult
+            )
+
+        case .foundationModelsRequired(let reason):
+            let errorMsg = String(localized: """
+                Apple Intelligence is required but unavailable.
+
+                Reason: \(reason)
+
+                You can change this in Settings > Model Routing to use local models instead.
+                """)
+            await onAssistantMessage(errorMsg)
+            return OrchestrationResult(
+                response: errorMsg,
+                toolCalls: [],
+                iterations: 0,
+                stoppedDueToRetryLimit: false
+            )
+
+        case .localModelRequired:
+            let errorMsg = String(localized: """
+                Local model is required but not loaded.
+
+                Please load a model in Settings > Models, or change Model Routing to use Apple Intelligence.
+                """)
+            await onAssistantMessage(errorMsg)
+            return OrchestrationResult(
+                response: errorMsg,
+                toolCalls: [],
+                iterations: 0,
+                stoppedDueToRetryLimit: false
             )
         }
     }

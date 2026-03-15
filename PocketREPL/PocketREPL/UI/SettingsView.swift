@@ -97,33 +97,36 @@ struct SettingsView: View {
     }
     
     // MARK: - AI Section
-    
+
     private var aiSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("AI", comment: "Section header for AI settings")
                 .font(.escherCaption2)
                 .tracking(1)
                 .foregroundStyle(Color.escherSecondaryText)
-            
+
+            // Model Routing Section
+            modelRoutingSection
+
             VStack(spacing: 0) {
                 // Context Settings Row - Note: Opens via the context counter in chat
                 HStack {
                     Image(systemName: "slider.horizontal.3")
                         .font(.escherBody)
                         .foregroundStyle(Color.escherPrism)
-                    
+
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Context Settings", comment: "Row title for context settings")
                             .font(.escherCallout)
                             .foregroundStyle(Color.escherForeground)
-                        
+
                         Text("Tap the context counter in chat to customize", comment: "Row subtitle")
                             .font(.escherCaption)
                             .foregroundStyle(Color.escherSecondaryText)
                     }
-                    
+
                     Spacer()
-                    
+
                     // Token count indicator
                     let settings = ContextSettingsManager.shared
                     Text("~\(settings.estimatedBaseTokens) tokens")
@@ -137,13 +140,13 @@ struct SettingsView: View {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(Color.escherSurface.opacity(0.6))
             )
-            
+
             // Info note
             HStack(spacing: 8) {
                 Image(systemName: "info.circle")
                     .font(.escherCaption)
                     .foregroundStyle(Color.escherSecondaryText)
-                
+
                 Text("Customize the AI's system prompt and enable/disable tools from the context counter.", comment: "Info text for AI section")
                     .font(.escherCaption)
                     .foregroundStyle(Color.escherSecondaryText)
@@ -152,6 +155,77 @@ struct SettingsView: View {
         }
         .padding(18)
         .escherCard()
+    }
+
+    // MARK: - Model Routing Section
+
+    @State private var settingsManager = ContextSettingsManager.shared
+
+    private var modelRoutingSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("MODEL ROUTING", comment: "Section header for model routing")
+                .font(.escherCaption2)
+                .tracking(1)
+                .foregroundStyle(Color.escherSecondaryText)
+
+            VStack(spacing: 0) {
+                ForEach(ModelRoutingMode.allCases) { mode in
+                    ModelRoutingModeRow(
+                        mode: mode,
+                        isSelected: settingsManager.modelRoutingMode == mode,
+                        isAvailable: isModeAvailable(mode),
+                        unavailabilityReason: unavailabilityReason(for: mode)
+                    ) {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            settingsManager.modelRoutingMode = mode
+                        }
+                    }
+
+                    if mode != ModelRoutingMode.allCases.last {
+                        Rectangle()
+                            .fill(Color.escherMidtone.opacity(0.15))
+                            .frame(height: 1)
+                            .padding(.leading, 56)
+                    }
+                }
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.escherSurface.opacity(0.6))
+            )
+
+            // Availability warning if needed
+            if !settingsManager.isFoundationModelsAvailable
+                && settingsManager.modelRoutingMode == .foundationModelOnly {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text(settingsManager.foundationModelsUnavailabilityReason ?? String(localized: "Unavailable"))
+                        .font(.escherCaption)
+                        .foregroundStyle(Color.escherSecondaryText)
+                }
+                .padding(.top, 4)
+            }
+        }
+        .padding(.bottom, 12)
+    }
+
+    private func isModeAvailable(_ mode: ModelRoutingMode) -> Bool {
+        switch mode {
+        case .foundationModelOnly:
+            return settingsManager.isFoundationModelsAvailable
+        case .localModelOnly, .hybrid:
+            return true
+        }
+    }
+
+    private func unavailabilityReason(for mode: ModelRoutingMode) -> String? {
+        switch mode {
+        case .foundationModelOnly:
+            return settingsManager.isFoundationModelsAvailable ? nil : settingsManager.foundationModelsUnavailabilityReason
+        case .localModelOnly, .hybrid:
+            return nil
+        }
     }
     
     // MARK: - Support Section
@@ -351,6 +425,67 @@ struct AboutDivider: View {
             .fill(Color.escherMidtone.opacity(0.15))
             .frame(height: 1)
             .padding(.leading, 16)
+    }
+}
+
+// MARK: - Model Routing Mode Row
+
+struct ModelRoutingModeRow: View {
+    let mode: ModelRoutingMode
+    let isSelected: Bool
+    let isAvailable: Bool
+    let unavailabilityReason: String?
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(isSelected ? Color.escherPrism.opacity(0.15) : Color.escherSurface)
+                        .frame(width: 40, height: 40)
+
+                    Image(systemName: mode.icon)
+                        .font(.escherBody)
+                        .foregroundStyle(isSelected ? Color.escherPrism : Color.escherSecondaryText)
+                }
+
+                // Text
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(mode.displayName)
+                            .font(.escherCallout)
+                            .foregroundStyle(isAvailable ? Color.escherForeground : Color.escherSecondaryText)
+
+                        // Unavailable indicator
+                        if !isAvailable {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .font(.escherCaption)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+
+                    Text(mode.description)
+                        .font(.escherCaption)
+                        .foregroundStyle(Color.escherSecondaryText)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                // Selection indicator
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Color.escherPrism)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 
