@@ -66,9 +66,9 @@ enum ModelAssignment: String, Codable, CaseIterable, Identifiable {
     var displayName: String {
         switch self {
         case .foundationModel:
-            return String(localized: "Apple Intelligence")
+            return "\u{F8FF}" // Apple logo
         case .localModel:
-            return String(localized: "Local Model")
+            return String(localized: "Local")
         }
     }
 }

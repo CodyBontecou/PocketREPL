@@ -630,6 +630,8 @@ private struct GreyscaleToolRow: View {
     let colorScheme: ColorScheme
     let onToggle: () -> Void
     let onChangeAssignment: (ModelAssignment) -> Void
+    
+    @State private var showingModelInfo = false
 
     private var primaryText: Color {
         colorScheme == .dark ? Color(white: 0.92) : Color(white: 0.1)
@@ -698,9 +700,20 @@ private struct GreyscaleToolRow: View {
             // Model assignment picker (only in hybrid mode and if tool is enabled)
             if isHybridMode && isEnabled {
                 HStack(spacing: 8) {
-                    Text("Handled by:")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundStyle(tertiaryText)
+                    HStack(spacing: 4) {
+                        Text("Model")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundStyle(tertiaryText)
+                        
+                        Button {
+                            showingModelInfo = true
+                        } label: {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(tertiaryText)
+                        }
+                        .buttonStyle(.plain)
+                    }
 
                     Picker("Model", selection: Binding(
                         get: { tool.modelAssignment },
@@ -717,9 +730,100 @@ private struct GreyscaleToolRow: View {
                     Spacer()
                 }
                 .padding(.leading, 64)
+                .sheet(isPresented: $showingModelInfo) {
+                    ModelInfoSheet(colorScheme: colorScheme)
+                        .presentationDetents([.medium, .large])
+                        .presentationDragIndicator(.visible)
+                }
                 .padding(.trailing, 14)
                 .padding(.bottom, 12)
                 .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+}
+
+// MARK: - Model Info Sheet
+
+private struct ModelInfoSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let colorScheme: ColorScheme
+    
+    private var primaryText: Color {
+        colorScheme == .dark ? Color(white: 0.92) : Color(white: 0.1)
+    }
+    
+    private var secondaryText: Color {
+        colorScheme == .dark ? Color(white: 0.55) : Color(white: 0.45)
+    }
+    
+    private var surfaceBackground: Color {
+        colorScheme == .dark ? Color(white: 0.08) : Color(white: 0.96)
+    }
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Apple Intelligence section
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            Text("\u{F8FF}")
+                                .font(.system(size: 18))
+                            Text("Apple Intelligence")
+                                .font(.escherHeadline)
+                                .foregroundStyle(primaryText)
+                        }
+                        
+                        Text("Uses Apple's on-device Foundation Models. Fast, private, and optimized for Apple hardware. Best for general tasks like planning, file operations, and running code.")
+                            .font(.escherBody)
+                            .foregroundStyle(secondaryText)
+                    }
+                    
+                    Divider()
+                    
+                    // Local Model section
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "cpu")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(primaryText)
+                            Text("Local")
+                                .font(.escherHeadline)
+                                .foregroundStyle(primaryText)
+                        }
+                        
+                        Text("Uses a downloaded local model (llama.cpp). Better for specialized tasks like code generation where you need more control or specific model capabilities.")
+                            .font(.escherBody)
+                            .foregroundStyle(secondaryText)
+                    }
+                    
+                    Divider()
+                    
+                    // When to use which
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("When to use which?")
+                            .font(.escherHeadline)
+                            .foregroundStyle(primaryText)
+                        
+                        Text("• Use \u{F8FF} (Apple Intelligence) for most tasks — it's faster and uses less memory\n• Use Local for code generation tools that benefit from specialized coding models\n• You can mix and match per tool based on your needs")
+                            .font(.escherBody)
+                            .foregroundStyle(secondaryText)
+                    }
+                }
+                .padding(20)
+            }
+            .background(surfaceBackground)
+            .navigationTitle("Model Selection")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .font(.escherSubheadline)
+                    .foregroundStyle(primaryText)
+                }
             }
         }
     }
