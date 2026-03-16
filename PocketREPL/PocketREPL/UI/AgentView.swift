@@ -11,7 +11,7 @@ struct AgentView: View {
     @State private var showingFiles = false
 
     var body: some View {
-        ChatView(session: session)
+        ChatView(session: session, projectStore: projectStore)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

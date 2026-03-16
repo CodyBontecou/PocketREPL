@@ -5,6 +5,7 @@ import SwiftUI
 struct ChatView: View {
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var session: AgentSession
+    var projectStore: ProjectStore? = nil
     @State private var draft = ""
     @State private var showingAIAlert = false
     @FocusState private var inputFocused: Bool
@@ -56,7 +57,7 @@ struct ChatView: View {
             ScrollView {
                 LazyVStack(spacing: 16) {
                     ForEach(session.messages) { message in
-                        MessageBubble(message: message)
+                        MessageBubble(message: message, projectStore: projectStore)
                             .id(message.id)
                             .transition(.asymmetric(
                                 insertion: .opacity.combined(with: .scale(scale: 0.95)).combined(with: .offset(y: 10)),
@@ -224,6 +225,7 @@ struct MessageBubble: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let message: AgentMessage
+    var projectStore: ProjectStore? = nil
     @State private var appeared = false
 
     var body: some View {
@@ -232,7 +234,7 @@ struct MessageBubble: View {
             case .toolCall:
                 ToolCallBubble(message: message)
             case .toolResult:
-                ToolResultBubble(message: message)
+                ToolResultBubble(message: message, projectStore: projectStore)
             default:
                 standardBubble
             }
@@ -493,7 +495,9 @@ struct ToolCallBubble: View {
 struct ToolResultBubble: View {
     @Environment(\.colorScheme) private var colorScheme
     let message: AgentMessage
+    var projectStore: ProjectStore? = nil
     @State private var isExpanded = false
+    @State private var selectedFilePath: String?
     
     private var isLongOutput: Bool {
         message.text.count > 150 || message.text.components(separatedBy: "\n").count > 5
@@ -509,7 +513,48 @@ struct ToolResultBubble: View {
         }
         return message.text
     }
-    
+
+    /// Binding to convert selectedFilePath to ProjectFileEntry for sheet presentation
+    private var selectedFileEntry: Binding<ProjectFileEntry?> {
+        Binding(
+            get: {
+                guard let path = selectedFilePath else { return nil }
+                let name = URL(fileURLWithPath: path).lastPathComponent
+                return ProjectFileEntry(
+                    relativePath: path,
+                    name: name,
+                    kind: .file,
+                    sizeBytes: nil,
+                    modifiedAt: nil
+                )
+            },
+            set: { newValue in
+                selectedFilePath = newValue?.relativePath
+            }
+        )
+    }
+
+    /// The output content - interactive with tappable file links when projectStore is available
+    @ViewBuilder
+    private var outputContent: some View {
+        if projectStore != nil {
+            InteractiveToolOutput(
+                text: truncatedText,
+                toolName: message.toolName,
+                onFileTap: { path in
+                    selectedFilePath = path
+                }
+            )
+            .accessibilityHint(String(localized: "Contains tappable file paths. Double tap and hold to select text"))
+        } else {
+            Text(truncatedText)
+                .font(.escherMonoSmall)
+                .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
+                .textSelection(.enabled)
+                .accessibilityHint(String(localized: "Double tap and hold to select text"))
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header with status
@@ -577,14 +622,15 @@ struct ToolResultBubble: View {
                     .fill(Color.escherMidtone.opacity(0.1))
                     .frame(height: 1)
                     .padding(.horizontal, 12)
-                
-                Text(truncatedText)
-                    .font(.escherMonoSmall)
-                    .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
-                    .textSelection(.enabled)
-                    .accessibilityHint(String(localized: "Double tap and hold to select text"))
+
+                outputContent
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .sheet(item: $selectedFileEntry) { file in
+            if let projectStore = projectStore {
+                FilePreviewSheet(projectStore: projectStore, file: file)
             }
         }
         .background(
