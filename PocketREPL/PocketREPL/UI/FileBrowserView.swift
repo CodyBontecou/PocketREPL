@@ -30,7 +30,7 @@ struct FileBrowserView: View {
                 content
             }
         }
-        .navigationTitle(currentPath.isEmpty ? String(localized: "Files") : URL(fileURLWithPath: currentPath).lastPathComponent)
+        .navigationTitle(currentPath.isEmpty ? "" : URL(fileURLWithPath: currentPath).lastPathComponent)
         .navigationBarTitleDisplayMode(.large)
         .sheet(item: $selectedFile) { file in
             FilePreviewSheet(projectStore: projectStore, file: file)
