@@ -1,1 +1,1 @@
-AI JavaScript Playground
+Offline AI Coding Assistant

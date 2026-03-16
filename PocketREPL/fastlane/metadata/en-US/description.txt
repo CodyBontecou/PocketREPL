@@ -1,68 +1,40 @@
-A cutting-edge experiment in on-device AI coding — completely offline.
+PocketREPL is an on-device AI coding workspace that runs fully offline.
 
-PocketREPL lets you explore what's possible when a local LLM writes and runs code directly on your iPhone. This is early, experimental technology with real limitations — think of it as a glimpse into the future of edge AI, not a production tool.
-
-IMPORTANT LIMITATIONS
-
-This app runs local AI models with a 4096 token context window. That's roughly 3,000 words of memory — enough for small scripts, but not complex applications. The AI will forget earlier parts of long conversations, struggle with multi-file projects, and sometimes lose track of what it's building.
-
-Real-world applications are not yet feasible. This is a sandbox for experimentation.
-
-WHAT IT'S FOR
-
-• Curiosity — see how far on-device AI has come
-• Learning — watch an AI iterate through simple coding problems
-• Fun — build small scripts and utilities with conversational prompts
-• Exploration — test the boundaries of local LLMs on mobile hardware
+Build, test, and iterate with an autonomous assistant directly on your iPhone or iPad. No cloud execution, no account required, and no data leaves your device.
 
 HOW IT WORKS
 
-• Type a natural language prompt
-• The AI generates JavaScript and runs it instantly
-• If it fails, it tries to debug and fix itself
-• Everything happens locally — no internet, no cloud
+• Start with a prompt describing what you want to build
+• PocketREPL writes code, runs it, and inspects the result
+• If something breaks, it can iterate and fix issues automatically
+• You can inspect files, edit output, and guide each next step
 
-LOCAL AI MODELS
+WHAT YOU CAN DO
 
-Choose from Qwen coding models optimized for on-device inference:
+• Prototype utilities and scripts quickly
+• Explore ideas with conversational coding
+• Test logic in a local sandbox
+• Inspect and manage project files in one workspace
+• Use built-in docs to understand tools and workflows
 
-• Qwen2.5-Coder-0.5B — Smallest and fastest
-• Qwen2.5-Coder-1.5B — Best balance for most prompts
-• Qwen2.5-Coder-3B — More capable, slower inference
-• Add your own custom GGUF models
+LOCAL MODELS + APPLE INTELLIGENCE
 
-Larger models are smarter but slower. Even the best local models can't match cloud AI — that's the tradeoff for privacy and offline capability.
+PocketREPL supports Apple’s on-device intelligence when available and can also run local GGUF models for coding-focused tasks.
 
-WHAT TO EXPECT
+• Private by default
+• Works without internet
+• Flexible model options based on your device
 
-Works well:
-• Simple algorithms and utilities
-• Math calculations and conversions
-• Text processing scripts
-• Learning JavaScript concepts
-• One-off automation snippets
+IMPORTANT LIMITATIONS
 
-Struggles with:
-• Complex multi-step projects
-• Code that builds on earlier conversation context
-• Anything requiring sustained "memory" of prior work
-• Production-quality applications
+This is still early-generation local AI.
 
-PRIVACY FIRST
+• Context is limited compared with cloud models
+• Complex multi-file projects may require manual guidance
+• Large tasks can be slower on mobile hardware
 
-Everything runs on your device. Your code, your prompts, your data — none of it leaves your iPhone. No accounts, no cloud sync, no telemetry.
+PocketREPL is best for experimentation, learning, and rapid prototyping on-device.
 
-WHO SHOULD DOWNLOAD THIS
+PRIVACY
 
-• Developers curious about edge AI capabilities
-• Anyone who wants to experiment with local LLMs
-• People interested in the future of on-device AI
-• Learners who want AI help with simple code
-
-WHO SHOULD WAIT
-
-• Anyone expecting production-ready AI coding
-• Users who need complex, multi-file project support
-• Those comparing this to ChatGPT or Claude
-
-PocketREPL is a window into what's coming. The technology will improve. For now, enjoy exploring the frontier.
+Your prompts, files, and execution stay on your device. PocketREPL does not require cloud processing for core functionality.

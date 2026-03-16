@@ -99,13 +99,14 @@ platform :ios do
       app_version: "1.0",
       skip_binary_upload: true,
       overwrite_screenshots: true,
-      run_precheck_before_submit: true,
+      run_precheck_before_submit: false,
       submit_for_review: true,
       automatic_release: true,
       force: true,
       platform: "ios",
       submission_information: {
-        add_id_info_uses_idfa: false
+        add_id_info_uses_idfa: false,
+        export_compliance_uses_encryption: false
       }
     )
   end

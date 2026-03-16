@@ -66,7 +66,7 @@ struct ConversationHistorySheet: View {
                 conversationToDelete = nil
             }
         } message: { conversation in
-            Text(""\(conversation.title)" will be permanently deleted.")
+            Text("\"\(conversation.title)\" will be permanently deleted.")
         }
         .task {
             await session.loadConversations()

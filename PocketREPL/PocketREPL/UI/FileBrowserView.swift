@@ -61,9 +61,9 @@ struct FileBrowserView: View {
             }
         } message: { file in
             if file.kind == .directory {
-                Text(""\(file.name)" and all its contents will be permanently deleted.")
+                Text("\"\(file.name)\" and all its contents will be permanently deleted.")
             } else {
-                Text(""\(file.name)" will be permanently deleted.")
+                Text("\"\(file.name)\" will be permanently deleted.")
             }
         }
         .escherNavigationStyle()

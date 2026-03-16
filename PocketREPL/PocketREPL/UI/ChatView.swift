@@ -636,7 +636,7 @@ struct ToolResultBubble: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .sheet(item: $selectedFileEntry) { file in
+        .sheet(item: selectedFileEntry) { file in
             if let projectStore = projectStore {
                 FilePreviewSheet(projectStore: projectStore, file: file)
             }

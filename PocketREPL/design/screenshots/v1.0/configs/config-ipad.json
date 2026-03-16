@@ -17,8 +17,8 @@
   "slides": [
     {
       "layout": "text-top",
-      "headline": "{AI} Coding\nAssistant",
-      "subtitle": "Your personal JavaScript playground\nwith autonomous AI — fully offline",
+      "headline": "{AI} Dev\nAssistant",
+      "subtitle": "An offline coding workspace\nwith autonomous AI on-device",
       "screenshot": "../raw/ipad/01-home.png",
       "headlineSize": 120,
       "phoneWidth": 1800,
@@ -27,7 +27,7 @@
     {
       "layout": "text-bottom",
       "headline": "Local {LLM}\nPowered",
-      "subtitle": "Download and run coding models\ndirectly on your device",
+      "subtitle": "Download and run local models\ndirectly on your device",
       "screenshot": "../raw/ipad/03-model.png",
       "phoneWidth": 1700,
       "phoneTop": -100
