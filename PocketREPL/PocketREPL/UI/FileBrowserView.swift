@@ -208,27 +208,31 @@ struct FileBrowserView: View {
     }
     
     private var fileGrid: some View {
-        ScrollView {
-            LazyVStack(spacing: 2) {
-                // Back button if in subdirectory
-                if !currentPath.isEmpty {
-                    backRow
-                }
-                
-                ForEach(entries) { entry in
-                    FileRow(entry: entry, onTap: { handleTap(entry) })
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                fileToDelete = entry
-                            } label: {
-                                Label(String(localized: "Delete"), systemImage: "trash")
-                            }
-                        }
-                }
+        List {
+            // Back button if in subdirectory
+            if !currentPath.isEmpty {
+                backRow
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 1, leading: 16, bottom: 1, trailing: 16))
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+
+            ForEach(entries) { entry in
+                FileRow(entry: entry, onTap: { handleTap(entry) })
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 1, leading: 16, bottom: 1, trailing: 16))
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            fileToDelete = entry
+                        } label: {
+                            Label(String(localized: "Delete"), systemImage: "trash")
+                        }
+                    }
+            }
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
     }
     
     private var backRow: some View {
