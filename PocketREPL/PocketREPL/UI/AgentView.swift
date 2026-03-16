@@ -9,6 +9,7 @@ struct AgentView: View {
 
     @State private var showingToolTrace = false
     @State private var showingFiles = false
+    @State private var showingHistory = false
 
     var body: some View {
         ChatView(session: session, projectStore: projectStore)
@@ -29,6 +30,7 @@ struct AgentView: View {
                         if projectStore != nil {
                             filesButton
                         }
+                        historyButton
                         toolTraceButton
                         resetConversationButton
                     }
@@ -41,6 +43,9 @@ struct AgentView: View {
                 if let projectStore = projectStore {
                     FileBrowserSheet(projectStore: projectStore)
                 }
+            }
+            .sheet(isPresented: $showingHistory) {
+                ConversationHistorySheet(session: session)
             }
             .escherNavigationStyle()
     }
@@ -63,7 +68,7 @@ struct AgentView: View {
                     .fill(colorScheme == .dark ? Color(white: 0.18) : Color.escherPaper)
                     .frame(width: 32, height: 32)
                     .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 4, x: 0, y: 2)
-                
+
                 Image(systemName: "folder")
                     .font(.escherFootnote)
                     .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
@@ -72,7 +77,26 @@ struct AgentView: View {
         .accessibilityLabel(String(localized: "Files"))
         .accessibilityHint(String(localized: "Browse project files and folders"))
     }
-    
+
+    private var historyButton: some View {
+        Button {
+            showingHistory = true
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(colorScheme == .dark ? Color(white: 0.18) : Color.escherPaper)
+                    .frame(width: 32, height: 32)
+                    .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.06), radius: 4, x: 0, y: 2)
+
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.escherFootnote)
+                    .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
+            }
+        }
+        .accessibilityLabel(String(localized: "History"))
+        .accessibilityHint(String(localized: "View and continue past conversations"))
+    }
+
     private var toolTraceButton: some View {
         Button {
             showingToolTrace = true

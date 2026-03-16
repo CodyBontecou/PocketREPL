@@ -7,6 +7,15 @@ final class AgentSession: ObservableObject {
     @Published private(set) var toolTrace: [ToolTraceEvent]
     @Published private(set) var isRunning = false
 
+    /// The ID of the currently active conversation
+    @Published private(set) var currentConversationId: UUID?
+
+    /// List of all conversation metadata, sorted by most recent
+    @Published private(set) var conversations: [ConversationMetadata] = []
+
+    /// Store for persisting conversations
+    let conversationStore: ConversationStore
+
     /// Whether Foundation Models (Apple Intelligence) is available
     var isAIAvailable: Bool {
         orchestrator.mode == .foundationModels
@@ -191,6 +200,7 @@ final class AgentSession: ObservableObject {
             systemInstructions: effectivePrompt,
             contextSettings: ContextSettingsManager.shared
         )
+        self.conversationStore = ConversationStore(workspaceURL: projectStore.workspaceInfo.rootURL)
         self.messages = [
             AgentMessage(
                 role: .assistant,
@@ -217,6 +227,9 @@ final class AgentSession: ObservableObject {
                 )
             )
             await contextManager.recordActivity(summary)
+
+            // Load conversation history
+            await loadConversations()
         } catch {
             messages.append(
                 AgentMessage(
@@ -325,6 +338,9 @@ final class AgentSession: ObservableObject {
         }
 
         isRunning = false
+
+        // Auto-save conversation after each message exchange
+        await saveCurrentConversation()
     }
 
     func runSnippetPreview(_ code: String) async {
@@ -473,17 +489,127 @@ final class AgentSession: ObservableObject {
     }
 
     /// Start a new session, clearing messages and trace history.
+    /// If there's an existing conversation with content, save it first.
     func newSession() async {
+        // Save current conversation if it has meaningful content
+        await saveCurrentConversationIfNeeded()
+
+        // Create new conversation
+        let id = UUID()
+        currentConversationId = id
+
         messages = [
             AgentMessage(
                 role: .assistant,
-                text: String(localized: "New session started.")
+                text: String(localized: "Ready to code.")
             )
         ]
         toolTrace = []
         orchestrator.reset()
         await runtime.reset()
         await contextManager.reset()
+
+        // Refresh the conversation list
+        await loadConversations()
+    }
+
+    // MARK: - Conversation Management
+
+    /// Load the list of all conversations
+    func loadConversations() async {
+        do {
+            conversations = try await conversationStore.listConversations()
+        } catch {
+            print("[AgentSession] Failed to load conversations: \(error)")
+            conversations = []
+        }
+    }
+
+    /// Load a specific conversation by ID
+    func loadConversation(id: UUID) async {
+        // Save current conversation first
+        await saveCurrentConversationIfNeeded()
+
+        do {
+            guard let data = try await conversationStore.loadConversation(id: id) else {
+                print("[AgentSession] Conversation not found: \(id)")
+                return
+            }
+
+            currentConversationId = id
+            messages = data.messages
+            toolTrace = data.toolTrace
+            orchestrator.reset()
+            await runtime.reset()
+            await contextManager.reset()
+        } catch {
+            print("[AgentSession] Failed to load conversation: \(error)")
+        }
+    }
+
+    /// Save the current conversation
+    func saveCurrentConversation() async {
+        // Don't save if there's only the initial greeting
+        guard hasUserContent else { return }
+
+        let id = currentConversationId ?? UUID()
+        if currentConversationId == nil {
+            currentConversationId = id
+        }
+
+        do {
+            try await conversationStore.saveConversation(
+                id: id,
+                messages: messages,
+                toolTrace: toolTrace
+            )
+            await loadConversations()
+        } catch {
+            print("[AgentSession] Failed to save conversation: \(error)")
+        }
+    }
+
+    /// Save the current conversation only if it has meaningful content
+    private func saveCurrentConversationIfNeeded() async {
+        guard hasUserContent else { return }
+        await saveCurrentConversation()
+    }
+
+    /// Whether the current conversation has user-generated content worth saving
+    private var hasUserContent: Bool {
+        messages.contains { $0.role == .user }
+    }
+
+    /// Delete a conversation by ID
+    func deleteConversation(id: UUID) async {
+        do {
+            try await conversationStore.deleteConversation(id: id)
+            await loadConversations()
+
+            // If we deleted the current conversation, start fresh
+            if currentConversationId == id {
+                currentConversationId = nil
+                messages = [
+                    AgentMessage(
+                        role: .assistant,
+                        text: String(localized: "Ready to code.")
+                    )
+                ]
+                toolTrace = []
+            }
+        } catch {
+            print("[AgentSession] Failed to delete conversation: \(error)")
+        }
+    }
+
+    /// Update the title of a conversation
+    func updateConversationTitle(id: UUID, title: String) async {
+        do {
+            try await conversationStore.updateTitle(id: id, title: title)
+            await loadConversations()
+        } catch {
+            print("[AgentSession] Failed to update conversation title: \(error)")
+        }
     }
 
     private static let defaultSystemPrompt = """
