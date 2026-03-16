@@ -78,7 +78,7 @@ struct ChatView: View {
                 // Extra bottom padding to account for floating input bar + context counter
                 .padding(.bottom, 110)
             }
-            .scrollDismissesKeyboard(.interactively)
+            .scrollDismissesKeyboard(.immediately)
             .onChange(of: session.messages.count) { _, _ in
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                     proxy.scrollTo(bottomID)
@@ -201,7 +201,15 @@ struct ChatView: View {
     }
     
     private func toggleKeyboard() {
-        inputFocused.toggle()
+        if inputFocused {
+            dismissKeyboard()
+        } else {
+            inputFocused = true
+        }
+    }
+
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 
     private var canSend: Bool {
