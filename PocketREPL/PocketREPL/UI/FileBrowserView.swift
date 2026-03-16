@@ -12,6 +12,8 @@ struct FileBrowserView: View {
     @State private var isLoading = false
     @State private var selectedFile: ProjectFileEntry?
     @State private var pathHistory: [String] = []
+    @State private var fileToDelete: ProjectFileEntry?
+    @State private var isDeleting = false
 
     var body: some View {
         ZStack {
@@ -38,6 +40,31 @@ struct FileBrowserView: View {
         }
         .refreshable {
             await reload()
+        }
+        .alert(
+            fileToDelete?.kind == .directory
+                ? String(localized: "Delete Folder?")
+                : String(localized: "Delete File?"),
+            isPresented: Binding(
+                get: { fileToDelete != nil },
+                set: { if !$0 { fileToDelete = nil } }
+            ),
+            presenting: fileToDelete
+        ) { file in
+            Button(String(localized: "Cancel"), role: .cancel) {
+                fileToDelete = nil
+            }
+            Button(String(localized: "Delete"), role: .destructive) {
+                Task {
+                    await deleteFile(file)
+                }
+            }
+        } message: { file in
+            if file.kind == .directory {
+                Text(""\(file.name)" and all its contents will be permanently deleted.")
+            } else {
+                Text(""\(file.name)" will be permanently deleted.")
+            }
         }
         .escherNavigationStyle()
     }
@@ -190,6 +217,13 @@ struct FileBrowserView: View {
                 
                 ForEach(entries) { entry in
                     FileRow(entry: entry, onTap: { handleTap(entry) })
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                fileToDelete = entry
+                            } label: {
+                                Label(String(localized: "Delete"), systemImage: "trash")
+                            }
+                        }
                 }
             }
             .padding(.horizontal, 16)
@@ -283,6 +317,24 @@ struct FileBrowserView: View {
         }
 
         isLoading = false
+    }
+
+    @MainActor
+    private func deleteFile(_ file: ProjectFileEntry) async {
+        isDeleting = true
+
+        do {
+            try await projectStore.deleteItem(at: file.relativePath)
+            // Remove from local entries with animation
+            withAnimation(.easeInOut(duration: 0.25)) {
+                entries.removeAll { $0.id == file.id }
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+
+        isDeleting = false
+        fileToDelete = nil
     }
 }
 
