@@ -332,7 +332,7 @@ struct MessageBubble: View {
             // Assistant bubble - adapts to color scheme
             ZStack {
                 EscherBubble(isUser: false)
-                    .fill(colorScheme == .dark ? Color(red: 0.18, green: 0.16, blue: 0.20) : Color.escherPaper)
+                    .fill(colorScheme == .dark ? Color(white: 0.10) : Color.escherPaper)
                 
                 EscherBubble(isUser: false)
                     .stroke(
@@ -441,8 +441,8 @@ struct ToolCallBubble: View {
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(colorScheme == .dark ? Color(red: 0.14, green: 0.12, blue: 0.16) : Color.escherPaper)
-                
+                    .fill(colorScheme == .dark ? Color(white: 0.10) : Color.escherPaper)
+
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(Color.escherWarning.opacity(0.3), lineWidth: 1)
             }
@@ -535,12 +535,12 @@ struct ToolResultBubble: View {
                         if isCodeGenerationTool && message.toolStatus == .succeeded {
                             Text("llama.cpp")
                                 .font(.escherMini.weight(.bold))
-                                .foregroundStyle(Color.blue)
+                                .foregroundStyle(Color.escherMidtone)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(
                                     Capsule()
-                                        .fill(Color.blue.opacity(0.12))
+                                        .fill(Color.escherMidtone.opacity(0.15))
                                 )
                         }
                     }
@@ -665,7 +665,7 @@ struct ToolResultBubble: View {
             case .failed:
                 return Color.escherError
             default:
-                return colorScheme == .dark ? Color(red: 0.14, green: 0.12, blue: 0.16) : Color.escherPaper
+                return colorScheme == .dark ? Color(white: 0.10) : Color.escherPaper
             }
         }()
         
@@ -697,8 +697,8 @@ struct EscherTypingIndicator: View {
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(colorScheme == .dark ? Color(red: 0.14, green: 0.12, blue: 0.16) : Color.escherPaper)
-                
+                    .fill(colorScheme == .dark ? Color(white: 0.10) : Color.escherPaper)
+
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .strokeBorder(Color.escherMidtone.opacity(colorScheme == .dark ? 0.25 : 0.15), lineWidth: 0.5)
             }
@@ -804,7 +804,7 @@ struct ContextCounter: View {
         guard let fraction = localFraction else { return .escherSecondaryText }
         if fraction > 1.0 { return .escherError }
         if fraction > 0.7 { return .escherWarning }
-        return .blue.opacity(0.7)
+        return .escherMidtone
     }
     
     var body: some View {

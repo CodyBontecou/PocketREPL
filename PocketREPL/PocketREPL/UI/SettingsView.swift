@@ -199,7 +199,7 @@ struct SettingsView: View {
                 && settingsManager.modelRoutingMode == .foundationModelOnly {
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Color.escherMidtone)
                     Text(settingsManager.foundationModelsUnavailabilityReason ?? String(localized: "Unavailable"))
                         .font(.escherCaption)
                         .foregroundStyle(Color.escherSecondaryText)
@@ -462,7 +462,7 @@ struct ModelRoutingModeRow: View {
                         if !isAvailable {
                             Image(systemName: "exclamationmark.circle.fill")
                                 .font(.escherCaption)
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(Color.escherMidtone)
                         }
                     }
 

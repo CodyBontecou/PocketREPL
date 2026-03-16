@@ -295,8 +295,8 @@ struct ToolTraceRow: View {
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(colorScheme == .dark ? Color(red: 0.14, green: 0.12, blue: 0.16) : Color.escherPaper)
-                
+                    .fill(colorScheme == .dark ? Color(white: 0.10) : Color.escherPaper)
+
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(Color.escherMidtone.opacity(colorScheme == .dark ? 0.2 : 0.1), lineWidth: 0.5)
             }

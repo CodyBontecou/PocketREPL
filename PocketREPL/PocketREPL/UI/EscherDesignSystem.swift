@@ -8,21 +8,21 @@ import SwiftUI
 
 extension Color {
     // MARK: - Base Colors (Non-Adaptive)
-    
-    // Primary - Deep lithographic blacks and paper whites
-    static let escherInk = Color(red: 0.08, green: 0.06, blue: 0.10)
-    static let escherPaper = Color(red: 0.98, green: 0.97, blue: 0.95)
-    static let escherMidtone = Color(red: 0.55, green: 0.53, blue: 0.58)
-    
-    // Accent - Impossible geometry highlights
-    static let escherPrism = Color(red: 0.36, green: 0.54, blue: 0.66)  // Steel blue
-    static let escherMirror = Color(red: 0.82, green: 0.76, blue: 0.68) // Warm stone
-    static let escherVoid = Color(red: 0.22, green: 0.18, blue: 0.28)   // Deep purple-black
-    
-    // Semantic
-    static let escherSuccess = Color(red: 0.42, green: 0.60, blue: 0.48)
-    static let escherWarning = Color(red: 0.78, green: 0.62, blue: 0.38)
-    static let escherError = Color(red: 0.72, green: 0.38, blue: 0.38)
+
+    // Primary - Pure grayscale blacks and whites
+    static let escherInk = Color(white: 0.08)
+    static let escherPaper = Color(white: 0.98)
+    static let escherMidtone = Color(white: 0.55)
+
+    // Accent - Grayscale tones
+    static let escherPrism = Color(white: 0.45)    // Medium gray accent
+    static let escherMirror = Color(white: 0.75)   // Light gray
+    static let escherVoid = Color(white: 0.0)      // Pure black
+
+    // Semantic - Grayscale differentiated by value
+    static let escherSuccess = Color(white: 0.50)  // Medium gray
+    static let escherWarning = Color(white: 0.60)  // Lighter gray
+    static let escherError = Color(white: 0.35)    // Darker gray
     
     // MARK: - Adaptive Semantic Colors
     // Note: escherForeground, escherBackground, escherSurface, escherSurfaceSecondary,
@@ -42,12 +42,12 @@ extension Color {
     
     /// Background that adapts to color scheme (fallback)
     static func adaptiveBackground(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color(red: 0.10, green: 0.08, blue: 0.12) : Color(red: 0.96, green: 0.95, blue: 0.93)
+        scheme == .dark ? Color(white: 0.0) : Color(white: 0.96)
     }
-    
+
     /// Surface that adapts to color scheme (fallback)
     static func adaptiveSurface(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color(red: 0.14, green: 0.12, blue: 0.16) : escherPaper
+        scheme == .dark ? Color(white: 0.10) : escherPaper
     }
     
     // Gradients
@@ -58,7 +58,7 @@ extension Color {
     )
     
     static let escherGradientDark = LinearGradient(
-        colors: [Color(red: 0.12, green: 0.10, blue: 0.15), Color(red: 0.08, green: 0.06, blue: 0.12)],
+        colors: [Color(white: 0.08), Color(white: 0.0)],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
@@ -468,11 +468,11 @@ struct EscherBackground: View {
             // Base gradient - adapts to color scheme
             LinearGradient(
                 colors: colorScheme == .dark ? [
-                    Color(red: 0.08, green: 0.06, blue: 0.10),
-                    Color(red: 0.10, green: 0.08, blue: 0.12)
+                    Color(white: 0.0),
+                    Color(white: 0.0)
                 ] : [
-                    Color(red: 0.96, green: 0.95, blue: 0.93),
-                    Color(red: 0.94, green: 0.93, blue: 0.90)
+                    Color(white: 0.96),
+                    Color(white: 0.94)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -531,7 +531,7 @@ struct EscherTextField: ViewModifier {
     
     private var fieldBackground: Color {
         colorScheme == .dark
-            ? Color(red: 0.14, green: 0.12, blue: 0.16)
+            ? Color(white: 0.10)
             : Color.escherPaper
     }
 }
@@ -587,8 +587,8 @@ struct EscherCard: ViewModifier {
     }
     
     private var cardBackground: Color {
-        colorScheme == .dark 
-            ? Color(red: 0.14, green: 0.12, blue: 0.16)
+        colorScheme == .dark
+            ? Color(white: 0.10)
             : Color.escherPaper
     }
 }

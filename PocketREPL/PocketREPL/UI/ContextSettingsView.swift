@@ -219,9 +219,9 @@ struct ContextSettingsView: View {
     
     private var statusColor: Color {
         if session.isContextOverLimit {
-            return Color(red: 0.85, green: 0.35, blue: 0.35)
+            return Color.escherError
         } else if session.isContextNearLimit {
-            return Color(red: 0.85, green: 0.65, blue: 0.35)
+            return Color.escherWarning
         } else {
             return colorScheme == .dark ? Color(white: 0.5) : Color(white: 0.4)
         }
@@ -470,12 +470,12 @@ struct ContextSettingsView: View {
                     HStack(spacing: 14) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(Color(red: 0.85, green: 0.35, blue: 0.35).opacity(0.12))
+                                .fill(Color.escherError.opacity(0.15))
                                 .frame(width: 36, height: 36)
-                            
+
                             Image(systemName: "arrow.uturn.backward")
                                 .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(Color(red: 0.85, green: 0.35, blue: 0.35))
+                                .foregroundStyle(Color.escherError)
                         }
                         
                         VStack(alignment: .leading, spacing: 3) {
