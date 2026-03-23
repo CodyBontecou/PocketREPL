@@ -339,6 +339,10 @@ struct FlashPredictorView: View {
 
     // MARK: - Training
 
+    // When non-nil, training can use the live engine for real calibration.
+    var engine: FlashInferenceEngine? = nil
+    var tokenizer: FlashTokenizer? = nil
+
     private func startTraining() {
         trainingState.isTraining = true
         trainingState.completedLayers = []
@@ -348,51 +352,89 @@ struct FlashPredictorView: View {
 
         let params = selectedParams
         let numLayers = config.numHiddenLayers
-
-        // Build calibration text
-        var calibTexts: [String]
+        let calibTexts: [String]
         if selectedPreset == .custom {
             calibTexts = customText.components(separatedBy: "\n").filter { !$0.isEmpty }
         } else {
-            // Use built-in calibration sentences (placeholder — production would use C4 subset)
             calibTexts = BuiltinCalibration.sentences(count: selectedPreset.sampleCount)
         }
 
+        let capturedEngine = engine
+        let capturedTokenizer = tokenizer
+
         trainingTask = Task {
-            // For the initial implementation: use importance-based pseudo-training
-            // (generates placeholder predictors without real calibration data)
-            // Full training requires collecting activations from a live model run.
-            for layerIdx in 0..<numLayers {
-                await MainActor.run {
-                    trainingState.currentLayer = layerIdx
-                    trainingState.message = "Training layer \(layerIdx)/\(numLayers)…"
-                    trainingState.progress = Double(layerIdx) / Double(numLayers)
+            do {
+                // Collect real activations if an engine+tokenizer are available;
+                // otherwise fall back to random noise (useful for UI testing).
+                let layerData: [LayerCalibrationData]
+                if let eng = capturedEngine, let tok = capturedTokenizer {
+                    layerData = await FlashPredictorTrainer.collectCalibrationData(
+                        texts: calibTexts, engine: eng, tokenizer: tok,
+                        maxTokensPerSample: 128
+                    ) { p in
+                        Task { @MainActor in
+                            trainingState.message = "Collecting activations \(Int(p * 100))%…"
+                            trainingState.progress = p * 0.4
+                        }
+                    }
+                } else {
+                    // Fallback: random-noise calibration (demonstrates UI, not real quality)
+                    let h = config.hiddenSize, inter = config.intermediateSize
+                    layerData = (0..<numLayers).map { l in
+                        let samples = (0..<min(100, calibTexts.count)).map { _ in
+                            PredictorSample(
+                                attentionOutput: (0..<h).map { _ in Float.random(in: -0.1...0.1) },
+                                activationMask:  (0..<inter).map { _ in Float.random(in: 0...1) < 0.1 }
+                            )
+                        }
+                        return LayerCalibrationData(layerIndex: l, hiddenSize: h, intermediateSize: inter, samples: samples)
+                    }
                 }
 
-                // Simulate training time proportional to calibration size
-                let delay = UInt64(max(10_000_000, UInt64(calibTexts.count) * 50_000))
-                try? await Task.sleep(nanoseconds: delay)
+                // Train one layer at a time, reporting results as they complete
+                for (layerIdx, data) in layerData.enumerated() {
+                    if Task.isCancelled { break }
+                    await MainActor.run {
+                        trainingState.currentLayer = layerIdx
+                        trainingState.message = "Training layer \(layerIdx)/\(numLayers) (sparsity: \(String(format: "%.0f%%", data.averageSparsity * 100)))…"
+                        trainingState.progress = 0.4 + 0.6 * Double(layerIdx) / Double(numLayers)
+                    }
 
-                if Task.isCancelled { break }
+                    let weights = FlashPredictorTrainer.train(
+                        data: data, layerIdx: layerIdx, numLayers: numLayers, params: params
+                    )
 
-                // Placeholder quality metrics (improve with real calibration)
-                let precision: Float = Float.random(in: 0.80...0.95)
-                let recall:    Float = Float.random(in: 0.85...0.98)
-                let f1 = 2 * precision * recall / (precision + recall)
+                    // Evaluate on the same data (real code should use a held-out split)
+                    let predictor = LayerPredictor(
+                        layerIndex: layerIdx, weights: weights,
+                        hiddenSize: config.hiddenSize, intermediateSize: config.intermediateSize,
+                        threshold: params.predictorThreshold,
+                        safetyBuffer: params.predictorSafetyBuffer
+                    )
+                    let (p, r, f1) = data.samples.isEmpty
+                        ? (Float(0), Float(0), Float(0))
+                        : FlashPredictorTrainer.evaluate(predictor: predictor, data: data, threshold: params.predictorThreshold)
+
+                    await MainActor.run {
+                        trainingState.completedLayers.append(layerIdx)
+                        trainingState.results.append(PredictorTrainingState.LayerResult(
+                            id: layerIdx, precision: p, recall: r, f1: f1,
+                            sparsity: data.averageSparsity
+                        ))
+                    }
+                    await Task.yield()
+                }
 
                 await MainActor.run {
-                    trainingState.completedLayers.append(layerIdx)
-                    trainingState.results.append(PredictorTrainingState.LayerResult(
-                        id: layerIdx, precision: precision, recall: recall, f1: f1,
-                        sparsity: Double(Float.random(in: 0.85...0.97))
-                    ))
+                    trainingState.isTraining = false
+                    trainingState.progress = 1.0
+                    trainingState.message = "Training complete — \(numLayers) layer predictors ready"
                 }
-            }
-
-            await MainActor.run {
-                trainingState.isTraining = false
-                trainingState.progress = 1.0
-                trainingState.message = "Training complete — \(numLayers) layer predictors ready"
+            } catch {
+                await MainActor.run {
+                    trainingState.isTraining = false
+                    trainingState.error = error.localizedDescription
+                }
             }
         }
     }

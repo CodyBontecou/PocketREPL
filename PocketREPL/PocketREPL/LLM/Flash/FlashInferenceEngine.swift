@@ -91,25 +91,33 @@ final class KVCache: @unchecked Sendable {
         return valueData + offset
     }
 
-    /// Append current token's K, V to the cache.
+    /// Append current token's K, V to the cache at a specific sequence position.
+    ///
+    /// - Parameter position: The token's position in the sequence (0-indexed).
+    ///   Must equal the same `position` passed to all layers for this token.
+    ///   Do NOT use `usedSeqLen` as the position — call `incrementSeqLen()` exactly
+    ///   once per token, AFTER all layers have been processed.
     func append(
         layer: Int,
+        position: Int,
         keyVec: UnsafePointer<Float>,     // [numKVHeads × headDim]
         valueVec: UnsafePointer<Float>    // [numKVHeads × headDim]
     ) {
-        let pos = usedSeqLen
+        precondition(position < maxSeqLen, "KV cache overflow: position \(position) ≥ maxSeqLen \(maxSeqLen)")
         for head in 0..<numKVHeads {
             let src = keyVec + head * headDim
-            let dst = keyPtr(layer: layer, seqPos: pos, head: head)
+            let dst = keyPtr(layer: layer, seqPos: position, head: head)
             cblas_scopy(Int32(headDim), src, 1, dst, 1)
         }
         for head in 0..<numKVHeads {
             let src = valueVec + head * headDim
-            let dst = valuePtr(layer: layer, seqPos: pos, head: head)
+            let dst = valuePtr(layer: layer, seqPos: position, head: head)
             cblas_scopy(Int32(headDim), src, 1, dst, 1)
         }
     }
 
+    /// Advance the sequence length by 1.  Call exactly once per token, AFTER
+    /// all layers have written their K/V via `append(layer:position:...)`.
     func incrementSeqLen() {
         usedSeqLen += 1
     }
@@ -146,6 +154,21 @@ final class FlashInferenceEngine: @unchecked Sendable {
 
     let config: FlashModelConfig
     private let predictorManager: SparsityPredictorManager
+
+    // MARK: - Activation Collection (for predictor training)
+    //
+    // When non-nil, this callback is invoked for every token at every layer,
+    // delivering (layerIndex, attentionOutput, activationMask).
+    //
+    // Install before running calibration texts, remove when done:
+    //   engine.activationCollector = { layer, attn, mask in ... }
+    //   engine.prefill(tokenIds: ...)
+    //   engine.activationCollector = nil
+    var activationCollector: ((Int, [Float], [Bool]) -> Void)?
+
+    // Per-token scratch used by the collector
+    private var _collectedAttnOutput: [Float]? = nil
+    private var _collectedLayerIdx: Int = -1
 
     // Flash I/O and caching (internal for metrics reporting)
     let cacheManager: FlashCacheManager
@@ -424,10 +447,10 @@ final class FlashInferenceEngine: @unchecked Sendable {
             applyRoPE(x: qBuf, numHeads: nh, headDim: hd, position: position, theta: config.ropeTheta)
             applyRoPE(x: kBuf, numHeads: nkv, headDim: hd, position: position, theta: config.ropeTheta)
 
-            // d. Append K, V to cache
-            kvCache.append(layer: layerIdx, keyVec: kBuf, valueVec: vBuf)
-            kvCache.incrementSeqLen()
-            let seqLen = kvCache.usedSeqLen
+            // d. Append K, V to cache at this token's position.
+            //    incrementSeqLen() is called ONCE after all layers, below.
+            kvCache.append(layer: layerIdx, position: position, keyVec: kBuf, valueVec: vBuf)
+            let seqLen = position + 1   // Visible sequence length for attention
 
             // e. Multi-head attention
             var zero: Float = 0
@@ -488,6 +511,16 @@ final class FlashInferenceEngine: @unchecked Sendable {
                 attentionOutput: normBuf
             )
             stats.predictedNeuronsCount += predictedIndices.count
+
+            // (Training mode) Collect attention output — stored before sparsity is applied
+            // so the trainer sees the full un-masked vector.
+            if activationCollector != nil {
+                let attnOutputSnapshot = Array(UnsafeBufferPointer(start: normBuf, count: h))
+                // Activation mask is computed after loading neurons — captured in the
+                // post-FFN section below using _collectedAttnOutput.
+                _collectedAttnOutput = attnOutputSnapshot
+                _collectedLayerIdx   = layerIdx
+            }
 
             // c. Load neurons: check cache first, then flash for misses
             let startFlashNs = clock_gettime_nsec_np(CLOCK_UPTIME_RAW)
@@ -592,6 +625,19 @@ final class FlashInferenceEngine: @unchecked Sendable {
 
             // e. Residual connection for CPU path is handled inside performCPUSparseFFN
 
+            // (Training mode) Now we know the actual activation mask — fire the collector.
+            if let collector = activationCollector,
+               let attnSnap = _collectedAttnOutput,
+               _collectedLayerIdx == layerIdx {
+                // Build the full activation mask: true if this neuron was in loadedNeuronData
+                // AND had a positive activation value (i.e., ReLU passed).
+                let activeNeuronSet = Set(loadedNeuronData.map { $0.0 })
+                let mask = (0..<config.intermediateSize).map { activeNeuronSet.contains($0) }
+                collector(layerIdx, attnSnap, mask)
+                _collectedAttnOutput = nil
+                _collectedLayerIdx   = -1
+            }
+
             // f. Advance sliding window cache
             let activeSet = Set(loadedNeuronData.map { $0.0 })
             cacheManager[layerIdx].advanceWindow(activeNeurons: activeSet)
@@ -601,6 +647,9 @@ final class FlashInferenceEngine: @unchecked Sendable {
                 store.prefetchNeurons(layer: layerIdx + 1, neuronIndices: predictedIndices)
             }
         }
+
+        // Advance KV cache sequence length by 1 (once per token, after all layers).
+        kvCache.incrementSeqLen()
 
         // 3. Final RMSNorm
         globalWeights.norm.withUnsafeBufferPointer { normW in

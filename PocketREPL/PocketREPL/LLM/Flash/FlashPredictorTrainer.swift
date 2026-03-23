@@ -88,6 +88,12 @@ final class FlashPredictorTrainer: @unchecked Sendable {
         /// Early stopping: stop if validation loss doesn't improve for N epochs
         var patience: Int = 3
 
+        /// Sigmoid threshold for predictor output — neurons with sigmoid(logit) ≥ this are predicted active.
+        var predictorThreshold: Float = 0.5
+
+        /// Safety buffer: always include this many extra top-probability neurons beyond threshold.
+        var predictorSafetyBuffer: Int = 32
+
         static let `default` = HyperParams()
         static let fast = HyperParams(rank: 64, batchSize: 64, epochs: 1)
         static let quality = HyperParams(rank: 256, sensitiveLayerRank: 1152, epochs: 3)
@@ -271,6 +277,13 @@ final class FlashPredictorTrainer: @unchecked Sendable {
     ///   - engine: Loaded FlashInferenceEngine running in dense mode (no sparsity).
     ///   - maxTokensPerSample: Truncate each text to this many tokens.
     ///   - onProgress: Progress callback.
+    /// Collect calibration data by running the model over a set of text samples.
+    ///
+    /// Uses `FlashInferenceEngine.activationCollector` to intercept per-layer
+    /// attention outputs and activation masks during real forward passes.
+    ///
+    /// - Note: Runs the engine in "dense" mode (all neurons loaded) so the full
+    ///   activation mask is observed, not just the sparsity-predicted subset.
     static func collectCalibrationData(
         texts: [String],
         engine: FlashInferenceEngine,
@@ -278,52 +291,54 @@ final class FlashPredictorTrainer: @unchecked Sendable {
         maxTokensPerSample: Int = 128,
         onProgress: ((Double) -> Void)? = nil
     ) async -> [LayerCalibrationData] {
-        let numLayers = engine.config.numHiddenLayers
-        var layerData = (0..<numLayers).map { l in
-            LayerCalibrationData(
-                layerIndex: l,
-                hiddenSize: engine.config.hiddenSize,
-                intermediateSize: engine.config.intermediateSize,
-                samples: []
-            )
+        let numLayers  = engine.config.numHiddenLayers
+        let h          = engine.config.hiddenSize
+        let inter      = engine.config.intermediateSize
+
+        // Thread-safe sample accumulation: one array per layer.
+        // Access is serialised on the actor or via a lock since the collector
+        // is called synchronously from within forwardToken (non-concurrent).
+        final class SafeSampleStore: @unchecked Sendable {
+            var layers: [[PredictorSample]]
+            let lock = NSLock()
+            init(numLayers: Int) {
+                layers = [[PredictorSample]](repeating: [], count: numLayers)
+            }
+            func append(_ sample: PredictorSample, layer: Int) {
+                lock.lock(); defer { lock.unlock() }
+                layers[layer].append(sample)
+            }
         }
+        let store = SafeSampleStore(numLayers: numLayers)
 
-        // Note: Full calibration requires modifying FlashInferenceEngine to expose
-        // intermediate activations. For the initial implementation, we provide
-        // a stub that returns empty data (prompting the caller to use pretrained weights).
-        //
-        // Production implementation:
-        //   1. Add an `activationCollector` callback to FlashInferenceEngine
-        //   2. For each token, invoke callback with (layerIdx, attnOutput, activationMask)
-        //   3. Accumulate data across all tokens and texts
+        // Install real activation collector
+        engine.activationCollector = { layerIdx, attnOutput, activationMask in
+            let sample = PredictorSample(attentionOutput: attnOutput, activationMask: activationMask)
+            store.append(sample, layer: layerIdx)
+        }
+        defer { engine.activationCollector = nil }
 
+        // Run prefill over each calibration text
         for (i, text) in texts.enumerated() {
             onProgress?(Double(i) / Double(texts.count))
+            if Task.isCancelled { break }
+
             let tokens = tokenizer.tokenize(text, addBOS: true)
             let truncated = Array(tokens.prefix(maxTokensPerSample))
+            try? engine.prefill(tokenIds: truncated)
 
-            // TODO: Collect activations from engine during forward pass
-            // For now, generate placeholder samples
-            let h = engine.config.hiddenSize
-            let inter = engine.config.intermediateSize
-            for layerIdx in 0..<numLayers {
-                // Placeholder: 10% random activation (approximate sparsity)
-                let sample = PredictorSample(
-                    attentionOutput: randomNormal(count: h, std: 0.1),
-                    activationMask: (0..<inter).map { _ in Float.random(in: 0...1) < 0.1 }
-                )
-                layerData[layerIdx] = LayerCalibrationData(
-                    layerIndex: layerIdx,
-                    hiddenSize: h,
-                    intermediateSize: inter,
-                    samples: layerData[layerIdx].samples + [sample]
-                )
-                _ = truncated  // Used in real implementation
-            }
+            // Yield between texts so the caller can cancel and the UI stays responsive
+            await Task.yield()
         }
 
         onProgress?(1.0)
-        return layerData
+
+        return (0..<numLayers).map { l in
+            LayerCalibrationData(
+                layerIndex: l, hiddenSize: h, intermediateSize: inter,
+                samples: store.layers[l]
+            )
+        }
     }
 
     // MARK: - Training Pipeline (all layers)

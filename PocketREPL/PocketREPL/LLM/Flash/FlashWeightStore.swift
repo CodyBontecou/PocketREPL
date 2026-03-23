@@ -154,36 +154,39 @@ final class FlashWeightStore: @unchecked Sendable {
         guard !neuronIndices.isEmpty else { return [] }
 
         let spec = config.sections.layers[layer]
-        var results = [[Float]](repeating: [], count: neuronIndices.count)
-        var errors = [Error?](repeating: nil, count: neuronIndices.count)
-
-        // Limit parallelism to configured thread count
-        let batchSize = min(config.ioThreadCount, neuronIndices.count)
         let actualCount = neuronIndices.count
 
-        // Thread-safe storage for results from concurrent reads
-        // Using a simple UnsafeMutablePointer array since indices are non-overlapping
-        withUnsafeMutablePointer(to: &results[0]) { basePtr in
-            DispatchQueue.concurrentPerform(iterations: actualCount) { [self] i in
-                guard i < actualCount else { return }
-                let neuronIdx = neuronIndices[i]
-                let offset = spec.ffnNeuronsOffset + UInt64(neuronIdx * spec.ffnNeuronByteSize)
+        // Pre-allocate result storage. We use a contiguous UnsafeMutableBufferPointer
+        // so concurrent writes to different indices are safe (no array resize happens).
+        let storage = UnsafeMutablePointer<[Float]>.allocate(capacity: actualCount)
+        for i in 0..<actualCount { (storage + i).initialize(to: []) }
+        defer { storage.deallocate() }
 
-                do {
-                    let raw = try self.readDirect(offset: offset, size: spec.ffnNeuronByteSize)
-                    let floats = self.convertToFloat32(raw, dtype: spec.ffnDType,
-                                                       count: spec.ffnNeuronByteSize / spec.ffnDType.bytesPerElement)
-                    (basePtr + i).pointee = floats
-                } catch {
-                    (basePtr + i).pointee = []
-                }
+        // Parallel reads: each iteration writes to a different index — no data races.
+        DispatchQueue.concurrentPerform(iterations: actualCount) { [self] i in
+            let neuronIdx = neuronIndices[i]
+            let offset = spec.ffnNeuronsOffset + UInt64(neuronIdx * spec.ffnNeuronByteSize)
+            do {
+                let raw = try self.readDirect(offset: offset, size: spec.ffnNeuronByteSize)
+                let count = spec.ffnNeuronByteSize / spec.ffnDType.bytesPerElement
+                (storage + i).pointee = self.convertToFloat32(raw, dtype: spec.ffnDType, count: count)
+            } catch {
+                // Slot stays empty; checked below.
             }
         }
 
-        // Check for errors (simplified: if any result is empty for a valid index, something failed)
+        var results = [[Float]](repeating: [], count: actualCount)
+        for i in 0..<actualCount {
+            results[i] = (storage + i).pointee
+        }
+
+        // Validate: any empty slot for a valid neuron index indicates an I/O failure.
         for (i, result) in results.enumerated() {
             if result.isEmpty && neuronIndices[i] < spec.ffnNeuronCount {
-                throw FlashModelError.ioError(errno: 0, description: "Failed to load neuron \(neuronIndices[i]) in layer \(layer)")
+                throw FlashModelError.ioError(
+                    errno: 0,
+                    description: "Failed to load neuron \(neuronIndices[i]) in layer \(layer)"
+                )
             }
         }
 

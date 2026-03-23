@@ -137,9 +137,12 @@ enum FlashModelConverter {
         let outputHandle = try FileHandle(forWritingTo: URL(fileURLWithPath: outputPath))
         defer { try? outputHandle.close() }
 
-        // Write a placeholder header (we'll come back and fill it in at the end)
-        // For now write a reserved 64 KB header block
-        let headerReserve = 65536
+        // Reserve space for the JSON header.
+        // Estimation: magic(8) + len(8) + JSON.
+        // JSON size scales with numLayers: ~1,500 bytes/layer + ~3,000 bytes global.
+        // We double the estimate and align to 4 KB to be safe against overflow.
+        let estimatedJSONBytes = arch.numLayers * 1500 + 3000
+        let headerReserve = ((estimatedJSONBytes * 2 + 4095) / 4096) * 4096  // Round up to 4KB boundary
         let placeholder = Data(count: headerReserve)
         outputHandle.write(placeholder)
         var writeOffset: Int = headerReserve
@@ -150,7 +153,7 @@ enum FlashModelConverter {
             name: GGUFKey.tokenEmbedding, ggufCtx: ggufCtx,
             srcFd: srcFd, dataOffset: dataOffset,
             outputHandle: outputHandle, writeOffset: &writeOffset,
-            targetDType: options.attnQuantization
+            targetDType: options.attnQuantization, arch: arch
         )
 
         // ── Step 6: Write layer weights ─────────────────────────────────
@@ -164,27 +167,27 @@ enum FlashModelConverter {
             let qSpec   = try writeTensor(name: GGUFKey.attnQ(layer: layerIdx),
                                           ggufCtx: ggufCtx, srcFd: srcFd, dataOffset: dataOffset,
                                           outputHandle: outputHandle, writeOffset: &writeOffset,
-                                          targetDType: options.attnQuantization)
+                                          targetDType: options.attnQuantization, arch: arch)
             let kSpec   = try writeTensor(name: GGUFKey.attnK(layer: layerIdx),
                                           ggufCtx: ggufCtx, srcFd: srcFd, dataOffset: dataOffset,
                                           outputHandle: outputHandle, writeOffset: &writeOffset,
-                                          targetDType: options.attnQuantization)
+                                          targetDType: options.attnQuantization, arch: arch)
             let vSpec   = try writeTensor(name: GGUFKey.attnV(layer: layerIdx),
                                           ggufCtx: ggufCtx, srcFd: srcFd, dataOffset: dataOffset,
                                           outputHandle: outputHandle, writeOffset: &writeOffset,
-                                          targetDType: options.attnQuantization)
+                                          targetDType: options.attnQuantization, arch: arch)
             let oSpec   = try writeTensor(name: GGUFKey.attnO(layer: layerIdx),
                                           ggufCtx: ggufCtx, srcFd: srcFd, dataOffset: dataOffset,
                                           outputHandle: outputHandle, writeOffset: &writeOffset,
-                                          targetDType: options.attnQuantization)
+                                          targetDType: options.attnQuantization, arch: arch)
             let inNorm  = try writeTensor(name: GGUFKey.attnNorm(layer: layerIdx),
                                           ggufCtx: ggufCtx, srcFd: srcFd, dataOffset: dataOffset,
                                           outputHandle: outputHandle, writeOffset: &writeOffset,
-                                          targetDType: .float16)
+                                          targetDType: .float16, arch: arch)
             let ffnNorm = try writeTensor(name: GGUFKey.ffnNorm(layer: layerIdx),
                                           ggufCtx: ggufCtx, srcFd: srcFd, dataOffset: dataOffset,
                                           outputHandle: outputHandle, writeOffset: &writeOffset,
-                                          targetDType: .float16)
+                                          targetDType: .float16, arch: arch)
 
             // FFN bundled neurons
             let (ffnSpec, importanceSpec) = try writeBundledFFN(
@@ -214,7 +217,7 @@ enum FlashModelConverter {
             name: GGUFKey.outputNorm, ggufCtx: ggufCtx,
             srcFd: srcFd, dataOffset: dataOffset,
             outputHandle: outputHandle, writeOffset: &writeOffset,
-            targetDType: .float16
+            targetDType: .float16, arch: arch
         )
 
         // LM head — may be tied to embedding or separate
@@ -224,7 +227,7 @@ enum FlashModelConverter {
             name: lmHeadName, ggufCtx: ggufCtx,
             srcFd: srcFd, dataOffset: dataOffset,
             outputHandle: outputHandle, writeOffset: &writeOffset,
-            targetDType: options.attnQuantization
+            targetDType: options.attnQuantization, arch: arch
         )
 
         // ── Step 8: Build and write JSON header ────────────────────────────
@@ -276,9 +279,20 @@ enum FlashModelConverter {
         headerData.append(Data(bytes: &headerLen, count: 8))
         headerData.append(headerJSON)
 
-        // Seek to beginning and overwrite placeholder
+        // Verify the header fits in the reserved space
+        guard headerData.count <= headerReserve else {
+            throw FlashModelError.headerParseFailure(
+                "Header (\(headerData.count) bytes) exceeds reserved space (\(headerReserve) bytes). " +
+                "This is a bug — please file an issue with model architecture details."
+            )
+        }
+
+        // Seek to beginning, write header, pad remainder of reservation with zeros
         try outputHandle.seek(toOffset: 0)
         outputHandle.write(headerData)
+        // Pad remaining reserved space so weight offsets remain valid
+        let padding = Data(count: headerReserve - headerData.count)
+        outputHandle.write(padding)
 
         onProgress(1.0, "Done! \(outputPath)")
     }
@@ -293,7 +307,8 @@ enum FlashModelConverter {
         dataOffset: Int64,
         outputHandle: FileHandle,
         writeOffset: inout Int,
-        targetDType: FlashDType
+        targetDType: FlashDType,
+        arch: GGUFArchitecture? = nil
     ) throws -> TensorShape {
         let tensorId = gguf_find_tensor(ggufCtx, name)
         guard tensorId >= 0 else {
@@ -330,8 +345,8 @@ enum FlashModelConverter {
             outputBytes = FlashQuantization.quantizeQ2(floats)
         }
 
-        // Determine shape (rows × cols from GGUF ne array)
-        let (rows, cols) = tensorShape(ggufCtx, id: tensorId)
+        // Determine correct 2D shape from tensor name + architecture
+        let (rows, cols) = tensorShape(ggufCtx, id: tensorId, arch: arch)
 
         let spec = TensorShape(
             offset: UInt64(writeOffset),
@@ -509,11 +524,47 @@ enum FlashModelConverter {
         return blkSz > 0 ? Int(gguf_get_tensor_size(ctx, id)) / typeSz * blkSz : Int(n)
     }
 
-    private static func tensorShape(_ ctx: OpaquePointer, id: Int64) -> (rows: Int, cols: Int) {
-        // Without ggml_tensor access (no_alloc mode), estimate from size:
-        // For simplicity, return 1D shape (the caller knows the actual layout)
+    /// Return (rows, cols) for a tensor, deriving shape from the tensor name and architecture.
+    ///
+    /// In `no_alloc` mode the `ggml_tensor.ne` array isn't populated, so we infer
+    /// the 2D shape from the known architecture structure:
+    ///   - Weight matrices: [out_features, in_features]
+    ///   - Bias / norm vectors: [features, 1]
+    private static func tensorShape(
+        _ ctx: OpaquePointer,
+        id: Int64,
+        arch: GGUFArchitecture? = nil
+    ) -> (rows: Int, cols: Int) {
         let nElem = numElements(ctx, id: id)
-        return (rows: nElem, cols: 1)
+        guard let a = arch else { return (rows: nElem, cols: 1) }
+
+        // Match common weight shapes to architecture dimensions
+        let name = String(cString: gguf_get_tensor_name(ctx, id))
+
+        let h  = a.hiddenSize
+        let nh = a.numQHeads
+        let nkv = a.numKVHeads
+        let hd = h / max(1, nh)
+        let inter = a.intermediateSize
+
+        switch true {
+        case name.hasSuffix("attn_q.weight"):    return (rows: nh * hd, cols: h)
+        case name.hasSuffix("attn_k.weight"):    return (rows: nkv * hd, cols: h)
+        case name.hasSuffix("attn_v.weight"):    return (rows: nkv * hd, cols: h)
+        case name.hasSuffix("attn_output.weight"): return (rows: h, cols: nh * hd)
+        case name.hasSuffix("ffn_up.weight"):    return (rows: inter, cols: h)
+        case name.hasSuffix("ffn_gate.weight"):  return (rows: inter, cols: h)
+        case name.hasSuffix("ffn_down.weight"):  return (rows: h, cols: inter)
+        case name.hasSuffix("token_embd.weight"): return (rows: a.vocabSize, cols: h)
+        case name.hasSuffix("output.weight"):    return (rows: a.vocabSize, cols: h)
+        default:
+            // Norms and biases are 1D: [features]
+            if nElem == h || nElem == inter {
+                return (rows: nElem, cols: 1)
+            }
+            // Unknown: return flat
+            return (rows: nElem, cols: 1)
+        }
     }
 }
 
