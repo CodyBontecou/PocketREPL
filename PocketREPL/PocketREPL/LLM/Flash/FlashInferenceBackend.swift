@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import Metal
 import os.log
 
 // MARK: - Flash Inference Backend
@@ -79,6 +80,8 @@ actor FlashInferenceBackend: ModelBackend {
     private(set) var modelInfo: ModelInfo? = nil
 
     private var engine: FlashInferenceEngine?
+    private var tokenizerHolder = FlashTokenizerHolder()
+    private var metalPipeline: FlashMetalPipeline?
     private var backendConfig: FlashBackendConfig
     private var isCancelled = false
     private var conversationHistory: [Int32] = []
@@ -143,22 +146,43 @@ actor FlashInferenceBackend: ModelBackend {
 
         do {
             engine = try await FlashInferenceEngine.load(path: path) { [weak self] progress in
-                Task { await self?.updateProgress(progress) }
+                Task { await self?.updateProgress(progress * 0.85) }
             }
 
             guard let eng = engine else {
                 throw ModelError.loadFailed(reason: "Engine returned nil after load")
             }
 
+            // ── Load tokenizer (from companion GGUF) ──────────────────────
+            updateProgress(0.87)
+            if let tokenizer = try? FlashTokenizer.forFlashPack(at: path) {
+                await tokenizerHolder.set(tokenizer)
+                logger.info("Tokenizer loaded")
+            } else {
+                logger.warning("No companion tokenizer found — using placeholder tokenizer")
+            }
+
+            // ── Initialize Metal GPU pipeline ──────────────────────────────
+            updateProgress(0.92)
+            if let pipeline = try? FlashMetalPipeline() {
+                metalPipeline = pipeline
+                let devName = pipeline.device.name
+                logger.info("Metal GPU pipeline initialized on: \(devName)")
+            } else {
+                logger.warning("Metal not available — using CPU (Accelerate) inference only")
+            }
+
             maxContextSize = configuration.contextSize
             state = .ready
 
+            let quantTag = eng.config.dtype.rawValue.uppercased()
+            let gpuTag = metalPipeline != nil ? " · GPU" : " · CPU"
             modelInfo = ModelInfo(
-                name: eng.config.architecture.rawValue.capitalized + " (Flash)",
+                name: eng.config.architecture.rawValue.capitalized + " (Flash\(gpuTag))",
                 parameterCount: formatParamCount(eng.config),
                 contextSize: configuration.contextSize,
                 memoryUsage: estimatedDRAMNeeded,
-                quantization: eng.config.dtype.rawValue.uppercased()
+                quantization: quantTag
             )
 
             logger.info("FlashPack model loaded. DRAM footprint: ~\(estimatedDRAMNeeded / 1_000_000) MB")
@@ -179,6 +203,8 @@ actor FlashInferenceBackend: ModelBackend {
 
     func unload() async {
         engine = nil
+        metalPipeline = nil
+        await tokenizerHolder.clear()
         state = .unloaded
         modelInfo = nil
         tokenCount = 0
@@ -198,9 +224,8 @@ actor FlashInferenceBackend: ModelBackend {
 
         let prompt = buildPrompt(for: request)
 
-        // Tokenize (simple whitespace split as placeholder;
-        // production implementation uses llama.cpp tokenizer)
-        let promptTokens = tokenizeSimple(prompt)
+        // Tokenize using llama.cpp's real tokenizer (or fallback)
+        let promptTokens = await tokenizeSimple(prompt)
         let maxContextTokens = backendConfig.contextSize
 
         guard promptTokens.count + request.maxTokens <= maxContextTokens else {
@@ -234,7 +259,7 @@ actor FlashInferenceBackend: ModelBackend {
             )
 
             // Check for end-of-sequence tokens
-            if nextToken == 2 || nextToken == 1 {  // EOS/BOS for Llama
+            if await isEOG(nextToken) {
                 break
             }
 
@@ -242,8 +267,8 @@ actor FlashInferenceBackend: ModelBackend {
             position += 1
             tokenCount = position
 
-            // Convert token to text (placeholder; real impl uses llama vocab)
-            let piece = detokenizeSimple(nextToken)
+            // Convert token to text using llama.cpp vocabulary
+            let piece = await detokenizeSimple(nextToken)
             generatedText += piece
 
             // Check stop sequences
@@ -280,7 +305,7 @@ actor FlashInferenceBackend: ModelBackend {
 
         isCancelled = false
         let prompt = buildPrompt(for: request)
-        let promptTokens = tokenizeSimple(prompt)
+        let promptTokens = await tokenizeSimple(prompt)
 
         let stream = AsyncThrowingStream<GenerationToken, Error> { continuation in
             Task {
@@ -292,16 +317,13 @@ actor FlashInferenceBackend: ModelBackend {
 
                     var position = promptTokens.count
                     var generatedText = ""
+                    var lastToken: Int32 = promptTokens.last ?? 1
 
                     while tokenIndex < request.maxTokens {
                         if self.isCancelled {
                             continuation.finish(throwing: ModelError.cancelled)
                             return
                         }
-
-                        let lastToken: Int32 = tokenIndex == 0
-                            ? (promptTokens.last ?? 1)
-                            : Int32(tokenIndex)  // Placeholder
 
                         let (nextToken, _) = try await engine.decodeStep(
                             lastTokenId: lastToken,
@@ -311,14 +333,15 @@ actor FlashInferenceBackend: ModelBackend {
                             topP: self.backendConfig.topP
                         )
 
-                        if nextToken == 2 || nextToken == 1 {
+                        if await self.tokenizerHolder.isEOG(nextToken) {
                             continuation.yield(GenerationToken(text: "", tokenIndex: tokenIndex, isLast: true))
                             break
                         }
 
-                        let piece = self.detokenizeSimple(nextToken)
+                        let piece = await self.tokenizerHolder.tokenToPiece(nextToken)
                         generatedText += piece
                         position += 1
+                        lastToken = nextToken
 
                         let hitStop = request.stopSequences.contains { generatedText.hasSuffix($0) }
                         let isLast = hitStop || tokenIndex + 1 >= request.maxTokens
@@ -381,8 +404,11 @@ actor FlashInferenceBackend: ModelBackend {
     // MARK: - Private Helpers
 
     private func updateProgress(_ progress: Double) {
-        state = .loading(progress: progress)
+        state = .loading(progress: max(0, min(1, progress)))
     }
+
+    /// GPU pipeline accessor for FFN compute (nil = CPU fallback).
+    var gpuPipeline: FlashMetalPipeline? { metalPipeline }
 
     private func buildPrompt(for request: GenerationRequest) -> String {
         switch request.task {
@@ -409,36 +435,38 @@ actor FlashInferenceBackend: ModelBackend {
         }
     }
 
-    /// Placeholder tokenizer: splits on spaces and maps to token IDs.
-    /// Real implementation should use llama.cpp's tokenizer (BPE/SentencePiece).
-    private func tokenizeSimple(_ text: String) -> [Int32] {
-        // Very rough: byte-pair heuristic based on character categories
-        // TODO: integrate llama_tokenize() from the llama framework
-        var tokens: [Int32] = [1]  // BOS token
+    /// Tokenize using llama.cpp's real BPE/SentencePiece tokenizer.
+    /// Falls back to a simple placeholder if no tokenizer was loaded.
+    private func tokenizeSimple(_ text: String) async -> [Int32] {
+        let tokens = await tokenizerHolder.tokenize(text, addBOS: true)
+        if !tokens.isEmpty { return tokens }
+
+        // Fallback: hash-based pseudo-tokenizer (for testing without a companion GGUF)
+        var result: [Int32] = [1]
         var current = ""
         for char in text {
             current.append(char)
             if current.count >= 4 || char == " " || char == "\n" {
-                // Hash the string to get a pseudo-token-id in vocab range
-                let hash = abs(current.hashValue) % 30000 + 2  // Avoid special tokens
-                tokens.append(Int32(hash))
+                result.append(Int32(abs(current.hashValue) % 30000 + 2))
                 current = ""
             }
         }
         if !current.isEmpty {
-            tokens.append(Int32(abs(current.hashValue) % 30000 + 2))
+            result.append(Int32(abs(current.hashValue) % 30000 + 2))
         }
-        return tokens
+        return result
     }
 
-    /// Placeholder detokenizer. Real implementation uses llama_token_to_piece().
-    private func detokenizeSimple(_ token: Int32) -> String {
-        // TODO: integrate llama_token_to_piece() from the llama framework
-        // For now, return a placeholder character to demonstrate the loop works
-        let letters = " the a in of and is to it I that was for on are be with as at by from"
-        let words = letters.split(separator: " ")
-        let idx = Int(token) % words.count
-        return " " + words[idx]
+    /// Detokenize a single token ID using llama.cpp's vocabulary.
+    private func detokenizeSimple(_ token: Int32) async -> String {
+        let piece = await tokenizerHolder.tokenToPiece(token)
+        if !piece.isEmpty { return piece }
+        return " "
+    }
+
+    /// Check if a token is end-of-generation.
+    private func isEOG(_ token: Int32) async -> Bool {
+        return await tokenizerHolder.isEOG(token)
     }
 
     private func formatParamCount(_ config: FlashModelConfig) -> String {
@@ -475,67 +503,6 @@ struct FlashIOMetrics: Sendable {
     }
 }
 
-// MARK: - Flash Model Converter (Stub)
-//
-// Converts standard GGUF models to FlashPack format.
-// Full implementation requires parsing GGUF tensor layout.
-//
-// Usage:
-//   FlashModelConverter.convert(ggufPath: "model.gguf", output: "model.flashpack")
-//
-// The conversion:
-//   1. Parses GGUF header (vocabulary, architecture params)
-//   2. Dequantizes weights to Float16 (or keeps them quantized if supported)
-//   3. Rearranges FFN weights into bundled neuron format:
-//      - For neuron j: [up_col_j | gate_col_j | down_row_j]  (contiguous)
-//   4. Computes neuron importance scores from a small calibration dataset
-//   5. Writes FlashPack header + weights
-//
-// The bundled format is the KEY innovation from the paper:
-//   Loading neuron j requires reading ONE chunk of 2×hiddenSize×sizeof(dtype) bytes,
-//   vs TWO separate reads (one column from up_proj, one row from down_proj).
-//   This doubles effective chunk size → nearly doubles throughput on Apple NVMe.
-
-enum FlashModelConverter {
-
-    /// Convert a GGUF model file to FlashPack format.
-    /// - Parameters:
-    ///   - ggufPath: Path to source .gguf file
-    ///   - outputPath: Path for output .flashpack file
-    ///   - onProgress: Progress callback (0.0 → 1.0)
-    /// - Note: Full implementation requires GGUF parser.
-    static func convert(
-        ggufPath: String,
-        outputPath: String,
-        onProgress: @escaping (Double) -> Void
-    ) async throws {
-        // Stub: full implementation requires:
-        // 1. Parse GGUF metadata and tensors
-        // 2. Read each layer's up_proj, gate_proj, down_proj
-        // 3. Bundle neurons: interleave [up_col_j, gate_col_j, down_row_j]
-        // 4. Compute importance scores (optional, needs calibration data)
-        // 5. Write FlashPack binary with JSON header
-        throw FlashModelError.headerParseFailure(
-            "FlashModelConverter is not yet implemented. " +
-            "Please use a pre-converted .flashpack model. " +
-            "See: https://github.com/danveloper/flash-moe for conversion scripts."
-        )
-    }
-
-    /// Estimate the DRAM reduction from using flash inference.
-    ///
-    /// For a model with `modelSizeBytes` total size and `sparsityRatio` FFN sparsity:
-    ///   DRAM saved = FFN size × (1 - cache fraction)
-    ///   FFN fraction ≈ 0.67 (2/3 of transformer is FFN)
-    static func estimateDRAMReduction(modelSizeBytes: Int64, sparsityRatio: Double) -> (savingsMB: Double, fractionSaved: Double) {
-        let ffnFraction = 0.67
-        let cacheFraction = max(0.0, 1.0 - sparsityRatio) * 1.1  // 10% buffer
-        let ffnInDRAM = Double(modelSizeBytes) * ffnFraction * cacheFraction
-        let attnInDRAM = Double(modelSizeBytes) * (1.0 - ffnFraction)
-        let totalDRAM = ffnInDRAM + attnInDRAM
-        let savings = Double(modelSizeBytes) - totalDRAM
-        return (savingsMB: savings / (1024 * 1024), fractionSaved: savings / Double(modelSizeBytes))
-    }
-}
+// FlashModelConverter is defined in FlashModelConverter.swift
 
 
