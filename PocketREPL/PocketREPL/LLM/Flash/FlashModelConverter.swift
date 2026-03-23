@@ -394,33 +394,31 @@ enum FlashModelConverter {
         var importanceScores = [Float](repeating: 0, count: inter)
 
         for j in 0..<inter {
-            // Extract neuron j's up column (row j of up matrix)
+            // Extract neuron j's up column (row j of up_proj weight matrix)
             let upCol = Array(upMatrix[(j * h)..<(j * h + h)])
 
-            // Extract gate column if present
+            // Extract gate column if present (row j of gate_proj weight matrix)
             let gateCol: [Float]? = gateMatrix.map { m in Array(m[(j * h)..<(j * h + h)]) }
 
-            // Extract down row (column j of down matrix, which is row-major [h × inter])
+            // Extract down row: column j of down_proj [h × inter] row-major
+            // i.e. down_proj[i, j] = downMatrix[i * inter + j] for i in 0..<h
             var downRow = [Float](repeating: 0, count: h)
-            for i in 0..<h {
-                downRow[i] = downMatrix[i * inter + j]
-            }
+            for i in 0..<h { downRow[i] = downMatrix[i * inter + j] }
 
-            // Compute importance score = L2 norm of up column
+            // Importance score = L2 norm of up column (proxy for global neuron activity)
             if options.computeImportance {
                 var sumSq: Float = 0
                 for v in upCol { sumSq += v * v }
                 importanceScores[j] = sqrtf(sumSq)
             }
 
-            // Quantize and write
+            // Quantize and write: [up_col_j | gate_col_j? | down_row_j] contiguous
             let packed = quantizer.quantizeNeuron(upCol: upCol, gateCol: gateCol, downRow: downRow)
             outputHandle.write(packed)
         }
-        writeOffset += Int(UInt64(writeOffset) - neuronsOffset + neuronsOffset) - Int(neuronsOffset)
-        // Recompute correct writeOffset after loop
-        // (track byte count through quantizer)
-        let neuronByteSize = quantizer.totalQuantizedBytes / max(1, inter)
+
+        // writeOffset = neuronsOffset + total bytes written for all neurons
+        let neuronByteSize = inter > 0 ? quantizer.totalQuantizedBytes / inter : 0
         writeOffset = Int(neuronsOffset) + quantizer.totalQuantizedBytes
 
         let ffnSpec = FFNSpec(neuronsOffset: neuronsOffset, neuronByteSize: neuronByteSize)

@@ -1641,8 +1641,17 @@ struct ModelDetailView: View {
     let activeModelInfo: ModelInfo?
     let onLoad: () -> Void
     let onDelete: () -> Void
-    
+
+    /// Optional FlashInferenceBackend for benchmark (non-nil when a flash model is loaded)
+    var flashBackend: FlashInferenceBackend? = nil
+
     @Environment(\.dismiss) private var dismiss
+    @State private var showingFlashConversion = false
+    @State private var showingBenchmark = false
+    @State private var showingPredictor = false
+
+    private var isGGUF: Bool { model.path.pathExtension == "gguf" }
+    private var isFlashPack: Bool { model.path.pathExtension == "flashpack" }
     
     private var foreground: Color {
         colorScheme == .dark ? .escherPaper : .escherInk
@@ -1897,7 +1906,112 @@ struct ModelDetailView: View {
                 }
                 .buttonStyle(.plain)
             }
-            
+
+            // ── Flash actions ─────────────────────────────────────────────
+
+            // Convert GGUF → FlashPack
+            if isGGUF {
+                Button {
+                    showingFlashConversion = true
+                } label: {
+                    HStack {
+                        Image(systemName: "bolt.fill")
+                            .foregroundStyle(Color.flashAccent)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Convert to FlashPack")
+                                .font(.escherSubheadline)
+                                .foregroundStyle(foreground)
+                            Text("Enable on-device inference beyond DRAM capacity")
+                                .font(.escherCaption)
+                                .foregroundStyle(Color.escherSecondaryText)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.escherCaption)
+                            .foregroundStyle(foreground.opacity(0.3))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.flashAccent.opacity(0.08))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(Color.flashAccent.opacity(0.25), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .sheet(isPresented: $showingFlashConversion) {
+                    FlashConversionView(
+                        sourcePath: model.path.path,
+                        modelName: model.name
+                    )
+                }
+            }
+
+            // Benchmark + predictor training (for FlashPack models)
+            if isFlashPack {
+                if isActive, let fb = flashBackend {
+                    Button {
+                        showingBenchmark = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "speedometer")
+                                .foregroundStyle(Color.flashAccent)
+                            Text("Run Benchmark")
+                                .font(.escherSubheadline)
+                                .foregroundStyle(foreground)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.escherCaption)
+                                .foregroundStyle(foreground.opacity(0.3))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(foreground.opacity(0.05))
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .sheet(isPresented: $showingBenchmark) {
+                        FlashBenchmarkView(backend: fb, modelName: model.name)
+                    }
+                }
+
+                // Train predictor (can do offline, model doesn't need to be loaded)
+                Button {
+                    showingPredictor = true
+                } label: {
+                    HStack {
+                        Image(systemName: "brain.filled.head.profile")
+                            .foregroundStyle(Color.flashAccent)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Train Sparsity Predictor")
+                                .font(.escherSubheadline)
+                                .foregroundStyle(foreground)
+                            Text("Speeds up inference by pre-fetching active neurons")
+                                .font(.escherCaption)
+                                .foregroundStyle(Color.escherSecondaryText)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.escherCaption)
+                            .foregroundStyle(foreground.opacity(0.3))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.flashAccent.opacity(0.05))
+                    )
+                }
+                .buttonStyle(.plain)
+                // Note: FlashPredictorView needs a FlashModelConfig; shown as placeholder here
+                // In production, read config from FlashPackReader when showing sheet
+            }
+
             Button(role: .destructive) {
                 dismiss()
                 onDelete()

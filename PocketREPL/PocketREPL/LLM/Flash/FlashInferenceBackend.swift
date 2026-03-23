@@ -145,8 +145,16 @@ actor FlashInferenceBackend: ModelBackend {
         logger.info("Available DRAM: \(memInfo.estimatedAvailableBytes / 1_000_000) MB")
 
         do {
-            engine = try await FlashInferenceEngine.load(path: path) { [weak self] progress in
-                Task { await self?.updateProgress(progress * 0.85) }
+            // Load Metal pipeline first so we can upload weights to GPU during model load
+            updateProgress(0.05)
+            let earlyPipeline: FlashMetalPipeline? = try? FlashMetalPipeline()
+            if let p = earlyPipeline { metalPipeline = p }
+
+            engine = try await FlashInferenceEngine.load(
+                path: path,
+                metalPipeline: earlyPipeline
+            ) { [weak self] progress in
+                Task { await self?.updateProgress(0.05 + progress * 0.80) }
             }
 
             guard let eng = engine else {
@@ -162,14 +170,11 @@ actor FlashInferenceBackend: ModelBackend {
                 logger.warning("No companion tokenizer found — using placeholder tokenizer")
             }
 
-            // ── Initialize Metal GPU pipeline ──────────────────────────────
-            updateProgress(0.92)
-            if let pipeline = try? FlashMetalPipeline() {
-                metalPipeline = pipeline
-                let devName = pipeline.device.name
-                logger.info("Metal GPU pipeline initialized on: \(devName)")
-            } else {
+            // Metal pipeline is already initialized above (earlyPipeline)
+            if metalPipeline == nil {
                 logger.warning("Metal not available — using CPU (Accelerate) inference only")
+            } else {
+                logger.info("Metal GPU pipeline ready")
             }
 
             maxContextSize = configuration.contextSize

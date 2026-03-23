@@ -180,10 +180,18 @@ print("Flash read: \(ioStats?.totalMBRead ?? 0) MB")
 | `FlashInferenceEngine` | ✅ Complete | Full transformer forward pass |
 | `FlashInferenceBackend` | ✅ Complete | ModelBackend protocol |
 | `FlashInferenceStatusView` | ✅ Complete | Real-time metrics UI |
-| Model converter | 🔨 Stub | Needs GGUF parser |
-| Tokenizer integration | 🔨 Stub | Needs llama.cpp tokenizer wiring |
-| Metal GPU shaders | 🔮 Future | For GPU-accelerated matrix ops |
-| 2-bit quantization | 🔮 Future | Per flash-moe paper extension |
+| `FlashTokenizer` | ✅ Complete | llama.cpp BPE/SentencePiece; companion GGUF discovery |
+| `FlashModelConverter` | ✅ Complete | GGUF→FlashPack via gguf.h; all quant types via ggml_get_type_traits |
+| `FlashQuantization` | ✅ Complete | Q2 2-bit + Q8 8-bit + F16; RMSE benchmark |
+| `FlashShaders.metal` | ✅ Complete | 15 kernels: matvec, sparse-FFN, RMSNorm, attn, RoPE, Q2-dequant |
+| `FlashMetalPipeline` | ✅ Complete | MTLStorageModeShared zero-copy; GPU sparse-FFN dispatch |
+| `FlashPredictorTrainer` | ✅ Complete | SGD w/ momentum; precision/recall eval |
+| `FlashBenchmarkView` | ✅ Complete | tok/s, ms/tok, paper comparison, history |
+| `FlashConversionView` | ✅ Complete | In-app GGUF→FlashPack with live progress |
+| `FlashPredictorView` | ✅ Complete | In-app predictor training UI |
+| Model Detail: Convert | ✅ Complete | Accessible from installed GGUF model |
+| Model Detail: Benchmark | ✅ Complete | Accessible from loaded FlashPack model |
+| ChatView flash overlay | ✅ Complete | Live tok/s during Flash generation |
 
 ---
 

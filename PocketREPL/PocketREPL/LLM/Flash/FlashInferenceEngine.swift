@@ -1,5 +1,6 @@
 import Foundation
 import Accelerate
+import Metal
 
 // MARK: - Flash Inference Engine
 //
@@ -150,11 +151,27 @@ final class FlashInferenceEngine: @unchecked Sendable {
     let cacheManager: FlashCacheManager
     let store: FlashWeightStore
 
-    // DRAM-resident weights
+    // DRAM-resident weights (CPU)
     private let globalWeights: GlobalWeights
     private let attentionWeights: [AttentionWeights]   // One per layer
 
-    // KV cache
+    // GPU pipeline (optional — falls back to CPU if Metal unavailable)
+    private let metalPipeline: FlashMetalPipeline?
+    private let gpuBuffers: FlashGPUBuffers?
+
+    // GPU-resident attention weight buffers
+    // Layout matches CPU: [rows × cols] Float32
+    private struct GPUAttentionWeights {
+        let qProj: MTLBuffer    // [numHeads*headDim × hiddenSize]
+        let kProj: MTLBuffer    // [numKVHeads*headDim × hiddenSize]
+        let vProj: MTLBuffer    // [numKVHeads*headDim × hiddenSize]
+        let oProj: MTLBuffer    // [hiddenSize × numHeads*headDim]
+        let inputNorm: MTLBuffer    // [hiddenSize]
+        let postAttnNorm: MTLBuffer // [hiddenSize]
+    }
+    private let gpuAttentionWeights: [GPUAttentionWeights]  // nil-or-empty = no GPU attn
+
+    // KV cache (CPU — attention still computed on CPU)
     private let kvCache: KVCache
 
     // Working buffers (allocated once, reused each token)
@@ -182,7 +199,8 @@ final class FlashInferenceEngine: @unchecked Sendable {
         cacheManager: FlashCacheManager,
         predictorManager: SparsityPredictorManager,
         globalWeights: GlobalWeights,
-        attentionWeights: [AttentionWeights]
+        attentionWeights: [AttentionWeights],
+        metalPipeline: FlashMetalPipeline? = nil
     ) {
         self.config = config
         self.store = store
@@ -190,6 +208,33 @@ final class FlashInferenceEngine: @unchecked Sendable {
         self.predictorManager = predictorManager
         self.globalWeights = globalWeights
         self.attentionWeights = attentionWeights
+        self.metalPipeline = metalPipeline
+
+        // Allocate GPU working buffers
+        if let pipeline = metalPipeline {
+            gpuBuffers = FlashGPUBuffers(pipeline: pipeline, config: config)
+        } else {
+            gpuBuffers = nil
+        }
+
+        // Upload attention weights to GPU shared buffers (zero-copy on Apple Silicon)
+        if let pipeline = metalPipeline {
+            gpuAttentionWeights = attentionWeights.map { w -> GPUAttentionWeights in
+                func upload(_ floats: [Float], label: String) -> MTLBuffer {
+                    pipeline.makeFloatBuffer(from: floats, label: label)!
+                }
+                return GPUAttentionWeights(
+                    qProj:       upload(w.qProj,       label: "q_proj"),
+                    kProj:       upload(w.kProj,       label: "k_proj"),
+                    vProj:       upload(w.vProj,       label: "v_proj"),
+                    oProj:       upload(w.oProj,       label: "o_proj"),
+                    inputNorm:   upload(w.inputNorm,   label: "input_norm"),
+                    postAttnNorm:upload(w.postAttnNorm,label: "post_attn_norm")
+                )
+            }
+        } else {
+            gpuAttentionWeights = []
+        }
 
         let h = config.hiddenSize
         let nh = config.numAttentionHeads
@@ -285,6 +330,41 @@ final class FlashInferenceEngine: @unchecked Sendable {
             topP: topP
         )
         return (Int32(nextToken), stats)
+    }
+
+    // MARK: - CPU Sparse FFN (fallback / Apple Silicon CPU path)
+
+    /// Sparse FFN forward pass using Accelerate BLAS (CPU).
+    /// Used when Metal is unavailable or as fallback.
+    private func performCPUSparseFFN(
+        loadedNeuronData: [(Int, CachedNeuronView)],
+        useGate: Bool,
+        normBuf: UnsafePointer<Float>,
+        ffnDownBuf: UnsafeMutablePointer<Float>,
+        residualBuf: UnsafeMutablePointer<Float>,
+        hiddenSize h: Int
+    ) {
+        var ffnOutZero: Float = 0
+        vDSP_vfill(&ffnOutZero, ffnDownBuf, 1, vDSP_Length(h))
+
+        if useGate {
+            for (_, view) in loadedNeuronData {
+                let upVal = cblas_sdot(Int32(h), normBuf, 1, view.upCol, 1)
+                let gateVal = view.gateCol.map { cblas_sdot(Int32(h), normBuf, 1, $0, 1) } ?? upVal
+                let sigmoidGate = 1.0 / (1.0 + expf(-gateVal))
+                let activated = (gateVal * sigmoidGate) * upVal
+                if activated == 0 { continue }
+                cblas_saxpy(Int32(h), activated, view.downRow, 1, ffnDownBuf, 1)
+            }
+        } else {
+            for (_, view) in loadedNeuronData {
+                var upVal = cblas_sdot(Int32(h), normBuf, 1, view.upCol, 1)
+                upVal = max(0, upVal)  // ReLU
+                if upVal == 0 { continue }
+                cblas_saxpy(Int32(h), upVal, view.downRow, 1, ffnDownBuf, 1)
+            }
+        }
+        vectorAdd(ffnDownBuf, to: residualBuf, count: h)
     }
 
     /// Reset state for new conversation (clear KV cache and neuron caches).
@@ -437,37 +517,80 @@ final class FlashInferenceEngine: @unchecked Sendable {
             let endFlashNs = clock_gettime_nsec_np(CLOCK_UPTIME_RAW)
             stats.flashLoadTimeNs += endFlashNs - startFlashNs
 
-            // d. Sparse FFN forward pass
-            var ffnOutZero: Float = 0
-            vDSP_vfill(&ffnOutZero, ffnDownBuf, 1, vDSP_Length(h))
+            // d. Sparse FFN forward pass — GPU path when Metal available, else CPU
+            let activeCount = loadedNeuronData.count
 
-            if layer.ffnUseGate {
-                // SwiGLU FFN: out = SiLU(x @ W_gate_j) * (x @ W_up_j)
-                // Then: output += out_j * down_row_j
-                for (_, view) in loadedNeuronData {
-                    let upVal = cblas_sdot(Int32(h), normBuf, 1, view.upCol, 1)
-                    let gateVal = view.gateCol.map { cblas_sdot(Int32(h), normBuf, 1, $0, 1) } ?? upVal
+            if activeCount > 0,
+               let pipeline = metalPipeline,
+               let gpuBufs = gpuBuffers {
+                // ── GPU path ──────────────────────────────────────────────
+                // Pack active neuron rows into contiguous GPU buffers (zero-copy on Apple Silicon)
+                gpuBufs.resizeActiveBuffers(
+                    pipeline: pipeline,
+                    activeCount: activeCount,
+                    hiddenSize: h,
+                    hasGate: layer.ffnUseGate
+                )
 
-                    // SiLU(gateVal) * upVal
-                    let sigmoidGate = 1.0 / (1.0 + expf(-gateVal))
-                    let siluGate = gateVal * sigmoidGate
-                    let activated = siluGate * upVal
+                if let upBuf = gpuBufs.activeUpCols,
+                   let downBuf = gpuBufs.activeDownRows {
+                    let upPtr = upBuf.contents().bindMemory(to: Float.self, capacity: activeCount * h)
+                    let downPtr = downBuf.contents().bindMemory(to: Float.self, capacity: activeCount * h)
+                    let gatePtr = gpuBufs.activeGateCols?.contents().bindMemory(to: Float.self, capacity: activeCount * h)
 
-                    // Accumulate: ffnDown += activated * down_row
-                    cblas_saxpy(Int32(h), activated, view.downRow, 1, ffnDownBuf, 1)
+                    for (i, (_, view)) in loadedNeuronData.enumerated() {
+                        memcpy(upPtr + i * h,   view.upCol,  h * MemoryLayout<Float>.stride)
+                        memcpy(downPtr + i * h, view.downRow, h * MemoryLayout<Float>.stride)
+                        if layer.ffnUseGate, let gate = view.gateCol, let gp = gatePtr {
+                            memcpy(gp + i * h, gate, h * MemoryLayout<Float>.stride)
+                        }
+                    }
+
+                    // Copy norm output and residual into GPU shared buffers
+                    let normGPUPtr = gpuBufs.norm.contents().bindMemory(to: Float.self, capacity: h)
+                    let residualGPUPtr = gpuBufs.residual.contents().bindMemory(to: Float.self, capacity: h)
+                    memcpy(normGPUPtr,     normBuf,     h * MemoryLayout<Float>.stride)
+                    memcpy(residualGPUPtr, residualBuf, h * MemoryLayout<Float>.stride)
+
+                    // Dispatch GPU sparse FFN pipeline
+                    if let cmdBuf = pipeline.executeSparsFFN(
+                        normOutput: gpuBufs.norm,
+                        activeUpCols: upBuf,
+                        activeGateCols: layer.ffnUseGate ? gpuBufs.activeGateCols : nil,
+                        activeDownRows: downBuf,
+                        residual: gpuBufs.residual,
+                        upOut: gpuBufs.ffnUp,
+                        gateOut: layer.ffnUseGate ? gpuBufs.ffnGate : nil,
+                        activatedOut: gpuBufs.ffnActivated,
+                        activeCount: activeCount,
+                        hiddenSize: h,
+                        useGate: layer.ffnUseGate
+                    ) {
+                        cmdBuf.commit()
+                        cmdBuf.waitUntilCompleted()
+
+                        // Read residual back (zero-copy on Apple Silicon: same physical memory)
+                        memcpy(residualBuf, residualGPUPtr, h * MemoryLayout<Float>.stride)
+                    } else {
+                        // Fallback to CPU if command buffer creation fails
+                        performCPUSparseFFN(
+                            loadedNeuronData: loadedNeuronData, useGate: layer.ffnUseGate,
+                            normBuf: normBuf, ffnDownBuf: ffnDownBuf,
+                            residualBuf: residualBuf, hiddenSize: h
+                        )
+                    }
                 }
+
             } else {
-                // Standard FFN: out = ReLU(x @ W_up_j) * (x @ W_down_j)
-                for (_, view) in loadedNeuronData {
-                    var upVal = cblas_sdot(Int32(h), normBuf, 1, view.upCol, 1)
-                    upVal = max(0, upVal)  // ReLU
-                    if upVal == 0 { continue }  // Sparse: skip zero activations
-                    cblas_saxpy(Int32(h), upVal, view.downRow, 1, ffnDownBuf, 1)
-                }
+                // ── CPU path ──────────────────────────────────────────────
+                performCPUSparseFFN(
+                    loadedNeuronData: loadedNeuronData, useGate: layer.ffnUseGate,
+                    normBuf: normBuf, ffnDownBuf: ffnDownBuf,
+                    residualBuf: residualBuf, hiddenSize: h
+                )
             }
 
-            // e. Residual connection: residual += ffnDown
-            vectorAdd(ffnDownBuf, to: residualBuf, count: h)
+            // e. Residual connection for CPU path is handled inside performCPUSparseFFN
 
             // f. Advance sliding window cache
             let activeSet = Set(loadedNeuronData.map { $0.0 })
@@ -517,6 +640,7 @@ extension FlashInferenceEngine {
     /// Progress is reported via `onProgress` callback (0.0 → 1.0).
     static func load(
         path: String,
+        metalPipeline: FlashMetalPipeline? = nil,
         onProgress: @escaping (Double) -> Void
     ) async throws -> FlashInferenceEngine {
 
@@ -575,7 +699,8 @@ extension FlashInferenceEngine {
             cacheManager: cacheManager,
             predictorManager: predictorManager,
             globalWeights: globalWeights,
-            attentionWeights: attentionWeights
+            attentionWeights: attentionWeights,
+            metalPipeline: metalPipeline
         )
     }
 }
