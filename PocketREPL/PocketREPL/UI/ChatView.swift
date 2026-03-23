@@ -8,9 +8,11 @@ struct ChatView: View {
     var projectStore: ProjectStore? = nil
     @State private var draft = ""
     @State private var showingAIAlert = false
+    @State private var showingPaywall = false
     @FocusState private var inputFocused: Bool
     @Namespace private var bottomID
     @State private var messageAppearance: [UUID: Bool] = [:]
+    private let usageTracker = UsageTracker.shared
 
     var body: some View {
         ZStack {
@@ -33,6 +35,11 @@ struct ChatView: View {
                     floatingBottomControls
                 }
             }
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+                .presentationDragIndicator(.visible)
+                .presentationDetents([.large])
         }
         .alert(String(localized: "Apple Intelligence Required"), isPresented: $showingAIAlert) {
             Button(String(localized: "Open Settings")) {
@@ -143,14 +150,22 @@ struct ChatView: View {
                     String(localized: "Show keyboard")
                 ])
                 
-                // Send button
+                // Send button (shows lock when paywall is active)
                 Button(action: sendMessage) {
                     ZStack {
                         Circle()
-                            .fill(canSend ? (isDark ? Color.escherPrism : Color.escherInk) : Color.escherMidtone.opacity(0.3))
+                            .fill(
+                                usageTracker.isOverLimit
+                                    ? (isDark ? Color.escherPrism : Color.escherInk)
+                                    : (canSend ? (isDark ? Color.escherPrism : Color.escherInk) : Color.escherMidtone.opacity(0.3))
+                            )
                             .frame(width: 28, height: 28)
                         
-                        if canSend {
+                        if usageTracker.isOverLimit {
+                            Image(systemName: "lock.fill")
+                                .font(.escherCaption.weight(.bold))
+                                .foregroundStyle(Color.escherPaper.opacity(0.9))
+                        } else if canSend {
                             PenroseTriangle()
                                 .stroke(Color.escherPaper, lineWidth: 1.2)
                                 .frame(width: 11, height: 11)
@@ -163,11 +178,12 @@ struct ChatView: View {
                         }
                     }
                 }
-                .disabled(!canSend || session.isRunning)
+                .disabled((!canSend && !usageTracker.isOverLimit) || session.isRunning)
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: canSend)
+                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: usageTracker.isOverLimit)
                 .accessibilityIdentifier("chat_send_button")
-                .accessibilityLabel(String(localized: "Send message"))
-                .accessibilityHint(canSend ? String(localized: "Sends your message to the AI assistant") : String(localized: "Type a message first"))
+                .accessibilityLabel(usageTracker.isOverLimit ? String(localized: "Unlock Pro to send messages") : String(localized: "Send message"))
+                .accessibilityHint(usageTracker.isOverLimit ? String(localized: "Free limit reached. Tap to unlock.") : canSend ? String(localized: "Sends your message to the AI assistant") : String(localized: "Type a message first"))
                 .accessibilityInputLabels([
                     String(localized: "Send"),
                     String(localized: "Send message"),
@@ -195,9 +211,61 @@ struct ChatView: View {
     
     private var floatingBottomControls: some View {
         VStack(spacing: 0) {
+            // Free-tier warning — shown when close to or at the limit
+            if !usageTracker.isPurchased {
+                freeTrialBanner
+            }
             ContextCounter(session: session)
             inputBar
         }
+    }
+    
+    // MARK: - Free Trial Banner
+    
+    private var freeTrialBanner: some View {
+        let isDark = colorScheme == .dark
+        let remaining = usageTracker.remainingFreeMessages
+        let isOver = usageTracker.isOverLimit
+
+        return Button {
+            showingPaywall = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: isOver ? "lock.fill" : "sparkles")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(isOver ? Color.escherError : Color.escherWarning)
+                
+                if isOver {
+                    Text("Free messages used up — Unlock Pro to continue")
+                        .font(.escherCaption2)
+                        .foregroundStyle(isOver ? Color.escherError : Color.escherSecondaryText)
+                } else if remaining <= 2 {
+                    Text("\(remaining) free message\(remaining == 1 ? "" : "s") left — Unlock Pro")
+                        .font(.escherCaption2)
+                        .foregroundStyle(Color.escherSecondaryText)
+                }
+                
+                Spacer()
+                
+                Text("Upgrade →")
+                    .font(.escherCaption2.weight(.semibold))
+                    .foregroundStyle(Color.escherPrism)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 7)
+            .background(
+                Capsule()
+                    .fill(isDark
+                          ? Color(white: 0.12)
+                          : Color.escherPaper.opacity(0.9))
+                    .shadow(color: .black.opacity(isDark ? 0.2 : 0.04), radius: 4, x: 0, y: 2)
+            )
+            .padding(.horizontal, 16)
+            .padding(.bottom, 4)
+        }
+        .buttonStyle(.plain)
+        .opacity((isOver || remaining <= 2) ? 1 : 0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: remaining)
     }
     
     private func toggleKeyboard() {
@@ -217,10 +285,18 @@ struct ChatView: View {
     }
 
     private func sendMessage() {
+        // If over the free limit, show the paywall instead of sending
+        if usageTracker.isOverLimit {
+            showingPaywall = true
+            return
+        }
+
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
 
         draft = ""
+        // Record usage before sending
+        usageTracker.recordMessageSent()
         Task {
             await session.send(text)
         }

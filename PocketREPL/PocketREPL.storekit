@@ -1,0 +1,62 @@
+{
+  "identifier" : "com.bontecou.PocketREPL.storekit",
+  "nonConsumableProducts" : [
+    {
+      "displayPrice" : "2.99",
+      "familySharable" : true,
+      "internalID" : "com.bontecou.PocketREPL.pro",
+      "localizations" : [
+        {
+          "description" : "Unlock unlimited AI conversations, local model support, and full JavaScript runtime access.",
+          "displayName" : "PocketREPL Pro",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.bontecou.PocketREPL.pro",
+      "referenceName" : "PocketREPL Pro",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_interruptedPurchasesEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Fetch Offers"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Redeem Offers"
+      }
+    ]
+  },
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

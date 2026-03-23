@@ -562,24 +562,40 @@ struct ModelManagementView: View {
     }
     
     private func loadModel(_ model: InstalledModel) async {
-        guard let entry = model.registryEntry else {
-            errorMessage = String(localized: "Cannot load unknown model format")
-            return
-        }
-        
         isLoading = true
         defer { isLoading = false }
         
+        let path = model.path.path
+        let contextSize = model.registryEntry?.recommendedContextSize ?? 4096
+        
         do {
             let config = ModelConfiguration(
-                modelPath: model.path.path,
-                contextSize: entry.recommendedContextSize,
+                modelPath: path,
+                contextSize: contextSize,
                 gpuLayers: 99,
                 threadCount: 4
             )
-            
-            let backend = LlamaBackend()
-            await modelManager.setBackend(backend)
+
+            // Route to FlashInferenceBackend for .flashpack models,
+            // LlamaBackend for standard .gguf models.
+            if path.hasSuffix(".flashpack") {
+                let backend = FlashInferenceBackend(config: FlashBackendConfig(
+                    modelPath: path,
+                    contextSize: contextSize,
+                    temperature: 0.2,
+                    topK: 40,
+                    topP: 0.95
+                ))
+                await modelManager.setBackend(backend)
+            } else {
+                guard model.registryEntry != nil else {
+                    errorMessage = String(localized: "Cannot load unknown model format")
+                    return
+                }
+                let backend = LlamaBackend()
+                await modelManager.setBackend(backend)
+            }
+
             try await modelManager.load(configuration: config, modelId: model.id, persistSelection: true)
             
         } catch {

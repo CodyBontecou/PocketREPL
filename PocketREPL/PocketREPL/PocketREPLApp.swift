@@ -9,6 +9,10 @@ struct PocketREPLApp: App {
         WindowGroup {
             RootView(container: container)
                 .preferredColorScheme(appearanceManager.colorScheme)
+                .task {
+                    // Restore any existing purchase entitlements on launch
+                    await PaywallManager.shared.checkExistingEntitlements()
+                }
         }
     }
 }
