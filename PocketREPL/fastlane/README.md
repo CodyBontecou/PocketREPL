@@ -55,6 +55,14 @@ Upload metadata + screenshots
 
 Submit for review (uploads metadata + screenshots first)
 
+### ios create_iap
+
+```sh
+[bundle exec] fastlane ios create_iap
+```
+
+Create the Pro IAP on App Store Connect
+
 ### ios create_app
 
 ```sh

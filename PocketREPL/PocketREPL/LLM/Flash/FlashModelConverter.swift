@@ -23,25 +23,36 @@ import llama        // gguf_*, ggml_*
 // Memory efficiency: Only one FFN layer's weight matrix is in memory at a time.
 // A 7B model's FFN for one layer ≈ 3 × 4096 × 11008 × 2 bytes = ~270 MB.
 
-// MARK: - GGUF Metadata Keys (Llama architecture)
+// MARK: - GGUF Metadata Keys
 // Reference: https://github.com/ggerganov/ggml/blob/master/docs/gguf.md
+//
+// Architecture-specific keys use the model's architecture name as prefix.
+// E.g. for LLaMA: "llama.block_count", for OPT: "opt.block_count", etc.
+// The `generalArchitecture` key tells us which prefix to use.
 
 private enum GGUFKey {
-    // Architecture
-    static let generalArchitecture = "general.architecture"
-    static let generalName         = "general.name"
+    // Global (no architecture prefix)
+    static let generalArchitecture   = "general.architecture"
+    static let generalName           = "general.name"
+    // Vocab is always under the tokenizer namespace, not the arch namespace
+    static let vocabTokens           = "tokenizer.ggml.tokens"
 
-    // Llama keys
-    static func llamaKey(_ suffix: String) -> String { "llama.\(suffix)" }
-    static let blockCount          = "llama.block_count"
-    static let embeddingLength     = "llama.embedding_length"
-    static let feedForwardLength   = "llama.feed_forward_length"
-    static let headCount           = "llama.attention.head_count"
-    static let headCountKV         = "llama.attention.head_count_kv"
-    static let maxPositionEmbeddings = "llama.context_length"
-    static let rmsNormEps          = "llama.attention.layer_norm_rms_epsilon"
-    static let ropeFreqBase        = "llama.rope.freq_base"
-    static let vocabSize           = "tokenizer.ggml.tokens"
+    // Architecture-scoped key builders (prefix = value of general.architecture)
+    static func blockCount(_ prefix: String)      -> String { "\(prefix).block_count" }
+    static func embeddingLength(_ prefix: String) -> String { "\(prefix).embedding_length" }
+    static func ffnLength(_ prefix: String)       -> String { "\(prefix).feed_forward_length" }
+    static func headCount(_ prefix: String)       -> String { "\(prefix).attention.head_count" }
+    static func headCountKV(_ prefix: String)     -> String { "\(prefix).attention.head_count_kv" }
+    static func contextLength(_ prefix: String)   -> String { "\(prefix).context_length" }
+    static func ropeFreqBase(_ prefix: String)    -> String { "\(prefix).rope.freq_base" }
+
+    // Norm epsilon: try RMS variant first, then plain LayerNorm variant
+    // (LLaMA/Mistral/Falcon use rms_epsilon; OPT/GPT-2/Bloom use layer_norm_epsilon)
+    static func rmsNormEps(_ prefix: String)      -> String { "\(prefix).attention.layer_norm_rms_epsilon" }
+    static func layerNormEps(_ prefix: String)    -> String { "\(prefix).attention.layer_norm_epsilon" }
+
+    // Legacy constant kept for backwards-compatibility in vocabSize reading
+    static let vocabSize = "tokenizer.ggml.tokens"
 
     // Tensor name patterns (e.g., "blk.0.attn_q.weight")
     static func tensorName(_ pattern: String, layer: Int) -> String {
@@ -119,7 +130,8 @@ enum FlashModelConverter {
 
         // ── Step 2: Extract architecture metadata ─────────────────────────
         let arch = try GGUFReader.readArchitecture(ggufCtx)
-        onProgress(0.05, "Detected: \(arch.name) (\(arch.numLayers) layers)")
+        let modelLabel = arch.name.isEmpty ? arch.archPrefix : arch.name
+        onProgress(0.05, "Detected: \(modelLabel) [\(arch.archPrefix)] — \(arch.numLayers)L × \(arch.hiddenSize)h, sparsity: \(arch.inferredSparsityType.rawValue)")
 
         // ── Step 3: Open source file for raw byte reads ────────────────────
         let srcFd = Darwin.open(ggufPath, O_RDONLY)
@@ -242,7 +254,7 @@ enum FlashModelConverter {
 
         let config = FlashModelConfig(
             architecture: arch.flashArchitecture,
-            sparsityType: .fatrelu,
+            sparsityType: arch.inferredSparsityType,
             vocabSize: arch.vocabSize,
             hiddenSize: arch.hiddenSize,
             intermediateSize: arch.intermediateSize,
@@ -571,7 +583,12 @@ enum FlashModelConverter {
 // MARK: - GGUF Architecture Parser
 
 struct GGUFArchitecture: Sendable {
+    /// Human-readable model name from `general.name` (may be empty for some models).
     let name: String
+    /// Architecture prefix from `general.architecture` (e.g. "llama", "opt", "falcon").
+    /// Used for key lookups and architecture detection — always non-empty.
+    let archPrefix: String
+
     let numLayers: Int
     let hiddenSize: Int
     let intermediateSize: Int
@@ -581,16 +598,44 @@ struct GGUFArchitecture: Sendable {
     let rmsNormEps: Float
     let ropeTheta: Float
     let vocabSize: Int
-    let hasGateProjection: Bool  // true for LLaMA (SwiGLU), false for OPT/Falcon
+    let hasGateProjection: Bool  // true for LLaMA/Mistral (SwiGLU), false for OPT/Falcon
 
+    // MARK: - Derived architecture properties
+
+    /// Map the raw architecture prefix to a FlashArchitecture enum value.
     var flashArchitecture: FlashArchitecture {
-        let n = name.lowercased()
-        if n.contains("llama") { return .llama }
-        if n.contains("mistral") { return .mistral }
-        if n.contains("falcon") { return .falcon }
-        if n.contains("phi") { return .phi }
-        if n.contains("opt") { return .opt }
-        return .llama
+        switch archPrefix {
+        case "llama":             return .llama
+        case "mistral":           return .mistral
+        case "falcon":            return .falcon
+        case "phi", "phi2", "phi3": return .phi
+        case "persimmon":         return .persimmon
+        case "opt":               return .opt
+        default:
+            // Fallback: substring-match the display name for legacy/custom prefixes
+            let n = name.lowercased()
+            if n.contains("mistral") { return .mistral }
+            if n.contains("falcon")  { return .falcon }
+            if n.contains("phi")     { return .phi }
+            if n.contains("opt")     { return .opt }
+            return .llama
+        }
+    }
+
+    /// Sparsity type implied by this architecture.
+    ///
+    /// - OPT uses plain ReLU (native sparsity, no fine-tuning needed).
+    /// - Falcon with relufication uses plain ReLU.
+    /// - LLaMA-2 with FATReLU / ProSparse post-training uses `.fatrelu`.
+    /// - Persimmon uses Squared ReLU.
+    /// - Default: `.fatrelu` (conservative — works for most sparsified LLaMA variants).
+    var inferredSparsityType: FlashSparsityType {
+        switch archPrefix {
+        case "opt":        return .relu       // Native ReLU, ~97% sparsity
+        case "falcon":     return .relu       // Relufied variant
+        case "persimmon":  return .relu2      // Squared ReLU
+        default:           return .fatrelu    // LLaMA/Mistral with FATReLU or ProSparse
+        }
     }
 }
 
@@ -599,25 +644,41 @@ enum GGUFReader {
     static func readArchitecture(_ ctx: OpaquePointer) throws -> GGUFArchitecture {
         func int32Key(_ key: String) -> Int { Int(readI32(ctx, key: key) ?? 0) }
         func floatKey(_ key: String) -> Float { readF32(ctx, key: key) ?? 0 }
+        func optFloatKey(_ key: String) -> Float? { readF32(ctx, key: key) }
         func stringKey(_ key: String) -> String { readStr(ctx, key: key) ?? "" }
 
+        // ── Resolve architecture prefix ────────────────────────────────────
+        // `general.architecture` contains the model family: "llama", "opt",
+        // "falcon", "phi", "persimmon", "mistral", etc.
+        // Every architecture-specific hyper-parameter key is prefixed with it.
         let archStr = stringKey(GGUFKey.generalArchitecture)
+        let prefix  = archStr.isEmpty ? "llama" : archStr.lowercased()
         let name    = stringKey(GGUFKey.generalName)
 
-        let numLayers    = int32Key(GGUFKey.blockCount)
-        let hiddenSize   = int32Key(GGUFKey.embeddingLength)
-        let intermediate = int32Key(GGUFKey.feedForwardLength)
-        let numQHeads    = int32Key(GGUFKey.headCount)
-        let numKVHeads   = int32Key(GGUFKey.headCountKV)
-        let ctxLen       = int32Key(GGUFKey.maxPositionEmbeddings)
-        let rmsEps       = floatKey(GGUFKey.rmsNormEps)
-        let ropeBase     = floatKey(GGUFKey.ropeFreqBase)
-        let vocabSize    = int32Key(GGUFKey.vocabSize)
+        // ── Read architecture dimensions using dynamic prefix ──────────────
+        let numLayers    = int32Key(GGUFKey.blockCount(prefix))
+        let hiddenSize   = int32Key(GGUFKey.embeddingLength(prefix))
+        let intermediate = int32Key(GGUFKey.ffnLength(prefix))
+        let numQHeads    = int32Key(GGUFKey.headCount(prefix))
+        let numKVHeads   = int32Key(GGUFKey.headCountKV(prefix))
+        let ctxLen       = int32Key(GGUFKey.contextLength(prefix))
+        let ropeBase     = floatKey(GGUFKey.ropeFreqBase(prefix))
+
+        // Norm epsilon: try RMSNorm key first (LLaMA/Mistral), then plain
+        // LayerNorm key (OPT/GPT-NeoX/Bloom/Falcon with LN).
+        let rmsEps: Float = optFloatKey(GGUFKey.rmsNormEps(prefix))
+            ?? optFloatKey(GGUFKey.layerNormEps(prefix))
+            ?? 1e-5
+
+        // Vocab size comes from the tokenizer namespace, not the arch namespace
+        let vocabSize = int32Key(GGUFKey.vocabTokens)
 
         guard numLayers > 0, hiddenSize > 0, intermediate > 0 else {
             throw FlashModelError.headerParseFailure(
                 "Could not read model architecture from GGUF. " +
-                "Found: layers=\(numLayers), hidden=\(hiddenSize), intermediate=\(intermediate)"
+                "arch=\(prefix), layers=\(numLayers), hidden=\(hiddenSize), " +
+                "intermediate=\(intermediate). " +
+                "Ensure this is a valid GGUF file produced by llama.cpp or a compatible converter."
             )
         }
 
@@ -625,7 +686,8 @@ enum GGUFReader {
         let hasGate = gguf_find_tensor(ctx, GGUFKey.ffnGate(layer: 0)) >= 0
 
         return GGUFArchitecture(
-            name: name.isEmpty ? archStr : name,
+            name: name,
+            archPrefix: prefix,
             numLayers: numLayers,
             hiddenSize: hiddenSize,
             intermediateSize: intermediate,

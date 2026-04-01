@@ -415,6 +415,15 @@ actor FlashInferenceBackend: ModelBackend {
     /// GPU pipeline accessor for FFN compute (nil = CPU fallback).
     var gpuPipeline: FlashMetalPipeline? { metalPipeline }
 
+    /// Inference engine — available after model is loaded.
+    var inferenceEngine: FlashInferenceEngine? { engine }
+
+    /// Tokenizer — available after model is loaded.
+    var loadedTokenizer: FlashTokenizer? { get async { await tokenizerHolder.tokenizer } }
+
+    /// Path of the currently loaded FlashPack file.
+    var loadedModelPath: String { backendConfig.modelPath }
+
     private func buildPrompt(for request: GenerationRequest) -> String {
         switch request.task {
         case .generate:

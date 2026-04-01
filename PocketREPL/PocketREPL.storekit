@@ -2,7 +2,7 @@
   "identifier" : "com.bontecou.PocketREPL.storekit",
   "nonConsumableProducts" : [
     {
-      "displayPrice" : "2.99",
+      "displayPrice" : "9.99",
       "familySharable" : true,
       "internalID" : "com.bontecou.PocketREPL.pro",
       "localizations" : [

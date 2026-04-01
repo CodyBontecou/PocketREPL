@@ -4,6 +4,17 @@ import Foundation
 import FoundationModels
 #endif
 
+// MARK: - Foundation Models Availability
+
+enum FoundationModelsAvailabilityDetail: Equatable {
+    case available
+    case unavailableDeviceNotEligible
+    case unavailableAppleIntelligenceDisabled
+    case unavailableModelNotReady
+    case unavailableOther
+    case unavailableUnsupportedOS
+}
+
 // MARK: - Model Routing Mode
 
 /// The user's preference for which model to use for agent operations.
@@ -170,6 +181,7 @@ final class ContextSettingsManager {
         static let toolConfigurations = "contextSettings.toolConfigurations"
         static let useCustomSystemPrompt = "contextSettings.useCustomSystemPrompt"
         static let modelRoutingMode = "contextSettings.modelRoutingMode"
+        static let advancedOfflineModeEnabled = "contextSettings.advancedOfflineModeEnabled"
     }
     
     // MARK: - Default System Prompt
@@ -216,44 +228,87 @@ final class ContextSettingsManager {
         }
     }
 
-    /// Check if Foundation Models is available on this device
-    var isFoundationModelsAvailable: Bool {
+    /// Whether local model downloads are explicitly enabled as an advanced mode.
+    ///
+    /// On Apple Intelligence-capable devices, this defaults to false so users are
+    /// guided toward Foundation Models first.
+    var advancedOfflineModeEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(advancedOfflineModeEnabled, forKey: Keys.advancedOfflineModeEnabled)
+
+            // When advanced mode is off on Apple Intelligence-capable devices,
+            // keep routing on Foundation Models to avoid accidental local fallback.
+            if shouldGateLocalModelDownloads, modelRoutingMode != .foundationModelOnly {
+                modelRoutingMode = .foundationModelOnly
+            }
+        }
+    }
+
+    /// Detailed Foundation Models availability for nuanced UI decisions.
+    var foundationModelsAvailabilityDetail: FoundationModelsAvailabilityDetail {
         #if canImport(FoundationModels)
         if #available(iOS 26.0, macOS 26.0, *) {
-            let availability = SystemLanguageModel.default.availability
-            if case .available = availability {
-                return true
+            switch SystemLanguageModel.default.availability {
+            case .available:
+                return .available
+            case .unavailable(let reason):
+                switch reason {
+                case .deviceNotEligible:
+                    return .unavailableDeviceNotEligible
+                case .appleIntelligenceNotEnabled:
+                    return .unavailableAppleIntelligenceDisabled
+                case .modelNotReady:
+                    return .unavailableModelNotReady
+                @unknown default:
+                    return .unavailableOther
+                }
+            @unknown default:
+                return .unavailableOther
             }
         }
         #endif
-        return false
+        return .unavailableUnsupportedOS
+    }
+
+    /// Check if Foundation Models is available on this device
+    var isFoundationModelsAvailable: Bool {
+        foundationModelsAvailabilityDetail == .available
+    }
+
+    /// Whether this device is capable of Apple Intelligence in principle.
+    ///
+    /// True for devices where Foundation Models is available, disabled, or still
+    /// preparing. False for unsupported OS / ineligible hardware.
+    var isAppleIntelligenceCapableDevice: Bool {
+        switch foundationModelsAvailabilityDetail {
+        case .available, .unavailableAppleIntelligenceDisabled, .unavailableModelNotReady, .unavailableOther:
+            return true
+        case .unavailableDeviceNotEligible, .unavailableUnsupportedOS:
+            return false
+        }
+    }
+
+    /// True when local model downloads should remain behind explicit advanced-mode opt-in.
+    var shouldGateLocalModelDownloads: Bool {
+        isAppleIntelligenceCapableDevice && !advancedOfflineModeEnabled
     }
 
     /// Human-readable reason why Foundation Models is unavailable
     var foundationModelsUnavailabilityReason: String? {
-        #if canImport(FoundationModels)
-        if #available(iOS 26.0, macOS 26.0, *) {
-            let availability = SystemLanguageModel.default.availability
-            switch availability {
-            case .available:
-                return nil
-            case .unavailable(let reason):
-                switch reason {
-                case .deviceNotEligible:
-                    return String(localized: "This device doesn't support Apple Intelligence")
-                case .appleIntelligenceNotEnabled:
-                    return String(localized: "Apple Intelligence is not enabled. Enable it in Settings > Apple Intelligence & Siri")
-                case .modelNotReady:
-                    return String(localized: "Apple Intelligence is still downloading. Please wait.")
-                @unknown default:
-                    return String(localized: "Apple Intelligence is unavailable")
-                }
-            @unknown default:
-                return String(localized: "Unknown availability status")
-            }
+        switch foundationModelsAvailabilityDetail {
+        case .available:
+            return nil
+        case .unavailableDeviceNotEligible:
+            return String(localized: "This device doesn't support Apple Intelligence")
+        case .unavailableAppleIntelligenceDisabled:
+            return String(localized: "Apple Intelligence is not enabled. Enable it in Settings > Apple Intelligence & Siri")
+        case .unavailableModelNotReady:
+            return String(localized: "Apple Intelligence is still downloading. Please wait.")
+        case .unavailableOther:
+            return String(localized: "Apple Intelligence is unavailable")
+        case .unavailableUnsupportedOS:
+            return String(localized: "Requires iOS 26 or later")
         }
-        #endif
-        return String(localized: "Requires iOS 26 or later")
     }
     
     /// Set of enabled tool IDs for quick lookup
@@ -304,6 +359,13 @@ final class ContextSettingsManager {
             self.modelRoutingMode = mode
         } else {
             self.modelRoutingMode = .hybrid
+        }
+
+        // Local downloads are an explicit advanced mode on Apple Intelligence-capable devices.
+        self.advancedOfflineModeEnabled = UserDefaults.standard.bool(forKey: Keys.advancedOfflineModeEnabled)
+
+        if shouldGateLocalModelDownloads, modelRoutingMode != .foundationModelOnly {
+            modelRoutingMode = .foundationModelOnly
         }
     }
     
@@ -377,6 +439,8 @@ final class ContextSettingsManager {
     func resetAll() {
         resetSystemPrompt()
         toolConfigurations = ToolConfiguration.defaultTools()
+        modelRoutingMode = .hybrid
+        advancedOfflineModeEnabled = false
     }
     
     /// Check if a tool is enabled

@@ -22,10 +22,18 @@ struct ModelRegistryEntry: Codable, Identifiable, Sendable {
         case qwen25Coder = "Qwen 2.5 Coder"
         case qwen3 = "Qwen 3"
         case qwen35 = "Qwen 3.5"
+        case gemma3 = "Gemma 3"
         case gemma3n = "Gemma 3n"
         case codegemma = "CodeGemma"
         case starcoder = "StarCoder"
         case deepseek = "DeepSeek"
+        case deepseekR1 = "DeepSeek R1"
+        case phi = "Phi"
+        case llama = "Llama"
+        case smolLM = "SmolLM"
+        /// Flash-optimised models with ReLU/ReLU²/SqReLU activation sparsity.
+        /// These are the models from Apple's "LLM in a Flash" paper experiments.
+        case flashInference = "Flash Inference"
         case other = "Other"
         
         // Legacy support - map old "qwen" to qwen25Coder
@@ -36,10 +44,16 @@ struct ModelRegistryEntry: Codable, Identifiable, Sendable {
             case "Qwen", "Qwen 2.5 Coder": self = .qwen25Coder
             case "Qwen 3": self = .qwen3
             case "Qwen 3.5": self = .qwen35
+            case "Gemma 3": self = .gemma3
             case "Gemma 3n": self = .gemma3n
             case "CodeGemma": self = .codegemma
             case "StarCoder": self = .starcoder
             case "DeepSeek": self = .deepseek
+            case "DeepSeek R1": self = .deepseekR1
+            case "Phi": self = .phi
+            case "Llama": self = .llama
+            case "SmolLM": self = .smolLM
+            case "Flash Inference": self = .flashInference
             default: self = .other
             }
         }
@@ -53,27 +67,100 @@ struct ModelRegistryEntry: Codable, Identifiable, Sendable {
             case .qwen25Coder: return "Alibaba's code generation models"
             case .qwen3: return "Next-gen Qwen with improved reasoning"
             case .qwen35: return "Latest Qwen with vision capabilities"
+            case .gemma3: return "Google's latest compact models"
             case .gemma3n: return "Google's efficient on-device models"
             case .codegemma: return "Google's code-focused Gemma"
             case .starcoder: return "BigCode/HuggingFace code models"
             case .deepseek: return "DeepSeek AI code specialists"
+            case .deepseekR1: return "DeepSeek R1 reasoning distillations"
+            case .phi: return "Microsoft's compact powerhouse models"
+            case .llama: return "Meta's open-weight mobile models"
+            case .smolLM: return "HuggingFace's purpose-built on-device models"
+            case .flashInference: return "ReLU-sparse models for Flash inference — run models larger than your RAM"
             case .other: return "Custom and other models"
             }
         }
+
+        /// Whether this family benefits from Flash inference conversion.
+        var isFlashCompatible: Bool { self == .flashInference }
         
         /// Sort order for displaying families
         var sortOrder: Int {
             switch self {
-            case .qwen25Coder: return 0
-            case .qwen3: return 1
-            case .qwen35: return 2
-            case .gemma3n: return 3
-            case .deepseek: return 4
-            case .codegemma: return 5
-            case .starcoder: return 6
+            case .flashInference: return 0  // Show flash models first — they're the headline feature
+            case .llama: return 1
+            case .phi: return 2
+            case .qwen25Coder: return 3
+            case .qwen3: return 4
+            case .qwen35: return 5
+            case .gemma3: return 6
+            case .gemma3n: return 7
+            case .deepseek: return 8
+            case .deepseekR1: return 9
+            case .smolLM: return 10
+            case .codegemma: return 11
+            case .starcoder: return 12
             case .other: return 99
             }
         }
+
+        /// The company / organisation behind this model family.
+        var company: String {
+            switch self {
+            case .flashInference:   return "Meta"
+            case .llama:            return "Meta"
+            case .qwen25Coder:      return "Alibaba"
+            case .qwen3:            return "Alibaba"
+            case .qwen35:           return "Alibaba"
+            case .gemma3:           return "Google"
+            case .gemma3n:          return "Google"
+            case .codegemma:        return "Google"
+            case .deepseek:         return "DeepSeek"
+            case .deepseekR1:       return "DeepSeek"
+            case .phi:              return "Microsoft"
+            case .smolLM:           return "HuggingFace"
+            case .starcoder:        return "BigCode"
+            case .other:            return "Other"
+            }
+        }
+
+        /// Approximate year the family was first released (used for date sorting).
+        var releaseYear: Int {
+            switch self {
+            case .flashInference:   return 2022  // Meta OPT (May 2022)
+            case .starcoder:        return 2023  // BigCode StarCoder (May 2023)
+            case .deepseek:         return 2023  // DeepSeek Coder (Oct 2023)
+            case .codegemma:        return 2024  // CodeGemma (Apr 2024)
+            case .qwen25Coder:      return 2024  // Qwen2.5 Coder (Sep 2024)
+            case .llama:            return 2024  // Llama 3.2 (Sep 2024)
+            case .smolLM:           return 2024  // SmolLM2 (Nov 2024)
+            case .deepseekR1:       return 2025  // DeepSeek R1 (Jan 2025)
+            case .phi:              return 2025  // Phi-4 mini (Feb 2025)
+            case .qwen35:           return 2025  // Qwen3.5 (Mar 2025)
+            case .qwen3:            return 2025  // Qwen3 (Apr 2025)
+            case .gemma3:           return 2025  // Gemma 3 (Mar 2025)
+            case .gemma3n:          return 2025  // Gemma 3n (Jun 2025)
+            case .other:            return 2020
+            }
+        }
+    }
+
+    /// Whether this model has ReLU-based sparsity and benefits from Flash inference.
+    var isFlashCompatible: Bool { family.isFlashCompatible }
+
+    /// Parameter count as a Double (in billions) for numeric sorting.
+    /// Parses strings like "0.5B", "1.3B", "6.7B", "8B". Returns 0 if unparseable.
+    var parameterCountDouble: Double {
+        let raw = parameterCount
+            .trimmingCharacters(in: .whitespaces)
+            .uppercased()
+        if raw.hasSuffix("B"), let value = Double(raw.dropLast()) {
+            return value
+        }
+        if raw.hasSuffix("M"), let value = Double(raw.dropLast()) {
+            return value / 1000.0
+        }
+        return Double(raw) ?? 0
     }
     
     var formattedSize: String {
@@ -265,6 +352,7 @@ nonisolated enum CustomModelStorage {
 enum ModelRegistry {
     /// Recommended models for PocketREPL, sorted by size (smallest first).
     static let models: [ModelRegistryEntry] = [
+
         // MARK: - Qwen 2.5 Coder Family
         ModelRegistryEntry(
             id: "qwen2.5-coder-0.5b-q4km",
@@ -403,6 +491,32 @@ enum ModelRegistry {
             family: .qwen35
         ),
         
+        // MARK: - Gemma 3 Family (Google's latest compact models)
+        ModelRegistryEntry(
+            id: "gemma-3-1b-q4km",
+            name: "Gemma 3 1B",
+            description: "Google's tiny but capable model. Great for quick tasks.",
+            sizeBytes: 750_000_000,
+            downloadURL: URL(string: "https://huggingface.co/MaziyarPanahi/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it.Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "1B",
+            recommendedContextSize: 4096,
+            family: .gemma3
+        ),
+        ModelRegistryEntry(
+            id: "gemma-3-4b-q4km",
+            name: "Gemma 3 4B",
+            description: "Google's balanced model. Strong quality, popular in the community.",
+            sizeBytes: 2_320_000_000,
+            downloadURL: URL(string: "https://huggingface.co/lmstudio-community/gemma-3-4b-it-GGUF/resolve/main/gemma-3-4b-it-Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "4B",
+            recommendedContextSize: 8192,
+            family: .gemma3
+        ),
+
         // MARK: - Gemma 3n Family (Google's efficient on-device models)
         ModelRegistryEntry(
             id: "gemma-3n-e2b-q4km",
@@ -429,6 +543,122 @@ enum ModelRegistry {
             family: .gemma3n
         ),
         
+        // MARK: - Llama 3.2 Family (Meta's mobile-first models)
+        ModelRegistryEntry(
+            id: "llama-3.2-1b-q4km",
+            name: "Llama 3.2 1B",
+            description: "Meta's mobile-first model. Ultra-fast on iPhone, great for simple tasks.",
+            sizeBytes: 807_694_464,
+            downloadURL: URL(string: "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "1B",
+            recommendedContextSize: 4096,
+            family: .llama
+        ),
+        ModelRegistryEntry(
+            id: "llama-3.2-3b-q4km",
+            name: "Llama 3.2 3B",
+            description: "Meta's balanced mobile model. Strong quality for its size.",
+            sizeBytes: 2_019_377_696,
+            downloadURL: URL(string: "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "3B",
+            recommendedContextSize: 4096,
+            family: .llama
+        ),
+
+        // MARK: - Phi Family (Microsoft's compact models)
+        ModelRegistryEntry(
+            id: "phi-4-mini-q4km",
+            name: "Phi-4-mini 3.8B",
+            description: "Microsoft's best small model. Excellent reasoning and code generation for its size.",
+            sizeBytes: 2_491_874_272,
+            downloadURL: URL(string: "https://huggingface.co/unsloth/Phi-4-mini-instruct-GGUF/resolve/main/Phi-4-mini-instruct-Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "3.8B",
+            recommendedContextSize: 4096,
+            family: .phi
+        ),
+        ModelRegistryEntry(
+            id: "phi-4-mini-reasoning-q4km",
+            name: "Phi-4-mini-reasoning 3.8B",
+            description: "Chain-of-thought reasoning variant. Shows step-by-step thinking for complex problems.",
+            sizeBytes: 2_491_874_272,
+            downloadURL: URL(string: "https://huggingface.co/unsloth/Phi-4-mini-reasoning-GGUF/resolve/main/Phi-4-mini-reasoning-Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "3.8B",
+            recommendedContextSize: 4096,
+            family: .phi
+        ),
+
+        // MARK: - SmolLM Family (HuggingFace on-device models)
+        ModelRegistryEntry(
+            id: "smollm2-1.7b-q4km",
+            name: "SmolLM2 1.7B",
+            description: "Purpose-built for on-device. Fast and memory-efficient.",
+            sizeBytes: 1_055_609_824,
+            downloadURL: URL(string: "https://huggingface.co/bartowski/SmolLM2-1.7B-Instruct-GGUF/resolve/main/SmolLM2-1.7B-Instruct-Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "1.7B",
+            recommendedContextSize: 4096,
+            family: .smolLM
+        ),
+        ModelRegistryEntry(
+            id: "smollm3-3b-q4km",
+            name: "SmolLM3 3B",
+            description: "HuggingFace's latest on-device model (July 2025). 128K context support.",
+            sizeBytes: 1_910_000_000,
+            downloadURL: URL(string: "https://huggingface.co/ggml-org/SmolLM3-3B-GGUF/resolve/main/SmolLM3-Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "3B",
+            recommendedContextSize: 8192,
+            family: .smolLM
+        ),
+
+        // MARK: - DeepSeek R1 Distill Family (Reasoning models)
+        ModelRegistryEntry(
+            id: "deepseek-r1-distill-qwen-1.5b-q4km",
+            name: "DeepSeek-R1-Distill 1.5B",
+            description: "Chain-of-thought reasoning in a tiny package. Great for logic and math.",
+            sizeBytes: 1_117_320_800,
+            downloadURL: URL(string: "https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-1.5B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "1.5B",
+            recommendedContextSize: 4096,
+            family: .deepseekR1
+        ),
+        ModelRegistryEntry(
+            id: "deepseek-r1-distill-qwen-7b-q4km",
+            name: "DeepSeek-R1-Distill 7B",
+            description: "Strong reasoning model. Shows chain-of-thought for complex problems.",
+            sizeBytes: 4_683_073_504,
+            downloadURL: URL(string: "https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-7B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "7B",
+            recommendedContextSize: 8192,
+            family: .deepseekR1
+        ),
+        ModelRegistryEntry(
+            id: "deepseek-r1-0528-qwen3-8b-q4km",
+            name: "DeepSeek-R1-0528 8B",
+            description: "May 2025 improved reasoning distillation based on Qwen3. Stronger than the original R1 distill.",
+            sizeBytes: 4_680_000_000,
+            downloadURL: URL(string: "https://huggingface.co/MaziyarPanahi/DeepSeek-R1-0528-Qwen3-8B-GGUF/resolve/main/DeepSeek-R1-0528-Qwen3-8B.Q4_K_M.gguf")!,
+            sha256: nil,
+            quantization: "Q4_K_M",
+            parameterCount: "8B",
+            recommendedContextSize: 8192,
+            family: .deepseekR1
+        ),
+
         // MARK: - DeepSeek Coder Family
         ModelRegistryEntry(
             id: "deepseek-coder-1.3b-q4km",
@@ -500,7 +730,12 @@ struct InstalledModel: Identifiable, Sendable {
     let sizeBytes: Int64
     let registryEntry: ModelRegistryEntry?
     let downloadedAt: Date
-    
+
+    /// For `.flashpack` models: path to companion `.gguf` used as tokenizer.
+    /// `FlashTokenizer.forFlashPack(at:)` also searches automatically, but
+    /// storing it here lets the UI show tokenizer info without extra I/O.
+    let tokenizerPath: URL?
+
     var name: String {
         registryEntry?.name ?? path.deletingPathExtension().lastPathComponent
     }
@@ -512,6 +747,9 @@ struct InstalledModel: Identifiable, Sendable {
     var isCustom: Bool {
         registryEntry?.isCustom ?? id.hasPrefix("custom-")
     }
+
+    /// Whether this entry represents a FlashPack (not a plain GGUF).
+    var isFlashPack: Bool { path.pathExtension == "flashpack" }
 }
 
 // MARK: - Download State
@@ -810,6 +1048,10 @@ actor ModelDownloadManager {
     }
     
     /// Get the state of a download.
+    ///
+    /// Returns `.completed` if either a `.gguf` **or** a `.flashpack` file
+    /// exists for the given ID (the FlashPack is the preferred form once
+    /// conversion has run, but the GGUF is needed as a tokenizer companion).
     func downloadState(for modelId: String) -> DownloadState {
         if let task = activeDownloads[modelId] {
             return .downloading(
@@ -819,9 +1061,16 @@ actor ModelDownloadManager {
             )
         }
         
-        let path = modelsDirectory.appendingPathComponent("\(modelId).gguf")
-        if FileManager.default.fileExists(atPath: path.path) {
-            return .completed(path)
+        let ggufPath = modelsDirectory.appendingPathComponent("\(modelId).gguf")
+        if FileManager.default.fileExists(atPath: ggufPath.path) {
+            return .completed(ggufPath)
+        }
+
+        // Also count a converted FlashPack as "completed" so the registry
+        // doesn't offer a redundant re-download button.
+        let flashPath = modelsDirectory.appendingPathComponent("\(modelId).flashpack")
+        if FileManager.default.fileExists(atPath: flashPath.path) {
+            return .completed(flashPath)
         }
         
         return .idle
@@ -829,7 +1078,12 @@ actor ModelDownloadManager {
     
     // MARK: - Storage Management
     
-    /// List all installed models.
+    /// List all installed models, including converted FlashPack files.
+    ///
+    /// Both `.gguf` and `.flashpack` files are returned as separate entries.
+    /// For FlashPack entries the `tokenizerPath` field points to the companion
+    /// `.gguf` in the same directory (if present), matching the lookup order
+    /// used by `FlashTokenizer.forFlashPack(at:)`.
     func installedModels() -> [InstalledModel] {
         let fm = FileManager.default
         
@@ -840,24 +1094,49 @@ actor ModelDownloadManager {
         ) else {
             return []
         }
-        
+
+        // Build a set of all .gguf base names for fast tokenizer-companion lookup
+        let ggufBaseNames: Set<String> = Set(
+            contents
+                .filter { $0.pathExtension == "gguf" }
+                .map { $0.deletingPathExtension().lastPathComponent }
+        )
+
         return contents.compactMap { url -> InstalledModel? in
-            guard url.pathExtension == "gguf" else { return nil }
-            
+            let ext = url.pathExtension
+            guard ext == "gguf" || ext == "flashpack" else { return nil }
+
             let values = try? url.resourceValues(forKeys: [.fileSizeKey, .creationDateKey])
             let size = Int64(values?.fileSize ?? 0)
             let created = values?.creationDate ?? Date()
-            
-            // Try to match to registry (including custom models)
+
+            // ID is the base filename without extension.
+            // A .flashpack named "llama-2-7b-q4km.flashpack" gets id "llama-2-7b-q4km",
+            // matching the registry entry and its companion "llama-2-7b-q4km.gguf".
             let id = url.deletingPathExtension().lastPathComponent
             let registryEntry = ModelRegistry.anyModel(withId: id)
-            
+
+            // For FlashPack entries, resolve companion .gguf tokenizer path
+            var tokenizerPath: URL? = nil
+            if ext == "flashpack" {
+                // Prefer explicit sidecar, then same-name .gguf
+                let sidecar = url.appendingPathExtension("tokenizer.gguf")
+                if fm.fileExists(atPath: sidecar.path) {
+                    tokenizerPath = sidecar
+                } else if ggufBaseNames.contains(id) {
+                    tokenizerPath = modelsDirectory
+                        .appendingPathComponent(id)
+                        .appendingPathExtension("gguf")
+                }
+            }
+
             return InstalledModel(
                 id: id,
                 path: url,
                 sizeBytes: size,
                 registryEntry: registryEntry,
-                downloadedAt: created
+                downloadedAt: created,
+                tokenizerPath: tokenizerPath
             )
         }.sorted { $0.downloadedAt > $1.downloadedAt }
     }
@@ -970,18 +1249,32 @@ actor ModelDownloadManager {
     }
     
     /// Delete an installed model.
+    ///
+    /// Removes both the `.gguf` source file and any `.flashpack` conversion
+    /// with the same base ID, plus metadata sidecars.
     func deleteModel(id: String) throws {
-        let path = modelsDirectory.appendingPathComponent("\(id).gguf")
-        
-        guard FileManager.default.fileExists(atPath: path.path) else {
-            throw ModelError.modelNotFound(path: path.path)
+        let ggufPath  = modelsDirectory.appendingPathComponent("\(id).gguf")
+        let flashPath = modelsDirectory.appendingPathComponent("\(id).flashpack")
+
+        let ggufExists  = FileManager.default.fileExists(atPath: ggufPath.path)
+        let flashExists = FileManager.default.fileExists(atPath: flashPath.path)
+
+        guard ggufExists || flashExists else {
+            throw ModelError.modelNotFound(path: ggufPath.path)
         }
-        
-        try FileManager.default.removeItem(at: path)
-        
-        // Also delete metadata
-        let metadataPath = path.appendingPathExtension("meta.json")
-        try? FileManager.default.removeItem(at: metadataPath)
+
+        if ggufExists {
+            try FileManager.default.removeItem(at: ggufPath)
+            let metadataPath = ggufPath.appendingPathExtension("meta.json")
+            try? FileManager.default.removeItem(at: metadataPath)
+        }
+
+        if flashExists {
+            try? FileManager.default.removeItem(at: flashPath)
+            // Also remove tokenizer sidecar if present
+            let sidecar = flashPath.appendingPathExtension("tokenizer.gguf")
+            try? FileManager.default.removeItem(at: sidecar)
+        }
         
         // If this was a custom model, remove it from storage
         if id.hasPrefix("custom-") {
@@ -1014,16 +1307,24 @@ actor ModelDownloadManager {
         }
     }
     
-    /// Check if a model is installed.
+    /// Check if a model is installed (as either a `.gguf` or `.flashpack`).
     func isModelInstalled(id: String) -> Bool {
-        let path = modelsDirectory.appendingPathComponent("\(id).gguf")
-        return FileManager.default.fileExists(atPath: path.path)
+        let gguf = modelsDirectory.appendingPathComponent("\(id).gguf")
+        if FileManager.default.fileExists(atPath: gguf.path) { return true }
+        let flash = modelsDirectory.appendingPathComponent("\(id).flashpack")
+        return FileManager.default.fileExists(atPath: flash.path)
     }
     
-    /// Get the path for an installed model.
+    /// Get the best available path for an installed model.
+    ///
+    /// Prefers the `.flashpack` version if it exists, otherwise returns the
+    /// `.gguf`. Returns `nil` if neither is present.
     func modelPath(for id: String) -> URL? {
-        let path = modelsDirectory.appendingPathComponent("\(id).gguf")
-        return FileManager.default.fileExists(atPath: path.path) ? path : nil
+        // Prefer FlashPack for flash-compatible registry entries
+        let flash = modelsDirectory.appendingPathComponent("\(id).flashpack")
+        if FileManager.default.fileExists(atPath: flash.path) { return flash }
+        let gguf = modelsDirectory.appendingPathComponent("\(id).gguf")
+        return FileManager.default.fileExists(atPath: gguf.path) ? gguf : nil
     }
     
     // MARK: - Verification

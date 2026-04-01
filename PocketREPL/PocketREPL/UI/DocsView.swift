@@ -259,8 +259,8 @@ struct LocalModelContent: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             DocParagraph("""
-            For code generation tasks, PocketREPL can use downloadable local models based on llama.cpp. \
-            These models are specifically trained for coding tasks and run via GPU acceleration.
+            Local models are an optional Advanced Offline Mode. On Apple Intelligence-capable devices, \
+            PocketREPL uses Foundation Models by default and keeps local downloads behind explicit opt-in.
             """)
             
             DocSubheading("Available Models")
@@ -277,10 +277,10 @@ struct LocalModelContent: View {
             DocSubheading("Model Management")
             
             DocBulletList([
-                "Download models from the Models tab",
-                "Models are stored locally on device",
-                "Load/unload to manage memory",
-                "Last used model auto-loads on launch"
+                "Enable Advanced Offline Mode in the Models tab",
+                "Download models locally from Hugging Face",
+                "Load/unload models to manage memory",
+                "Last used local model can auto-load on launch"
             ])
             
             DocSubheading("Memory Considerations")

@@ -1,5 +1,27 @@
 import SwiftUI
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
+// MARK: - Model Sort Order
+
+enum ModelSortOrder: String, CaseIterable {
+    case company      = "Company"
+    case size         = "Size"
+    case parameters   = "Parameters"
+    case dateReleased = "Date Released"
+
+    var icon: String {
+        switch self {
+        case .company:      return "building.2"
+        case .size:         return "internaldrive"
+        case .parameters:   return "number"
+        case .dateReleased: return "calendar"
+        }
+    }
+}
+
 // MARK: - Model Management View
 
 /// Main view for browsing, downloading, and managing local LLM models.
@@ -21,6 +43,21 @@ struct ModelManagementView: View {
     @State private var customModelURL = ""
     @State private var customModelContextSize = "4096"
     @State private var expandedFamilies: Set<ModelRegistryEntry.ModelFamily> = []
+    @State private var settingsManager = ContextSettingsManager.shared
+    @State private var showingAdvancedModeConfirmation = false
+    @AppStorage("modelSortOrder") private var modelSortOrderRaw: String = ModelSortOrder.company.rawValue
+
+    private var modelSortOrder: ModelSortOrder {
+        ModelSortOrder(rawValue: modelSortOrderRaw) ?? .company
+    }
+
+    private var shouldGateLocalModelDownloads: Bool {
+        settingsManager.shouldGateLocalModelDownloads
+    }
+
+    private var shouldShowEnableAppleIntelligencePrompt: Bool {
+        settingsManager.isAppleIntelligenceCapableDevice && !settingsManager.isFoundationModelsAvailable
+    }
     
     // Adaptive colors
     private var foregroundColor: Color {
@@ -41,17 +78,21 @@ struct ModelManagementView: View {
             
             ScrollView {
                 VStack(spacing: 20) {
-                    // Active Model Card
-                    activeModelCard
-                    
-                    // Storage Visualization
-                    storageCard
-                    
-                    // Installed Models
-                    installedModelsSection
-                    
-                    // Available Models
-                    availableModelsSection
+                    if shouldGateLocalModelDownloads {
+                        foundationModelsOnboardingCard
+                    } else {
+                        // Active Model Card
+                        activeModelCard
+
+                        // Storage Visualization
+                        storageCard
+
+                        // Installed Models
+                        installedModelsSection
+
+                        // Available Models
+                        availableModelsSection
+                    }
                 }
                 .padding(16)
             }
@@ -87,6 +128,17 @@ struct ModelManagementView: View {
             Button(String(localized: "Cancel"), role: .cancel) {}
         } message: { model in
             Text("This will remove \(model.formattedSize) from your device. This action cannot be undone.")
+        }
+        .confirmationDialog(
+            String(localized: "Enable Advanced Offline Mode?"),
+            isPresented: $showingAdvancedModeConfirmation
+        ) {
+            Button(String(localized: "Enable Offline Downloads"), role: .destructive) {
+                settingsManager.advancedOfflineModeEnabled = true
+            }
+            Button(String(localized: "Cancel"), role: .cancel) {}
+        } message: {
+            Text("This unlocks local model downloads from Hugging Face. These large model weight files are optional and intended for advanced/offline workflows.")
         }
         .overlay {
             if isLoading {
@@ -129,6 +181,95 @@ struct ModelManagementView: View {
         }
     }
     
+    // MARK: - Foundation Models Onboarding
+
+    private var foundationModelsOnboardingCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("APPLE INTELLIGENCE", comment: "Section header for Apple Intelligence guidance")
+                .font(.escherCaption2)
+                .tracking(1)
+                .foregroundStyle(Color.escherSecondaryText)
+
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(foregroundColor.opacity(0.1))
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: "apple.intelligence")
+                        .font(.escherBody)
+                        .foregroundStyle(foregroundColor)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Use Apple Intelligence by default", comment: "Guidance title in model onboarding")
+                        .font(.escherCallout.weight(.semibold))
+                        .foregroundStyle(foregroundColor)
+
+                    Text("On this device, PocketREPL is optimized for Apple Intelligence. Local model downloads are hidden unless you explicitly enable Advanced Offline Mode.", comment: "Guidance body in model onboarding")
+                        .font(.escherFootnote)
+                        .foregroundStyle(Color.escherSecondaryText)
+                }
+            }
+
+            if shouldShowEnableAppleIntelligencePrompt {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(Color.escherWarning)
+                    Text(settingsManager.foundationModelsUnavailabilityReason ?? String(localized: "Apple Intelligence is currently unavailable."))
+                        .font(.escherFootnote)
+                        .foregroundStyle(Color.escherSecondaryText)
+                }
+
+                Button {
+                    openAppleIntelligenceSettings()
+                } label: {
+                    HStack {
+                        Image(systemName: "gear")
+                        Text("Open Apple Intelligence Settings", comment: "Button to open Apple Intelligence settings")
+                    }
+                    .font(.escherFootnote.weight(.semibold))
+                    .foregroundStyle(foregroundColor)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(foregroundColor.opacity(0.08))
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+
+            Button {
+                showingAdvancedModeConfirmation = true
+            } label: {
+                HStack {
+                    Image(systemName: "cpu")
+                    Text("Enable Advanced Offline Mode", comment: "Button to unlock offline model downloads")
+                }
+                .font(.escherFootnote.weight(.semibold))
+                .foregroundStyle(Color.escherSecondaryText)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Color.escherSecondaryText.opacity(0.3), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(18)
+        .escherCard()
+    }
+
+    private func openAppleIntelligenceSettings() {
+        #if os(iOS)
+        if let url = URL(string: "prefs:root=APPLE_INTELLIGENCE") {
+            UIApplication.shared.open(url)
+        }
+        #endif
+    }
+
     // MARK: - Active Model Card
     
     private var activeModelCard: some View {
@@ -395,17 +536,49 @@ struct ModelManagementView: View {
     }
     
     // MARK: - Available Models Section
-    
+
     private var availableModelsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
+            // Header row: title + sort menu + custom button
+            HStack(spacing: 10) {
                 Text("AVAILABLE FOR DOWNLOAD", comment: "Section header for downloadable models")
                     .font(.escherCaption2)
                     .tracking(1)
                     .foregroundStyle(Color.escherSecondaryText)
-                
+
                 Spacer()
-                
+
+                // Sort picker
+                Menu {
+                    ForEach(ModelSortOrder.allCases, id: \.self) { order in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                modelSortOrderRaw = order.rawValue
+                            }
+                        } label: {
+                            Label(order.rawValue, systemImage: order.icon)
+                            if modelSortOrder == order {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: modelSortOrder.icon)
+                            .font(.escherMini.weight(.bold))
+                        Text(modelSortOrder.rawValue)
+                            .font(.escherCaption2)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(Font.system(size: 7, weight: .bold))
+                    }
+                    .foregroundStyle(foregroundColor.opacity(0.7))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(foregroundColor.opacity(0.1)))
+                }
+                .buttonStyle(.plain)
+
+                // Custom model button
                 Button {
                     showingCustomModelSheet = true
                 } label: {
@@ -418,78 +591,81 @@ struct ModelManagementView: View {
                     .foregroundStyle(foregroundColor.opacity(0.7))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(
-                        Capsule()
-                            .fill(foregroundColor.opacity(0.1))
-                    )
+                    .background(Capsule().fill(foregroundColor.opacity(0.1)))
                 }
                 .buttonStyle(.plain)
             }
-            
-            // Grouped by family with accordions
-            VStack(spacing: 10) {
-                ForEach(groupedAvailableModels, id: \.family) { group in
-                    ModelFamilyAccordion(
-                        family: group.family,
-                        models: group.models,
-                        isExpanded: expandedFamilies.contains(group.family),
-                        downloadProgress: downloadProgress,
-                        onToggle: {
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                if expandedFamilies.contains(group.family) {
-                                    expandedFamilies.remove(group.family)
-                                } else {
-                                    expandedFamilies.insert(group.family)
+
+            if modelSortOrder == .company {
+                // Default grouped accordion view
+                VStack(spacing: 10) {
+                    ForEach(groupedAvailableModels, id: \.family) { group in
+                        ModelFamilyAccordion(
+                            family: group.family,
+                            models: group.models,
+                            isExpanded: expandedFamilies.contains(group.family),
+                            downloadProgress: downloadProgress,
+                            onToggle: {
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    if expandedFamilies.contains(group.family) {
+                                        expandedFamilies.remove(group.family)
+                                    } else {
+                                        expandedFamilies.insert(group.family)
+                                    }
                                 }
-                            }
-                        },
-                        onDownload: { model in
-                            Task { await downloadModel(model) }
-                        },
-                        onCancelDownload: { modelId in
-                            Task { await cancelDownload(modelId) }
-                        }
-                    )
+                            },
+                            onDownload: { model in Task { await downloadModel(model) } },
+                            onCancelDownload: { modelId in Task { await cancelDownload(modelId) } }
+                        )
+                    }
+                    if !pendingCustomModels.isEmpty {
+                        ModelFamilyAccordion(
+                            family: .other,
+                            models: pendingCustomModels,
+                            isExpanded: expandedFamilies.contains(.other),
+                            downloadProgress: downloadProgress,
+                            onToggle: {
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    if expandedFamilies.contains(.other) {
+                                        expandedFamilies.remove(.other)
+                                    } else {
+                                        expandedFamilies.insert(.other)
+                                    }
+                                }
+                            },
+                            onDownload: { model in Task { await downloadModel(model) } },
+                            onCancelDownload: { modelId in Task { await cancelDownload(modelId) } }
+                        )
+                    }
                 }
-                
-                // Show pending custom models (not yet downloaded)
-                if !pendingCustomModels.isEmpty {
-                    ModelFamilyAccordion(
-                        family: .other,
-                        models: pendingCustomModels,
-                        isExpanded: expandedFamilies.contains(.other),
-                        downloadProgress: downloadProgress,
-                        onToggle: {
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                if expandedFamilies.contains(.other) {
-                                    expandedFamilies.remove(.other)
-                                } else {
-                                    expandedFamilies.insert(.other)
-                                }
+            } else {
+                // Flat sorted list
+                VStack(spacing: 8) {
+                    ForEach(sortedFlatModels) { model in
+                        if let progress = downloadProgress[model.id] {
+                            FlatDownloadProgressRow(
+                                model: model,
+                                progress: progress,
+                                onCancel: { Task { await cancelDownload(model.id) } }
+                            )
+                        } else {
+                            FlatAvailableModelRow(model: model) {
+                                Task { await downloadModel(model) }
                             }
-                        },
-                        onDownload: { model in
-                            Task { await downloadModel(model) }
-                        },
-                        onCancelDownload: { modelId in
-                            Task { await cancelDownload(modelId) }
                         }
-                    )
+                    }
                 }
             }
-            
+
             // Footer
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
-                    Image(systemName: "info.circle")
-                        .font(.escherCaption)
+                    Image(systemName: "info.circle").font(.escherCaption)
                     Text("Models are downloaded from Hugging Face and stored locally.", comment: "Footer text")
                         .font(.escherCaption)
                 }
-                
                 HStack(spacing: 8) {
-                    Image(systemName: "cpu")
-                        .font(.escherCaption)
+                    Image(systemName: "cpu").font(.escherCaption)
                     Text("Code is generated on-device using llama.cpp.", comment: "Footer text about llama.cpp")
                         .font(.escherCaption)
                 }
@@ -500,23 +676,42 @@ struct ModelManagementView: View {
         .padding(18)
         .escherCard()
     }
-    
-    /// Groups available models by family for accordion display
-    private var groupedAvailableModels: [(family: ModelRegistryEntry.ModelFamily, models: [ModelRegistryEntry])] {
-        let grouped = Dictionary(grouping: availableModels) { $0.family }
-        return grouped
-            .map { (family: $0.key, models: $0.value.sorted { $0.sizeBytes < $1.sizeBytes }) }
-            .sorted { $0.family.sortOrder < $1.family.sortOrder }
-    }
-    
+
+    // MARK: - Sort / Filter Helpers
+
+    /// All registry models not yet installed.
     private var availableModels: [ModelRegistryEntry] {
         let installedIds = Set(installedModels.map { $0.id })
         return ModelRegistry.models.filter { !installedIds.contains($0.id) }
     }
-    
+
+    /// Custom models not yet installed.
     private var pendingCustomModels: [ModelRegistryEntry] {
         let installedIds = Set(installedModels.map { $0.id })
         return CustomModelStorage.loadCustomModels().filter { !installedIds.contains($0.id) }
+    }
+
+    /// Groups available models by family, sorted according to the current sort order (company sort).
+    private var groupedAvailableModels: [(family: ModelRegistryEntry.ModelFamily, models: [ModelRegistryEntry])] {
+        let grouped = Dictionary(grouping: availableModels) { $0.family }
+        let pairs = grouped.map { (family: $0.key, models: $0.value.sorted { $0.sizeBytes < $1.sizeBytes }) }
+        return pairs.sorted { $0.family.company < $1.family.company }
+    }
+
+    /// All available models (+ custom) sorted according to the current non-company sort order.
+    private var sortedFlatModels: [ModelRegistryEntry] {
+        let all = availableModels + pendingCustomModels
+        switch modelSortOrder {
+        case .company:
+            return all  // Not used; guarded above
+        case .size:
+            return all.sorted { $0.sizeBytes < $1.sizeBytes }
+        case .parameters:
+            return all.sorted { $0.parameterCountDouble < $1.parameterCountDouble }
+        case .dateReleased:
+            // Newest first — higher releaseYear comes first
+            return all.sorted { $0.family.releaseYear > $1.family.releaseYear }
+        }
     }
     
     /// Get the model family for the currently active model
@@ -576,25 +771,13 @@ struct ModelManagementView: View {
                 threadCount: 4
             )
 
-            // Route to FlashInferenceBackend for .flashpack models,
-            // LlamaBackend for standard .gguf models.
-            if path.hasSuffix(".flashpack") {
-                let backend = FlashInferenceBackend(config: FlashBackendConfig(
-                    modelPath: path,
-                    contextSize: contextSize,
-                    temperature: 0.2,
-                    topK: 40,
-                    topP: 0.95
-                ))
-                await modelManager.setBackend(backend)
-            } else {
-                guard model.registryEntry != nil else {
-                    errorMessage = String(localized: "Cannot load unknown model format")
-                    return
-                }
-                let backend = LlamaBackend()
-                await modelManager.setBackend(backend)
+            // Use LlamaBackend for standard .gguf models.
+            guard !path.hasSuffix(".flashpack") else {
+                errorMessage = String(localized: "FlashPack models are not supported in this version. Please use a standard .gguf model.")
+                return
             }
+            let backend = LlamaBackend()
+            await modelManager.setBackend(backend)
 
             try await modelManager.load(configuration: config, modelId: model.id, persistSelection: true)
             
@@ -845,15 +1028,19 @@ struct ModelProviderIcon: View {
         case .qwen25Coder, .qwen3, .qwen35:
             QwenIcon()
                 .stroke(foregroundColor.opacity(isActive ? 1.0 : 0.6), lineWidth: size * 0.045)
-        case .gemma3n, .codegemma:
+        case .gemma3, .gemma3n, .codegemma:
             GemmaIcon()
                 .fill(foregroundColor.opacity(isActive ? 1.0 : 0.6))
         case .starcoder:
             StarCoderIcon()
                 .fill(foregroundColor.opacity(isActive ? 1.0 : 0.6))
-        case .deepseek:
+        case .deepseek, .deepseekR1:
             DeepSeekIcon()
                 .stroke(foregroundColor.opacity(isActive ? 1.0 : 0.6), lineWidth: size * 0.045)
+        case .phi, .llama, .smolLM, .flashInference:
+            Image(systemName: "cube.box")
+                .font(.system(size: size * 0.4, weight: .medium))
+                .foregroundStyle(foregroundColor.opacity(isActive ? 1.0 : 0.6))
         case .other:
             Image(systemName: "cube.box")
                 .font(.system(size: size * 0.4, weight: .medium))
@@ -1421,6 +1608,14 @@ struct ModelFamilyAccordion: View {
                     
                     Spacer()
                     
+                    // Release year badge
+                    Text(String(family.releaseYear))
+                        .font(.escherCaption2)
+                        .foregroundStyle(foreground.opacity(0.45))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(foreground.opacity(0.06)))
+
                     // Model count badge
                     Text("\(models.count)")
                         .font(.escherCaption.weight(.bold))
@@ -1525,6 +1720,10 @@ struct AccordionModelRow: View {
                         Text("•")
                             .font(.escherCaption2)
                         Text(model.formattedSize)
+                            .font(.escherCaption2)
+                        Text("•")
+                            .font(.escherCaption2)
+                        Text(String(model.family.releaseYear))
                             .font(.escherCaption2)
                     }
                     .foregroundStyle(Color.escherSecondaryText)
@@ -1631,6 +1830,149 @@ struct AccordionDownloadProgressRow: View {
     }
 }
 
+// MARK: - Flat Sorted Model Rows
+
+/// Model row used in the flat sorted list (size / parameters / date views).
+/// Shows a small family icon badge so the user can still see provenance.
+struct FlatAvailableModelRow: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let model: ModelRegistryEntry
+    let onDownload: () -> Void
+
+    @State private var showingDetail = false
+
+    private var foreground: Color { colorScheme == .dark ? .escherPaper : .escherInk }
+
+    var body: some View {
+        Button { showingDetail = true } label: {
+            HStack(spacing: 10) {
+                // Small family icon
+                ModelProviderIcon(
+                    family: model.family,
+                    size: 32,
+                    isActive: false,
+                    colorScheme: colorScheme
+                )
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(model.name)
+                        .font(.escherFootnote.weight(.medium))
+                        .foregroundStyle(foreground)
+                        .lineLimit(1)
+
+                    HStack(spacing: 5) {
+                        // Company badge
+                        Text(model.family.company)
+                            .font(.escherCaption2)
+                            .foregroundStyle(foreground.opacity(0.5))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule().fill(foreground.opacity(0.07))
+                            )
+
+                        Text(model.parameterCount)
+                            .font(.escherCaption2)
+                            .foregroundStyle(Color.escherSecondaryText)
+                        Text("·").font(.escherCaption2).foregroundStyle(Color.escherSecondaryText)
+                        Text(model.formattedSize)
+                            .font(.escherCaption2)
+                            .foregroundStyle(Color.escherSecondaryText)
+                        Text("·").font(.escherCaption2).foregroundStyle(Color.escherSecondaryText)
+                        Text(String(model.family.releaseYear))
+                            .font(.escherCaption2)
+                            .foregroundStyle(Color.escherSecondaryText)
+                    }
+                }
+
+                Spacer()
+
+                Button {
+                    onDownload()
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(foreground.opacity(0.1))
+                            .frame(width: 32, height: 32)
+                        Image(systemName: "arrow.down")
+                            .font(.escherCaption.weight(.bold))
+                            .foregroundStyle(foreground.opacity(0.7))
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(colorScheme == .dark ? Color(white: 0.16) : Color.white)
+            )
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showingDetail) {
+            RegistryModelDetailView(model: model, onDownload: onDownload)
+        }
+    }
+}
+
+/// Download-progress row for the flat sorted list.
+struct FlatDownloadProgressRow: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let model: ModelRegistryEntry
+    let progress: DownloadProgress
+    let onCancel: () -> Void
+
+    private var foreground: Color { colorScheme == .dark ? .escherPaper : .escherInk }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                ModelProviderIcon(family: model.family, size: 32, isActive: false, colorScheme: colorScheme)
+
+                HStack(spacing: 6) {
+                    InfiniteStairs(size: 14)
+                    Text(model.name)
+                        .font(.escherFootnote.weight(.medium))
+                        .foregroundStyle(foreground)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Button(String(localized: "Cancel"), role: .destructive) { onCancel() }
+                    .font(.escherCaption.weight(.semibold))
+                    .foregroundStyle(Color.escherError)
+            }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4, style: .continuous).fill(foreground.opacity(0.1))
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(foreground.opacity(0.5))
+                        .frame(width: geo.size.width * progress.progress)
+                }
+            }
+            .frame(height: 6)
+
+            HStack {
+                Text(progress.formattedProgress).font(.escherCaption2).foregroundStyle(Color.escherSecondaryText)
+                Spacer()
+                Text("\(progress.percentComplete)%").font(.escherCaption2.weight(.bold)).foregroundStyle(foreground.opacity(0.7))
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(colorScheme == .dark ? Color(white: 0.16) : Color.white)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(foreground.opacity(0.1), lineWidth: 1)
+                )
+        )
+    }
+}
+
 // MARK: - Model Detail View (Installed Models)
 
 /// Detailed view for an installed model showing all metadata.
@@ -1642,16 +1984,9 @@ struct ModelDetailView: View {
     let onLoad: () -> Void
     let onDelete: () -> Void
 
-    /// Optional FlashInferenceBackend for benchmark (non-nil when a flash model is loaded)
-    var flashBackend: FlashInferenceBackend? = nil
-
     @Environment(\.dismiss) private var dismiss
-    @State private var showingFlashConversion = false
-    @State private var showingBenchmark = false
-    @State private var showingPredictor = false
 
     private var isGGUF: Bool { model.path.pathExtension == "gguf" }
-    private var isFlashPack: Bool { model.path.pathExtension == "flashpack" }
     
     private var foreground: Color {
         colorScheme == .dark ? .escherPaper : .escherInk
@@ -1835,6 +2170,8 @@ struct ModelDetailView: View {
                     SpecDivider()
                     GreyscaleSpecRow(label: String(localized: "Model Family"), value: entry.family.rawValue, colorScheme: colorScheme)
                     SpecDivider()
+                    GreyscaleSpecRow(label: String(localized: "Released"), value: String(entry.family.releaseYear), colorScheme: colorScheme)
+                    SpecDivider()
                     GreyscaleSpecRow(label: String(localized: "Context Window"), value: "\(formatNumber(entry.recommendedContextSize)) \(String(localized: "tokens"))", colorScheme: colorScheme)
                     if !entry.isCustom, let pageURL = entry.huggingFacePageURL {
                         SpecDivider()
@@ -1907,110 +2244,7 @@ struct ModelDetailView: View {
                 .buttonStyle(.plain)
             }
 
-            // ── Flash actions ─────────────────────────────────────────────
 
-            // Convert GGUF → FlashPack
-            if isGGUF {
-                Button {
-                    showingFlashConversion = true
-                } label: {
-                    HStack {
-                        Image(systemName: "bolt.fill")
-                            .foregroundStyle(Color.flashAccent)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Convert to FlashPack")
-                                .font(.escherSubheadline)
-                                .foregroundStyle(foreground)
-                            Text("Enable on-device inference beyond DRAM capacity")
-                                .font(.escherCaption)
-                                .foregroundStyle(Color.escherSecondaryText)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.escherCaption)
-                            .foregroundStyle(foreground.opacity(0.3))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.flashAccent.opacity(0.08))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(Color.flashAccent.opacity(0.25), lineWidth: 1)
-                    )
-                }
-                .buttonStyle(.plain)
-                .sheet(isPresented: $showingFlashConversion) {
-                    FlashConversionView(
-                        sourcePath: model.path.path,
-                        modelName: model.name
-                    )
-                }
-            }
-
-            // Benchmark + predictor training (for FlashPack models)
-            if isFlashPack {
-                if isActive, let fb = flashBackend {
-                    Button {
-                        showingBenchmark = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "speedometer")
-                                .foregroundStyle(Color.flashAccent)
-                            Text("Run Benchmark")
-                                .font(.escherSubheadline)
-                                .foregroundStyle(foreground)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.escherCaption)
-                                .foregroundStyle(foreground.opacity(0.3))
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(foreground.opacity(0.05))
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .sheet(isPresented: $showingBenchmark) {
-                        FlashBenchmarkView(backend: fb, modelName: model.name)
-                    }
-                }
-
-                // Train predictor (can do offline, model doesn't need to be loaded)
-                Button {
-                    showingPredictor = true
-                } label: {
-                    HStack {
-                        Image(systemName: "brain.filled.head.profile")
-                            .foregroundStyle(Color.flashAccent)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Train Sparsity Predictor")
-                                .font(.escherSubheadline)
-                                .foregroundStyle(foreground)
-                            Text("Speeds up inference by pre-fetching active neurons")
-                                .font(.escherCaption)
-                                .foregroundStyle(Color.escherSecondaryText)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.escherCaption)
-                            .foregroundStyle(foreground.opacity(0.3))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.flashAccent.opacity(0.05))
-                    )
-                }
-                .buttonStyle(.plain)
-                // Note: FlashPredictorView needs a FlashModelConfig; shown as placeholder here
-                // In production, read config from FlashPackReader when showing sheet
-            }
 
             Button(role: .destructive) {
                 dismiss()
@@ -2178,6 +2412,8 @@ struct RegistryModelDetailView: View {
                 GreyscaleSpecRow(label: String(localized: "Quantization"), value: model.quantization, colorScheme: colorScheme)
                 SpecDivider()
                 GreyscaleSpecRow(label: String(localized: "Model Family"), value: model.family.rawValue, colorScheme: colorScheme)
+                SpecDivider()
+                GreyscaleSpecRow(label: String(localized: "Released"), value: String(model.family.releaseYear), colorScheme: colorScheme)
                 SpecDivider()
                 GreyscaleSpecRow(label: String(localized: "Recommended Context"), value: "\(formatNumber(model.recommendedContextSize)) \(String(localized: "tokens"))", colorScheme: colorScheme)
                 SpecDivider()
@@ -2863,7 +3099,8 @@ struct SpecRow: View {
         path: URL(filePath: "/Models/qwen2.5-coder-1.5b.gguf"),
         sizeBytes: 934_000_000,
         registryEntry: ModelRegistry.models[1],
-        downloadedAt: Date()
+        downloadedAt: Date(),
+        tokenizerPath: nil
     )
     
     ModelDetailView(

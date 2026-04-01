@@ -339,9 +339,14 @@ struct FlashPredictorView: View {
 
     // MARK: - Training
 
-    // When non-nil, training can use the live engine for real calibration.
+        // Engine and tokenizer for real calibration data collection.
+    // Passed in from ModelDetailView when a FlashPack model is active.
     var engine: FlashInferenceEngine? = nil
     var tokenizer: FlashTokenizer? = nil
+
+    // The trained weights, posted via Notification when complete.
+    // The receiving view (ModelDetailView) saves them to disk.
+    @State private var trainedWeights: [PredictorWeights] = []
 
     private func startTraining() {
         trainingState.isTraining = true
@@ -403,6 +408,7 @@ struct FlashPredictorView: View {
                     let weights = FlashPredictorTrainer.train(
                         data: data, layerIdx: layerIdx, numLayers: numLayers, params: params
                     )
+                    await MainActor.run { trainedWeights.append(weights) }
 
                     // Evaluate on the same data (real code should use a held-out split)
                     let predictor = LayerPredictor(
@@ -429,6 +435,13 @@ struct FlashPredictorView: View {
                     trainingState.isTraining = false
                     trainingState.progress = 1.0
                     trainingState.message = "Training complete — \(numLayers) layer predictors ready"
+                    // Notify ModelDetailView so it can save the weights to disk
+                    if !trainedWeights.isEmpty {
+                        NotificationCenter.default.post(
+                            name: .flashPredictorsReady,
+                            object: trainedWeights
+                        )
+                    }
                 }
             } catch {
                 await MainActor.run {
@@ -438,6 +451,13 @@ struct FlashPredictorView: View {
             }
         }
     }
+}
+
+// MARK: - Notification
+
+extension Notification.Name {
+    /// Posted when predictor training completes. Object is `[PredictorWeights]`.
+    static let flashPredictorsReady = Notification.Name("FlashPredictorsReady")
 }
 
 // MARK: - Built-in Calibration Sentences

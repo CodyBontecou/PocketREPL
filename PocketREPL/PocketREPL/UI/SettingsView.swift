@@ -1,5 +1,8 @@
 import SwiftUI
+
+#if canImport(UIKit)
 import UIKit
+#endif
 
 // MARK: - Settings View
 
@@ -8,7 +11,10 @@ struct SettingsView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var appearanceManager = AppearanceManager.shared
     @State private var showingMailCompose = false
-    
+    @State private var showingPaywall = false
+    @State private var paywallManager = PaywallManager.shared
+    private let usageTracker = UsageTracker.shared
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -16,6 +22,9 @@ struct SettingsView: View {
                 
                 ScrollView {
                     VStack(spacing: 20) {
+                        // Pro Section
+                        proSection
+
                         // Appearance Section
                         appearanceSection
                         
@@ -30,6 +39,11 @@ struct SettingsView: View {
                     }
                     .padding(16)
                 }
+            }
+            .sheet(isPresented: $showingPaywall) {
+                PaywallView()
+                    .presentationDragIndicator(.visible)
+                    .presentationDetents([.large])
             }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
@@ -64,6 +78,138 @@ struct SettingsView: View {
         }
     }
     
+    // MARK: - Pro Section
+
+    private var proSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("PRO", comment: "Section header for pro/upgrade settings")
+                .font(.escherCaption2)
+                .tracking(1)
+                .foregroundStyle(Color.escherSecondaryText)
+
+            VStack(spacing: 0) {
+                if usageTracker.isPurchased {
+                    // Already unlocked
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.escherSuccess.opacity(0.15))
+                                .frame(width: 40, height: 40)
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.escherBody)
+                                .foregroundStyle(Color.escherSuccess)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("PocketREPL Pro", comment: "Pro unlock status title")
+                                .font(.escherCallout)
+                                .foregroundStyle(Color.escherForeground)
+                            Text("Unlimited access unlocked", comment: "Pro unlock status subtitle")
+                                .font(.escherCaption)
+                                .foregroundStyle(Color.escherSecondaryText)
+                        }
+                        Spacer()
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(Color.escherSuccess)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                } else {
+                    // Upgrade row
+                    Button {
+                        showingPaywall = true
+                    } label: {
+                        HStack(spacing: 14) {
+                            ZStack {
+                                Circle()
+                                    .fill(colorScheme == .dark
+                                          ? Color(white: 0.16)
+                                          : Color.escherMidtone.opacity(0.10))
+                                    .frame(width: 40, height: 40)
+                                PenroseTriangle()
+                                    .stroke(
+                                        colorScheme == .dark ? Color.escherPaper : Color.escherInk,
+                                        style: StrokeStyle(lineWidth: 1.5, lineJoin: .round)
+                                    )
+                                    .frame(width: 18, height: 18)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Upgrade to Pro", comment: "Upgrade to pro button title")
+                                    .font(.escherCallout)
+                                    .foregroundStyle(Color.escherForeground)
+                                let remaining = usageTracker.remainingFreeMessages
+                                Text("\(remaining) free message\(remaining == 1 ? "" : "s") remaining", comment: "Shows remaining free messages")
+                                    .font(.escherCaption)
+                                    .foregroundStyle(remaining == 0 ? Color.escherError : Color.escherSecondaryText)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.escherCaption.weight(.semibold))
+                                .foregroundStyle(Color.escherSecondaryText)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Rectangle()
+                        .fill(Color.escherMidtone.opacity(0.15))
+                        .frame(height: 1)
+                        .padding(.leading, 56)
+
+                    // Restore row
+                    Button {
+                        Task { await paywallManager.restorePurchases() }
+                    } label: {
+                        HStack(spacing: 14) {
+                            ZStack {
+                                Circle()
+                                    .fill(colorScheme == .dark
+                                          ? Color(white: 0.16)
+                                          : Color.escherMidtone.opacity(0.10))
+                                    .frame(width: 40, height: 40)
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.escherBody)
+                                    .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
+                            }
+                            Text("Restore Purchases", comment: "Restore purchases button title")
+                                .font(.escherCallout)
+                                .foregroundStyle(Color.escherForeground)
+                            Spacer()
+                            if paywallManager.isPurchasing {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(paywallManager.isPurchasing)
+
+                    if let error = paywallManager.purchaseError {
+                        Text(error)
+                            .font(.escherCaption)
+                            .foregroundStyle(Color.escherError)
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 12)
+                    }
+                }
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.escherSurface.opacity(0.6))
+            )
+        }
+        .padding(18)
+        .escherCard()
+        .task {
+            await paywallManager.loadProducts()
+            await paywallManager.checkExistingEntitlements()
+        }
+    }
+
     // MARK: - Appearance Section
     
     private var appearanceSection: some View {
@@ -194,6 +340,19 @@ struct SettingsView: View {
                     .fill(Color.escherSurface.opacity(0.6))
             )
 
+            if settingsManager.isAppleIntelligenceCapableDevice {
+                HStack(spacing: 8) {
+                    Image(systemName: settingsManager.advancedOfflineModeEnabled ? "cpu" : "lock.fill")
+                        .foregroundStyle(Color.escherSecondaryText)
+                    Text(settingsManager.advancedOfflineModeEnabled
+                         ? String(localized: "Advanced Offline Mode is enabled. Local model routing is available.")
+                         : String(localized: "Advanced Offline Mode is off. Enable it in the Models screen to unlock local model routing."))
+                        .font(.escherCaption)
+                        .foregroundStyle(Color.escherSecondaryText)
+                }
+                .padding(.top, 4)
+            }
+
             // Availability warning if needed
             if !settingsManager.isFoundationModelsAvailable
                 && settingsManager.modelRoutingMode == .foundationModelOnly {
@@ -208,22 +367,38 @@ struct SettingsView: View {
             }
         }
         .padding(.bottom, 12)
+        .onAppear {
+            enforceSupportedRoutingSelection()
+        }
+        .onChange(of: settingsManager.advancedOfflineModeEnabled) { _, _ in
+            enforceSupportedRoutingSelection()
+        }
+    }
+
+    private func enforceSupportedRoutingSelection() {
+        if settingsManager.shouldGateLocalModelDownloads,
+           settingsManager.modelRoutingMode != .foundationModelOnly {
+            settingsManager.modelRoutingMode = .foundationModelOnly
+        }
     }
 
     private func isModeAvailable(_ mode: ModelRoutingMode) -> Bool {
         switch mode {
         case .foundationModelOnly:
-            return settingsManager.isFoundationModelsAvailable
-        case .localModelOnly, .hybrid:
             return true
+        case .localModelOnly, .hybrid:
+            return !settingsManager.shouldGateLocalModelDownloads
         }
     }
 
     private func unavailabilityReason(for mode: ModelRoutingMode) -> String? {
         switch mode {
         case .foundationModelOnly:
-            return settingsManager.isFoundationModelsAvailable ? nil : settingsManager.foundationModelsUnavailabilityReason
+            return settingsManager.foundationModelsUnavailabilityReason
         case .localModelOnly, .hybrid:
+            if settingsManager.shouldGateLocalModelDownloads {
+                return String(localized: "Enable Advanced Offline Mode in Models to use local routing")
+            }
             return nil
         }
     }
@@ -471,6 +646,13 @@ struct ModelRoutingModeRow: View {
                         .foregroundStyle(Color.escherSecondaryText)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
+
+                    if !isAvailable, let unavailabilityReason {
+                        Text(unavailabilityReason)
+                            .font(.escherMini)
+                            .foregroundStyle(Color.escherMidtone)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
 
                 Spacer()
@@ -486,6 +668,7 @@ struct ModelRoutingModeRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(!isAvailable)
     }
 }
 
@@ -495,13 +678,19 @@ struct SettingsContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var appearanceManager = AppearanceManager.shared
     @State private var showingMailCompose = false
-    
+    @State private var showingPaywall = false
+    @State private var paywallManager = PaywallManager.shared
+    private let usageTracker = UsageTracker.shared
+
     var body: some View {
         ZStack {
             EscherBackground()
             
             ScrollView {
                 VStack(spacing: 20) {
+                    // Pro Section
+                    proSection
+
                     // Appearance Section
                     appearanceSection
                     
@@ -519,6 +708,140 @@ struct SettingsContentView: View {
         .escherNavigationStyle()
         .sheet(isPresented: $showingMailCompose) {
             MailComposeView()
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+                .presentationDragIndicator(.visible)
+                .presentationDetents([.large])
+        }
+    }
+
+    // MARK: - Pro Section
+
+    private var proSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("PRO", comment: "Section header for pro/upgrade settings")
+                .font(.escherCaption2)
+                .tracking(1)
+                .foregroundStyle(Color.escherSecondaryText)
+
+            VStack(spacing: 0) {
+                if usageTracker.isPurchased {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.escherSuccess.opacity(0.15))
+                                .frame(width: 40, height: 40)
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.escherBody)
+                                .foregroundStyle(Color.escherSuccess)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("PocketREPL Pro", comment: "Pro unlock status title")
+                                .font(.escherCallout)
+                                .foregroundStyle(Color.escherForeground)
+                            Text("Unlimited access unlocked", comment: "Pro unlock status subtitle")
+                                .font(.escherCaption)
+                                .foregroundStyle(Color.escherSecondaryText)
+                        }
+                        Spacer()
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(Color.escherSuccess)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                } else {
+                    Button {
+                        showingPaywall = true
+                    } label: {
+                        HStack(spacing: 14) {
+                            ZStack {
+                                Circle()
+                                    .fill(colorScheme == .dark
+                                          ? Color(white: 0.16)
+                                          : Color.escherMidtone.opacity(0.10))
+                                    .frame(width: 40, height: 40)
+                                PenroseTriangle()
+                                    .stroke(
+                                        colorScheme == .dark ? Color.escherPaper : Color.escherInk,
+                                        style: StrokeStyle(lineWidth: 1.5, lineJoin: .round)
+                                    )
+                                    .frame(width: 18, height: 18)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Upgrade to Pro", comment: "Upgrade to pro button title")
+                                    .font(.escherCallout)
+                                    .foregroundStyle(Color.escherForeground)
+                                let remaining = usageTracker.remainingFreeMessages
+                                Text("\(remaining) free message\(remaining == 1 ? "" : "s") remaining", comment: "Shows remaining free messages")
+                                    .font(.escherCaption)
+                                    .foregroundStyle(remaining == 0 ? Color.escherError : Color.escherSecondaryText)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.escherCaption.weight(.semibold))
+                                .foregroundStyle(Color.escherSecondaryText)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Rectangle()
+                        .fill(Color.escherMidtone.opacity(0.15))
+                        .frame(height: 1)
+                        .padding(.leading, 56)
+
+                    Button {
+                        Task { await paywallManager.restorePurchases() }
+                    } label: {
+                        HStack(spacing: 14) {
+                            ZStack {
+                                Circle()
+                                    .fill(colorScheme == .dark
+                                          ? Color(white: 0.16)
+                                          : Color.escherMidtone.opacity(0.10))
+                                    .frame(width: 40, height: 40)
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.escherBody)
+                                    .foregroundStyle(colorScheme == .dark ? Color.escherPaper : Color.escherInk)
+                            }
+                            Text("Restore Purchases", comment: "Restore purchases button title")
+                                .font(.escherCallout)
+                                .foregroundStyle(Color.escherForeground)
+                            Spacer()
+                            if paywallManager.isPurchasing {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(paywallManager.isPurchasing)
+
+                    if let error = paywallManager.purchaseError {
+                        Text(error)
+                            .font(.escherCaption)
+                            .foregroundStyle(Color.escherError)
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 12)
+                    }
+                }
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.escherSurface.opacity(0.6))
+            )
+        }
+        .padding(18)
+        .escherCard()
+        .task {
+            await paywallManager.loadProducts()
+            await paywallManager.checkExistingEntitlements()
         }
     }
     

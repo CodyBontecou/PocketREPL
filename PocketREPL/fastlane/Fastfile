@@ -110,6 +110,50 @@ platform :ios do
       }
     )
   end
+  desc "Create the Pro IAP on App Store Connect"
+  lane :create_iap do
+    api_key = connect_api_key
+    app = Spaceship::ConnectAPI::App.find(APP_ID)
+    UI.user_error!("App not found: #{APP_ID}") unless app
+
+    iap = Spaceship::ConnectAPI::InAppPurchase.create(
+      app_id: app.id,
+      attributes: {
+        referenceName: "PocketREPL Pro",
+        productId: "com.bontecou.PocketREPL.pro",
+        inAppPurchaseType: "NON_CONSUMABLE",
+        familySharable: true
+      }
+    )
+    UI.success("Created IAP: #{iap.product_id} (id: #{iap.id})")
+
+    # Add English localization
+    iap.create_iap_localization(
+      attributes: {
+        locale: "en-US",
+        name: "PocketREPL Pro",
+        description: "Unlock unlimited AI conversations, local model support, and full JavaScript runtime access."
+      }
+    )
+    UI.success("Added en-US localization")
+
+    # Set price (tier 3 = $2.99)
+    iap.create_price_schedule(
+      attributes: {
+        manualPrices: false
+      },
+      relationships: {
+        baseTerritory: {
+          data: { type: "territories", id: "USA" }
+        },
+        priceTier: {
+          data: { type: "inapppurchasePriceTiers", id: "3" }
+        }
+      }
+    )
+    UI.success("Set price tier 3 ($2.99)")
+  end
+
   desc "Create app on App Store Connect"
   lane :create_app do
     connect_api_key

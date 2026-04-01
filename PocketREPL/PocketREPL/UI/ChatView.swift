@@ -14,10 +14,6 @@ struct ChatView: View {
     @State private var messageAppearance: [UUID: Bool] = [:]
     private let usageTracker = UsageTracker.shared
 
-    // Flash inference metrics — updated by FlashInferenceBackend during generation.
-    // Visibility is controlled by tokensPerSecond > 0 or isGenerating flag.
-    @State private var flashMetrics = FlashInferenceMetrics()
-
     var body: some View {
         ZStack {
             // Escher background
@@ -51,7 +47,7 @@ struct ChatView: View {
             }
             Button(String(localized: "Continue Without AI"), role: .cancel) {}
         } message: {
-            Text(session.aiAvailabilityStatus + "\n\nWithout Apple Intelligence, you can still use tools manually by typing commands like:\n\nlist_files\nrun_snippet {\"code\": \"console.log('hi')\"}")
+            Text(session.aiAvailabilityStatus + "\n\nEnable Apple Intelligence in Settings for the primary AI path.\n\nAdvanced Offline Mode (local model downloads) is optional and available from the Models screen.")
         }
     }
     
@@ -215,14 +211,6 @@ struct ChatView: View {
     
     private var floatingBottomControls: some View {
         VStack(spacing: 0) {
-            // Flash inference status — shown when a FlashPack model is generating
-            if flashMetrics.isGenerating || flashMetrics.tokensPerSecond > 0 {
-                FlashInferenceStatusView(metrics: flashMetrics)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 4)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-
             // Free-tier warning — shown when close to or at the limit
             if !usageTracker.isPurchased {
                 freeTrialBanner

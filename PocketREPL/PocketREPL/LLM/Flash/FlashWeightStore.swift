@@ -386,6 +386,21 @@ enum FlashPackReader {
     static let magicBytes = Data("FLASHPK1".utf8)
 
     /// Open a FlashPack file and parse its header.
+    ///
+    /// - Returns: `(config, dataStartOffset)` where `dataStartOffset` is the byte offset
+    ///   of the first weight tensor — i.e. past the padded header reservation.
+    ///
+    /// The on-disk layout is:
+    ///   [8]  magic "FLASHPK1"
+    ///   [8]  uint64 jsonLength        ← length of the JSON blob only
+    ///   [N]  UTF-8 JSON blob          ← N = jsonLength
+    ///   [P]  zero padding             ← so that (16 + jsonLength + P) is a multiple of 4 KB
+    ///       weight data starts here
+    ///
+    /// The padded reservation equals `FlashModelConverter`'s `headerReserve`:
+    ///   headerReserve = ceil((estimatedJSONBytes × 2) / 4096) × 4096
+    ///
+    /// We store `headerReserve` in the JSON so the reader doesn't have to re-derive it.
     static func readHeader(path: String) throws -> (config: FlashModelConfig, dataStartOffset: UInt64) {
         guard FileManager.default.fileExists(atPath: path) else {
             throw FlashModelError.fileNotFound(path: path)
@@ -404,15 +419,15 @@ enum FlashPackReader {
         guard let lenBytes = try handle.read(upToCount: 8), lenBytes.count == 8 else {
             throw FlashModelError.headerParseFailure("Could not read header length")
         }
-        let headerLength = lenBytes.withUnsafeBytes { $0.load(as: UInt64.self) }
+        let jsonLength = lenBytes.withUnsafeBytes { $0.load(as: UInt64.self) }
 
         // Read header JSON
-        guard let headerData = try handle.read(upToCount: Int(headerLength)),
-              headerData.count == Int(headerLength) else {
+        guard let headerData = try handle.read(upToCount: Int(jsonLength)),
+              headerData.count == Int(jsonLength) else {
             throw FlashModelError.headerParseFailure("Could not read header JSON")
         }
 
-        // Parse
+        // Parse JSON
         let decoder = JSONDecoder()
         let header: FlashPackHeader
         do {
@@ -425,8 +440,195 @@ enum FlashPackReader {
             throw FlashModelError.unsupportedVersion(header.fileFormatVersion)
         }
 
-        let dataStartOffset: UInt64 = 8 + 8 + headerLength
-        return (config: header.config, dataStartOffset: dataStartOffset)
+        // dataStartOffset = padded reservation size.
+        //
+        // The converter writes (magic + lenField + JSON + zeroPadding) such that
+        // the total equals headerReserve. We reconstruct headerReserve the same way:
+        //   estimatedJSONBytes = numLayers * 1500 + 3000
+        //   headerReserve = ceil(estimatedJSONBytes * 2 / 4096) * 4096
+        //
+        // This must match FlashModelConverter.convert() exactly.
+        let numLayers = header.config.numHiddenLayers
+        let estimatedJSONBytes = numLayers * 1500 + 3000
+        let headerReserve = ((estimatedJSONBytes * 2 + 4095) / 4096) * 4096
+
+        return (config: header.config, dataStartOffset: UInt64(headerReserve))
+    }
+
+    // MARK: - FlashPack Writer
+
+    /// Re-write a FlashPack file's JSON header in-place.
+    ///
+    /// Used when predictor weights have been appended to the file and the header's
+    /// `predictorWIn`/`predictorWOut` offset fields need updating.
+    ///
+    /// The new JSON must fit within the existing padded reservation.
+    static func rewriteHeader(path: String, newConfig: FlashModelConfig) throws {
+        guard FileManager.default.fileExists(atPath: path) else {
+            throw FlashModelError.fileNotFound(path: path)
+        }
+
+        let newHeader = FlashPackHeader(config: newConfig, fileFormatVersion: 1)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let newJSON = try encoder.encode(newHeader)
+
+        // Compute reservation size
+        let numLayers = newConfig.numHiddenLayers
+        let estimatedJSONBytes = numLayers * 1500 + 3000
+        let headerReserve = ((estimatedJSONBytes * 2 + 4095) / 4096) * 4096
+
+        // Build new header block: magic + length + JSON + padding
+        var newHeaderLen = UInt64(newJSON.count)
+        var headerBlock = magicBytes
+        headerBlock.append(Data(bytes: &newHeaderLen, count: 8))
+        headerBlock.append(newJSON)
+
+        guard headerBlock.count <= headerReserve else {
+            throw FlashModelError.headerParseFailure(
+                "Updated header (\(headerBlock.count) bytes) exceeds reservation (\(headerReserve) bytes)"
+            )
+        }
+
+        // Pad to full reservation
+        headerBlock.append(Data(count: headerReserve - headerBlock.count))
+
+        // Write in-place (overwrite only the header region)
+        let handle = try FileHandle(forWritingTo: URL(fileURLWithPath: path))
+        defer { try? handle.close() }
+        try handle.seek(toOffset: 0)
+        handle.write(headerBlock)
+    }
+}
+
+// MARK: - FlashPackWriter (append predictor weights and update header)
+
+/// Appends trained predictor weights to an existing FlashPack file and
+/// updates the JSON header's `predictorWIn`/`predictorWOut` offset fields.
+enum FlashPackWriter {
+
+    /// Append predictor weights for all layers to an existing `.flashpack` file.
+    ///
+    /// For each layer, writes W_in and W_out as contiguous Float32 blobs, then
+    /// rewrites the JSON header to include their byte offsets.
+    ///
+    /// - Parameters:
+    ///   - predictors:  Array of `PredictorWeights`, one per layer, in order.
+    ///   - flashPackPath:  Path to the `.flashpack` file to update in-place.
+    ///   - onProgress:  Progress callback (0.0 → 1.0).
+    static func appendPredictors(
+        predictors: [PredictorWeights],
+        to flashPackPath: String,
+        onProgress: @escaping (Double) -> Void
+    ) throws {
+        // 1. Read existing config
+        let (existingConfig, _) = try FlashPackReader.readHeader(path: flashPackPath)
+        guard predictors.count == existingConfig.numHiddenLayers else {
+            throw FlashModelError.headerParseFailure(
+                "Predictor count (\(predictors.count)) doesn't match layer count (\(existingConfig.numHiddenLayers))"
+            )
+        }
+
+        // 2. Open file for appending
+        let handle = try FileHandle(forWritingTo: URL(fileURLWithPath: flashPackPath))
+        defer { try? handle.close() }
+
+        // Seek to end
+        var currentOffset = try handle.seekToEnd()
+
+        // 3. Build updated layer specs with new predictor offsets
+        var updatedLayers: [FlashLayerSpec] = []
+
+        for (layerIdx, (predictor, layerSpec)) in zip(predictors, existingConfig.sections.layers).enumerated() {
+            onProgress(Double(layerIdx) / Double(predictors.count))
+
+            // Write W_in: [hiddenSize × rank] Float32
+            let wInOffset = currentOffset
+            let wInData: Data = predictor.wIn.withUnsafeBytes { Data($0) }
+            handle.write(wInData)
+            currentOffset += UInt64(wInData.count)
+
+            // Write W_out: [rank × intermediateSize] Float32
+            let wOutOffset = currentOffset
+            let wOutData: Data = predictor.wOut.withUnsafeBytes { Data($0) }
+            handle.write(wOutData)
+            currentOffset += UInt64(wOutData.count)
+
+            // Build updated TensorShape specs
+            let wInSpec = TensorShape(
+                offset: wInOffset,
+                rows: existingConfig.hiddenSize,
+                cols: predictor.rank,
+                dtype: .float32
+            )
+            let wOutSpec = TensorShape(
+                offset: wOutOffset,
+                rows: predictor.rank,
+                cols: existingConfig.intermediateSize,
+                dtype: .float32
+            )
+
+            // Reconstruct the layer spec with predictor offsets populated
+            let updated = FlashLayerSpec(
+                qProj:               layerSpec.qProj,
+                kProj:               layerSpec.kProj,
+                vProj:               layerSpec.vProj,
+                oProj:               layerSpec.oProj,
+                inputNorm:           layerSpec.inputNorm,
+                postAttentionNorm:   layerSpec.postAttentionNorm,
+                ffnNeuronsOffset:    layerSpec.ffnNeuronsOffset,
+                ffnNeuronCount:      layerSpec.ffnNeuronCount,
+                ffnNeuronByteSize:   layerSpec.ffnNeuronByteSize,
+                ffnUseGate:          layerSpec.ffnUseGate,
+                ffnDType:            layerSpec.ffnDType,
+                predictorWIn:        wInSpec,
+                predictorWOut:       wOutSpec,
+                neuronImportanceOffset: layerSpec.neuronImportanceOffset
+            )
+            updatedLayers.append(updated)
+        }
+
+        // 4. Build updated config with new predictor rank and threshold
+        let newSections = FlashModelSections(
+            tokenEmbedding: existingConfig.sections.tokenEmbedding,
+            norm:           existingConfig.sections.norm,
+            lmHead:         existingConfig.sections.lmHead,
+            layers:         updatedLayers
+        )
+        var newConfig = existingConfig
+        // Update the sections by reconstructing — FlashModelConfig is a struct, so we rebuild
+        let updatedConfig = FlashModelConfig(
+            architecture:          existingConfig.architecture,
+            sparsityType:          existingConfig.sparsityType,
+            vocabSize:             existingConfig.vocabSize,
+            hiddenSize:            existingConfig.hiddenSize,
+            intermediateSize:      existingConfig.intermediateSize,
+            numHiddenLayers:       existingConfig.numHiddenLayers,
+            numAttentionHeads:     existingConfig.numAttentionHeads,
+            numKeyValueHeads:      existingConfig.numKeyValueHeads,
+            headDim:               existingConfig.headDim,
+            maxPositionEmbeddings: existingConfig.maxPositionEmbeddings,
+            rmsNormEps:            existingConfig.rmsNormEps,
+            ropeTheta:             existingConfig.ropeTheta,
+            tieEmbeddings:         existingConfig.tieEmbeddings,
+            slidingWindowSize:     existingConfig.slidingWindowSize,
+            maxCacheFraction:      existingConfig.maxCacheFraction,
+            ioThreadCount:         existingConfig.ioThreadCount,
+            minReadChunkBytes:     existingConfig.minReadChunkBytes,
+            bypassOSCache:         existingConfig.bypassOSCache,
+            enableReadAhead:       existingConfig.enableReadAhead,
+            predictorRank:         predictors.first?.rank ?? existingConfig.predictorRank,
+            predictorThreshold:    existingConfig.predictorThreshold,
+            predictorSafetyBuffer: existingConfig.predictorSafetyBuffer,
+            dtype:                 existingConfig.dtype,
+            sections:              newSections
+        )
+        _ = newConfig  // suppress warning
+
+        // 5. Rewrite JSON header with updated layer specs
+        try FlashPackReader.rewriteHeader(path: flashPackPath, newConfig: updatedConfig)
+
+        onProgress(1.0)
     }
 }
 
