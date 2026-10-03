@@ -5,10 +5,6 @@ require 'openssl'
 require 'base64'
 require 'time'
 
-KEY_ID    = "T7KGDK4Y4V"
-ISSUER_ID = "6c3b3640-c6bf-40a9-b6e5-57cda2c7776e"
-KEY_PATH  = "/Users/codybontecou/dev/AuthKey_T7KGDK4Y4V.p8"
-IAP_ID    = "6761124210"
 
 def generate_token
   private_key = OpenSSL::PKey::EC.new(File.read(KEY_PATH))
